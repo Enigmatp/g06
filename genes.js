@@ -138,37 +138,63 @@ class Genes {
             this.species = this.species.slice(0, 3);
         }
 
-        // Color inheritance with mutation
-        if (Math.random() < 0.1) {
-            // 10% mutation - new color
-            this.bodyColor = this.mutateColor(parent1.bodyColor, parent2.bodyColor);
+        // Color inheritance: 30% parent1, 30% parent2, 40% merged
+        const colorRoll = Math.random();
+        if (colorRoll < 0.3) {
+            // 30% - Inherit from parent1 (father)
+            this.bodyColor = parent1.bodyColor;
+        } else if (colorRoll < 0.6) {
+            // 30% - Inherit from parent2 (mother)
+            this.bodyColor = parent2.bodyColor;
         } else {
-            // 50/50 from parents
-            this.bodyColor = Math.random() < 0.5 ? parent1.bodyColor : parent2.bodyColor;
+            // 40% - Merge colors
+            this.bodyColor = this.mixColors(parent1.bodyColor, parent2.bodyColor);
         }
 
-        // Eye color
-        this.eyeColor = Math.random() < 0.5 ? parent1.eyeColor : parent2.eyeColor;
+        // Eye color: same distribution
+        const eyeRoll = Math.random();
+        if (eyeRoll < 0.3) {
+            this.eyeColor = parent1.eyeColor;
+        } else if (eyeRoll < 0.6) {
+            this.eyeColor = parent2.eyeColor;
+        } else {
+            this.eyeColor = this.mixColors(parent1.eyeColor, parent2.eyeColor);
+        }
 
-        // Size inheritance - average with variation
-        const avgSize = (parent1.size + parent2.size) / 2;
-        this.size = avgSize * (0.8 + Math.random() * 0.4); // ±20%
+        // Size inheritance: 30% parent1, 30% parent2, 40% average
+        const sizeRoll = Math.random();
+        if (sizeRoll < 0.3) {
+            this.size = parent1.size * (0.9 + Math.random() * 0.2); // ±10%
+        } else if (sizeRoll < 0.6) {
+            this.size = parent2.size * (0.9 + Math.random() * 0.2);
+        } else {
+            const avgSize = (parent1.size + parent2.size) / 2;
+            this.size = avgSize * (0.9 + Math.random() * 0.2);
+        }
 
-        // Traits inheritance
+        // Traits inheritance with merge logic
         this.traits = this.inheritTraits(parent1.traits, parent2.traits);
 
-        // Pattern inheritance
-        if (Math.random() < 0.2) {
-            this.pattern = this.mutatePattern();
+        // Pattern inheritance: 30% parent1, 30% parent2, 40% new/merged
+        const patternRoll = Math.random();
+        if (patternRoll < 0.3) {
+            this.pattern = parent1.pattern;
+        } else if (patternRoll < 0.6) {
+            this.pattern = parent2.pattern;
         } else {
-            this.pattern = Math.random() < 0.5 ? parent1.pattern : parent2.pattern;
+            // 40% - New pattern or keep one
+            if (Math.random() < 0.5) {
+                this.pattern = this.mutatePattern();
+            } else {
+                this.pattern = Math.random() < 0.5 ? parent1.pattern : parent2.pattern;
+            }
         }
 
-        // Accessories inheritance
+        // Accessories: merge both parents + chance for new
         this.accessories = [...new Set([...parent1.accessories, ...parent2.accessories])];
 
-        // Add mutation accessories
-        if (Math.random() < 0.05) {
+        // 10% chance for new accessory when merging
+        if (Math.random() < 0.1) {
             this.accessories.push(this.getRandomAccessory());
         }
 
