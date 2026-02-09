@@ -1,4 +1,4 @@
-// Card Class - Stacklands Style Card System
+// Card Class - Stacklands Style Card System (Image Only)
 class Card {
     constructor(id, x, y, genes = null) {
         this.id = id;
@@ -89,14 +89,11 @@ class Card {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.fillRect(-this.width / 2 + 5, -this.height / 2 + 5, this.width, this.height);
 
-        // Card background
+        // Card background (IMAGES ONLY)
         this.drawCardBackground(ctx);
 
         // Card border
         this.drawCardBorder(ctx);
-
-        // Pet illustration
-        this.drawPet(ctx);
 
         // Card info
         this.drawCardInfo(ctx);
@@ -125,11 +122,10 @@ class Card {
     }
 
     drawCardBackground(ctx) {
-        // Check if game has asset for this species
-        // We access the game instance globally since it's defined in game.js
-        if (window.game && window.game.assets && this.genes.species.length === 1) {
-            const species = this.genes.species[0];
-            const img = window.game.assets[species];
+        // ALWAYS use image background for the 10-card system
+        if (window.game && window.game.assets) {
+            const speciesKey = this.genes.speciesKey;
+            const img = window.game.assets[speciesKey];
 
             if (img && img.complete) {
                 // Draw image background
@@ -155,7 +151,7 @@ class Card {
             }
         }
 
-        // Fallback: Gradient background
+        // Fallback (Should not happen if assets are loaded)
         const gradient = ctx.createLinearGradient(0, -this.height / 2, 0, this.height / 2);
         gradient.addColorStop(0, '#FFFFFF');
         gradient.addColorStop(1, '#F0F0F0');
@@ -175,292 +171,12 @@ class Card {
         ctx.stroke();
     }
 
-    drawPet(ctx) {
-        // If we're drawing an image background, we don't need the vector pet
-        if (window.game && window.game.assets && this.genes.species.length === 1) {
-            const species = this.genes.species[0];
-            const img = window.game.assets[species];
-
-            if (img && img.complete) {
-                // Image handles the visual, so skip vector drawing
-                // Maybe draw accessories on top later?
-                return;
-            }
-        }
-
-        // Vector illustration fallback
-        const petY = -this.height / 2 + 60;
-
-        ctx.save();
-        ctx.translate(0, petY);
-
-        // Draw egg shell body (scaled based on genes.size)
-        const scale = this.genes.size * 0.6;
-        ctx.scale(scale, scale);
-
-        // Body
-        ctx.fillStyle = this.genes.bodyColor;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 30, 40, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // Pattern
-        this.drawPattern(ctx);
-
-        // Traits
-        this.drawTraits(ctx);
-
-        // Accessories
-        this.drawAccessories(ctx);
-
-        ctx.restore();
-    }
-
-    drawPattern(ctx) {
-        ctx.save();
-        ctx.globalAlpha = 0.3;
-
-        switch (this.genes.pattern) {
-            case 'spots':
-                ctx.fillStyle = '#000';
-                for (let i = 0; i < 5; i++) {
-                    const angle = (i / 5) * Math.PI * 2;
-                    const x = Math.cos(angle) * 15;
-                    const y = Math.sin(angle) * 20;
-                    ctx.beginPath();
-                    ctx.arc(x, y, 5, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-                break;
-            case 'stripes':
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 3;
-                for (let i = -2; i <= 2; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(-25, i * 10);
-                    ctx.lineTo(25, i * 10);
-                    ctx.stroke();
-                }
-                break;
-            case 'gradient':
-                const gradient = ctx.createLinearGradient(0, -40, 0, 40);
-                gradient.addColorStop(0, '#FFFFFF');
-                gradient.addColorStop(1, this.genes.bodyColor);
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.ellipse(0, 0, 28, 38, 0, 0, Math.PI * 2);
-                ctx.fill();
-                break;
-            case 'sparkle':
-                ctx.fillStyle = '#FFD700';
-                for (let i = 0; i < 8; i++) {
-                    const angle = (i / 8) * Math.PI * 2;
-                    const x = Math.cos(angle) * 20;
-                    const y = Math.sin(angle) * 25;
-                    this.drawStar(ctx, x, y, 3, 5);
-                }
-                break;
-        }
-
-        ctx.restore();
-    }
-
-    drawStar(ctx, x, y, innerRadius, outerRadius) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.beginPath();
-        for (let i = 0; i < 10; i++) {
-            const radius = i % 2 === 0 ? outerRadius : innerRadius;
-            const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
-            const px = Math.cos(angle) * radius;
-            const py = Math.sin(angle) * radius;
-            if (i === 0) {
-                ctx.moveTo(px, py);
-            } else {
-                ctx.lineTo(px, py);
-            }
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-    }
-
-    drawTraits(ctx) {
-        // Draw species-specific traits
-        const traits = this.genes.traits;
-
-        // Ears
-        if (traits.ears === 'pointed') {
-            // Wolf/Fox ears
-            ctx.fillStyle = this.genes.bodyColor;
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(-15, -35);
-            ctx.lineTo(-20, -45);
-            ctx.lineTo(-10, -35);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(15, -35);
-            ctx.lineTo(20, -45);
-            ctx.lineTo(10, -35);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-        } else if (traits.ears === 'cat') {
-            // Cat ears
-            ctx.fillStyle = this.genes.bodyColor;
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(-12, -35);
-            ctx.lineTo(-18, -42);
-            ctx.lineTo(-8, -38);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(12, -35);
-            ctx.lineTo(18, -42);
-            ctx.lineTo(8, -38);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-        } else if (traits.ears === 'long') {
-            // Rabbit ears
-            ctx.fillStyle = this.genes.bodyColor;
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.ellipse(-10, -40, 5, 20, -0.3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.ellipse(10, -40, 5, 20, 0.3, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-        } else if (traits.ears === 'round') {
-            // Bear ears
-            ctx.fillStyle = this.genes.bodyColor;
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.arc(-15, -35, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(15, -35, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-        }
-
-        // Wings
-        if (traits.wings) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1;
-
-            // Left wing
-            ctx.beginPath();
-            ctx.ellipse(-25, 0, 15, 20, -0.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-
-            // Right wing
-            ctx.beginPath();
-            ctx.ellipse(25, 0, 15, 20, 0.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-        }
-
-        // Horns
-        if (traits.horns) {
-            ctx.strokeStyle = '#8B4513';
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-
-            ctx.beginPath();
-            ctx.moveTo(-10, -35);
-            ctx.lineTo(-15, -50);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(10, -35);
-            ctx.lineTo(15, -50);
-            ctx.stroke();
-        }
-
-        // Tail (simplified, shown as icon)
-        if (traits.tail === 'bushy') {
-            ctx.fillStyle = this.genes.bodyColor;
-            ctx.beginPath();
-            ctx.arc(-30, 20, 8, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    drawAccessories(ctx) {
-        this.genes.accessories.forEach(accessory => {
-            switch (accessory) {
-                case 'crown':
-                    ctx.fillStyle = '#FFD700';
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 1;
-                    for (let i = 0; i < 5; i++) {
-                        const x = (i - 2) * 8;
-                        ctx.beginPath();
-                        ctx.moveTo(x, -42);
-                        ctx.lineTo(x - 4, -38);
-                        ctx.lineTo(x + 4, -38);
-                        ctx.closePath();
-                        ctx.fill();
-                        ctx.stroke();
-                    }
-                    break;
-                case 'bow':
-                    ctx.fillStyle = '#FF69B4';
-                    ctx.beginPath();
-                    ctx.arc(-8, -40, 5, 0, Math.PI * 2);
-                    ctx.arc(8, -40, 5, 0, Math.PI * 2);
-                    ctx.fill();
-                    break;
-                case 'glasses':
-                    ctx.strokeStyle = '#000';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(-8, -10, 6, 0, Math.PI * 2);
-                    ctx.moveTo(-2, -10);
-                    ctx.lineTo(2, -10);
-                    ctx.moveTo(14, -10);
-                    ctx.arc(8, -10, 6, 0, Math.PI * 2);
-                    ctx.stroke();
-                    break;
-            }
-        });
-    }
+    // No more drawPet() method - fully removed!
 
     drawCardInfo(ctx) {
-        // Determine text color based on background
-        let textColor = '#000';
-        let strokeColor = 'rgba(255,255,255,0.8)';
-
-        if (window.game && window.game.assets && this.genes.species.length === 1) {
-            const species = this.genes.species[0];
-            const img = window.game.assets[species];
-            if (img && img.complete) {
-                textColor = '#FFF'; // White text on image
-                strokeColor = '#000'; // Black outline
-            }
-        }
+        // Text is always white on image background
+        const textColor = '#FFF';
+        const strokeColor = '#000';
 
         // Species name
         ctx.fillStyle = textColor;
@@ -498,6 +214,26 @@ class Card {
             const x = -totalWidth / 2 + i * starSpacing;
             this.drawStar(ctx, x, starY, starSize * 0.4, starSize);
         }
+    }
+
+    drawStar(ctx, x, y, innerRadius, outerRadius) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+            const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
+            const px = Math.cos(angle) * radius;
+            const py = Math.sin(angle) * radius;
+            if (i === 0) {
+                ctx.moveTo(px, py);
+            } else {
+                ctx.lineTo(px, py);
+            }
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
     }
 
     drawCooldownOverlay(ctx) {
