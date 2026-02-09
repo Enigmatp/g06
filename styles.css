@@ -542,28 +542,93 @@ body {
     text-align: center;
 }
 
-.add-pet-btn {
-    margin-left: auto;
-    padding: 10px 25px;
+.ui-btn {
+    padding: 10px 20px;
     font-family: 'Inter', sans-serif;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: #fff;
     background: linear-gradient(135deg, #00f0ff 0%, #ff00ff 100%);
     border: none;
-    border-radius: 25px;
+    border-radius: 20px;
     cursor: pointer;
     transition: var(--transition-smooth);
     box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);
 }
 
-.add-pet-btn:hover {
+.ui-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 240, 255, 0.6);
 }
 
-.add-pet-btn:active {
+.ui-btn:active {
     transform: translateY(0);
+}
+
+.pet-info {
+    display: none;
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(0, 240, 255, 0.5);
+    border-radius: 15px;
+    padding: 20px;
+    min-width: 250px;
+    z-index: 100;
+}
+
+.pet-info h3 {
+    margin: 0 0 15px 0;
+    color: var(--primary-color);
+    font-family: 'Orbitron', sans-serif;
+}
+
+.pet-info p {
+    margin: 8px 0;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+}
+
+.floating-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    padding: 20px 40px;
+    border-radius: 15px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    z-index: 1000;
+    animation: floatIn 0.5s ease-out;
+    pointer-events: none;
+}
+
+.floating-message.fade-out {
+    animation: floatOut 1s ease-out forwards;
+}
+
+@keyframes floatIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -40%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+@keyframes floatOut {
+    to {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
 }
 
 .instructions {
