@@ -73,33 +73,34 @@
         <div class="game-ui">
             <div class="ui-panel">
                 <div class="ui-item">
-                    <span class="ui-label">🥚 已孵化:</span>
-                    <span class="ui-value" id="pet-count">0</span>
+                    <span class="ui-label">🃏 卡牌:</span>
+                    <span class="ui-value" id="card-count">0</span>
                 </div>
                 <div class="ui-item">
                     <span class="ui-label">💰 金币:</span>
                     <span class="ui-value" id="coin-count">0</span>
                 </div>
+                <div class="ui-item">
+                    <span class="ui-label">🧬 已繁殖:</span>
+                    <span class="ui-value" id="bred-count">0</span>
+                </div>
                 <button id="collection-btn" class="ui-btn">📖 图鉴</button>
-                <button id="new-egg-btn" class="ui-btn">🥚 新蛋 (50金币)</button>
+                <button id="new-card-btn" class="ui-btn">🎴 新卡 (50金币)</button>
             </div>
         </div>
 
         <!-- Game Canvas -->
         <canvas id="game-canvas"></canvas>
 
-        <!-- Pet Info Panel -->
-        <div id="pet-info" class="pet-info"></div>
-
         <!-- Instructions -->
         <div class="instructions">
-            <p>💡 点击蛋壳进行孵化</p>
-            <p>🎨 收集各种变异的蛋壳宠物</p>
+            <p>💡 拖拽两张卡牌到一起进行繁殖</p>
+            <p>🧬 继承父母DNA，可能产生变异</p>
         </div>
     </div>
 
-    <script src="duck.js"></script>
-    <script src="egg.js"></script>
+    <script src="genes.js"></script>
+    <script src="card.js"></script>
     <script src="game.js"></script>
     <script src="loading.js"></script>
 </body>
