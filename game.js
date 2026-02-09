@@ -29,6 +29,9 @@ class Game {
     }
 
     init() {
+        // Load assets
+        this.loadAssets();
+
         // Set canvas size
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
@@ -46,6 +49,17 @@ class Game {
 
         // Update UI
         this.updateUI();
+    }
+
+    loadAssets() {
+        this.assets = {};
+        const species = ['wolf', 'duck', 'cat', 'rabbit']; // Available images
+
+        species.forEach(sp => {
+            const img = new Image();
+            img.src = `assets/cards/${sp}.png`;
+            this.assets[sp] = img;
+        });
     }
 
     resizeCanvas() {

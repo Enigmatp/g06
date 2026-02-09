@@ -125,7 +125,37 @@ class Card {
     }
 
     drawCardBackground(ctx) {
-        // Card background with gradient
+        // Check if game has asset for this species
+        // We access the game instance globally since it's defined in game.js
+        if (window.game && window.game.assets && this.genes.species.length === 1) {
+            const species = this.genes.species[0];
+            const img = window.game.assets[species];
+
+            if (img && img.complete) {
+                // Draw image background
+                ctx.save();
+
+                // Clip to card shape
+                ctx.beginPath();
+                ctx.roundRect(-this.width / 2, -this.height / 2, this.width, this.height, 10);
+                ctx.clip();
+
+                // Draw image
+                ctx.drawImage(img, -this.width / 2, -this.height / 2, this.width, this.height);
+
+                // Add overlay gradient for text readability at bottom
+                const gradient = ctx.createLinearGradient(0, 0, 0, this.height / 2);
+                gradient.addColorStop(0, 'rgba(0,0,0,0)');
+                gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(-this.width / 2, 0, this.width, this.height / 2);
+
+                ctx.restore();
+                return;
+            }
+        }
+
+        // Fallback: Gradient background
         const gradient = ctx.createLinearGradient(0, -this.height / 2, 0, this.height / 2);
         gradient.addColorStop(0, '#FFFFFF');
         gradient.addColorStop(1, '#F0F0F0');
@@ -146,7 +176,19 @@ class Card {
     }
 
     drawPet(ctx) {
-        // Pet illustration area
+        // If we're drawing an image background, we don't need the vector pet
+        if (window.game && window.game.assets && this.genes.species.length === 1) {
+            const species = this.genes.species[0];
+            const img = window.game.assets[species];
+
+            if (img && img.complete) {
+                // Image handles the visual, so skip vector drawing
+                // Maybe draw accessories on top later?
+                return;
+            }
+        }
+
+        // Vector illustration fallback
         const petY = -this.height / 2 + 60;
 
         ctx.save();
@@ -407,17 +449,37 @@ class Card {
     }
 
     drawCardInfo(ctx) {
+        // Determine text color based on background
+        let textColor = '#000';
+        let strokeColor = 'rgba(255,255,255,0.8)';
+
+        if (window.game && window.game.assets && this.genes.species.length === 1) {
+            const species = this.genes.species[0];
+            const img = window.game.assets[species];
+            if (img && img.complete) {
+                textColor = '#FFF'; // White text on image
+                strokeColor = '#000'; // Black outline
+            }
+        }
+
         // Species name
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = textColor;
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 3;
+
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
 
         const name = `蛋壳${this.genes.getSpeciesName()}`;
+
+        // Stroke text for readability
+        ctx.strokeText(name, 0, this.height / 2 - 50);
         ctx.fillText(name, 0, this.height / 2 - 50);
 
         // Emoji
         ctx.font = '20px Arial';
+        ctx.strokeText(this.genes.getSpeciesEmoji(), 0, this.height / 2 - 30);
         ctx.fillText(this.genes.getSpeciesEmoji(), 0, this.height / 2 - 30);
 
         // Rarity stars
