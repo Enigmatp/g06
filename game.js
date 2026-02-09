@@ -53,7 +53,12 @@ class Game {
 
     loadAssets() {
         this.assets = {};
-        const species = ['wolf', 'duck', 'cat', 'rabbit']; // Available images
+        // The 10 fixed species
+        const species = [
+            'wolf', 'duck', 'cat', 'rabbit',
+            'dragon', 'bird', 'bear', 'fox',
+            'wolf_duck', 'dragon_bird'
+        ];
 
         species.forEach(sp => {
             const img = new Image();
