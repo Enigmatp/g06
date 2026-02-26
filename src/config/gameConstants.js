@@ -212,7 +212,7 @@ export const RESOURCES = {
     },
     dye: {
         name: "药品",
-        icon: 'Pill',
+        icon: 'Droplets',
         color: "text-pink-500",
         basePrice: 5.0,
         minPrice: 0.05,
@@ -253,7 +253,7 @@ export const RESOURCES = {
     },
     delicacies: {
         name: "鲜肉",
-        icon: 'Beef',
+        icon: 'UtensilsCrossed',
         color: "text-rose-400",
         basePrice: 24,
         minPrice: 0.24,
@@ -300,7 +300,7 @@ export const RESOURCES = {
 
     fine_clothes: {
         name: "防护服",
-        icon: 'ShieldCheck',
+        icon: 'Shield',
         color: "text-green-400",
         basePrice: 32,
         minPrice: 0.32,
@@ -387,7 +387,7 @@ export const RESOURCES = {
     // 重建文明阶段
     coal: {
         name: "燃油",
-        icon: 'Fuel',
+        icon: 'Flame',
         color: "text-slate-300",
         basePrice: 7.5,
         minPrice: 0.075,
@@ -429,7 +429,7 @@ export const RESOURCES = {
     // 特殊资源
     silver: {
         name: "信用点",
-        icon: 'Ticket',
+        icon: 'Coins',
         color: "text-slate-200",
         type: 'currency',
         basePrice: 1,
@@ -441,7 +441,7 @@ export const RESOURCES = {
     },
     science: {
         name: "研究",
-        icon: 'FlaskConical',
+        icon: 'Microscope',
         color: "text-cyan-400",
         basePrice: 5,
         minPrice: 0.05,

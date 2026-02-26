@@ -4687,7 +4687,7 @@ export const EPOCH_EVENTS = [
     {
         id: 'alchemist_discovery',
         name: '炼金术士的实验',
-        icon: 'FlaskConical',
+        icon: 'Microscope',
         description: '一位炼金术士声称他在寻找长生不老药的过程中，意外发现了一种能产生剧烈爆炸的黑色粉末。',
         triggerConditions: {
             minEpoch: 3,
