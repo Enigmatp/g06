@@ -36,14 +36,18 @@ export const ResourcePanel = ({
         return market.prices?.[key] ?? base;
     };
 
-    // 过滤可见资源
+    // 过滤可见资源 - 只显示有库存或有产出的资源
     const visibleResources = useMemo(() => {
         return Object.entries(RESOURCES).filter(([key, info]) => {
             if (info.type === 'virtual' || info.type === 'currency') return false;
             if (typeof info.unlockEpoch === 'number' && info.unlockEpoch > epoch) return false;
+            // Hide resources with no quantity and no production
+            const amount = resources[key] || 0;
+            const rate = rates[key] || 0;
+            if (amount <= 0 && rate === 0) return false;
             return true;
         });
-    }, [epoch]);
+    }, [epoch, resources, rates]);
 
     // 获取资源趋势箭头
     const getTrendIndicator = (rate) => {

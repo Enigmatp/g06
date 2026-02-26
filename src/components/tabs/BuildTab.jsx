@@ -1020,10 +1020,10 @@ const BuildTabComponent = ({
 
     // 按类别分组建筑
     const categories = {
-        gather: { name: '采集与农业', icon: 'Wheat', color: 'text-yellow-400' },
-        industry: { name: '工业生产', icon: 'Factory', color: 'text-blue-400' },
-        civic: { name: '市政建筑', icon: 'Home', color: 'text-green-400' },
-        military: { name: '战斗建筑', icon: 'Swords', color: 'text-red-400' },
+        gather: { name: '采集与农业', icon: 'Wheat', color: 'text-yellow-400', bgImage: './images/cat_gather.png', gradient: 'from-yellow-900/60 to-amber-950/80' },
+        industry: { name: '工业生产', icon: 'Factory', color: 'text-blue-400', bgImage: './images/cat_industry.png', gradient: 'from-blue-900/60 to-slate-950/80' },
+        civic: { name: '市政建筑', icon: 'Home', color: 'text-green-400', gradient: 'from-green-900/60 to-emerald-950/80' },
+        military: { name: '战斗建筑', icon: 'Swords', color: 'text-red-400', gradient: 'from-red-900/60 to-rose-950/80' },
     };
     // Only show category filter buttons for categories that have available buildings
     const availableCatKeys = Object.keys(availableBuildingsByCategory);
@@ -1159,21 +1159,26 @@ const BuildTabComponent = ({
                 const categoryWorkers = categoryWorkersByKey[catKey] || 0;
 
                 return (
-                    <div key={catKey} className="glass-ancient p-3 rounded-lg border border-ancient-gold/30">
-                        {/* 类别标题 */}
-                        <h3 className="text-sm font-bold mb-3 flex items-center gap-2 text-gray-300 font-decorative">
-                            <Icon name={catInfo.icon} size={16} className={catInfo.color} />
-                            {catInfo.name}
-                            <span className="inline-flex items-center gap-1 text-[11px] font-normal text-gray-400">
-                                <Icon name="Users" size={12} className="text-gray-400" />
+                    <div key={catKey} className="rounded-lg border border-ancient-gold/30 overflow-hidden">
+                        {/* 类别标题 - 游戏风格横幅 */}
+                        <div className={`relative px-3 py-2 bg-gradient-to-r ${catInfo.gradient} flex items-center gap-2 overflow-hidden`}>
+                            {catInfo.bgImage && (
+                                <img src={catInfo.bgImage} alt="" className="absolute right-0 top-0 h-full w-auto opacity-20 object-cover" />
+                            )}
+                            <Icon name={catInfo.icon} size={18} className={`${catInfo.color} relative z-10 drop-shadow`} />
+                            <h3 className="text-sm font-bold text-white relative z-10 font-decorative drop-shadow">
+                                {catInfo.name}
+                            </h3>
+                            <span className="inline-flex items-center gap-1 text-[11px] font-normal text-gray-300 relative z-10">
+                                <Icon name="Users" size={12} />
                                 {formatNumberShortCN(Math.round(categoryWorkers), { decimals: 1 })}
                             </span>
-                        </h3>
+                        </div>
 
                         {/* 建筑列表 - 使用链分组 */}
                         <div
                             ref={(el) => { gridRefs.current[catKey] = el; }}
-                            className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-11 gap-1"
+                            className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-11 gap-1 p-2"
                         >
                             {(() => {
                                 const items = flatItemsByCategory[catKey] || [];

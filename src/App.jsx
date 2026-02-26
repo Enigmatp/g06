@@ -226,14 +226,8 @@ function GameApp({ gameState }) {
     useGameLoop(gameState, addLog, actions);
     const { playSound, SOUND_TYPES } = useSound();
 
-    // 交互式教程系统
-    const tutorialSystem = useTutorialSystem({
-        gameState,
-        currentTab: gameState.activeTab,
-        onComplete: () => {
-            addLog('🎓 新手教程完成！祝你在末日中生存下去！');
-        },
-    });
+    // 交互式教程系统 - 已禁用
+    const tutorialSystem = { isActive: false, currentStep: null, stepNumber: 0, totalSteps: 0, targetRect: null, skipTutorial: () => { }, nextStep: () => { }, handleClick: () => { }, resetTutorial: () => { } };
 
     const [showStrata, setShowStrata] = useState(false);
     const lastEventCheckDayRef = useRef(null);
@@ -1520,20 +1514,7 @@ function GameApp({ gameState }) {
                     {/* 右侧边栏 - 桌面端显示 (使用条件渲染避免移动端渲染隐藏组件) */}
                     {isDesktop && (
                         <aside className="lg:col-span-2 order-3 space-y-4">
-                            {/* 避难所场景可视化 */}
-                            <div className="bg-gray-900/60 backdrop-blur-md rounded-xl border border-white/10 shadow-glass overflow-hidden">
-                                <EmpireScene
-                                    daysElapsed={gameState.daysElapsed}
-                                    season={calendar.season}
-                                    population={gameState.population}
-                                    stability={gameState.stability}
-                                    wealth={gameState.resources.silver}
-                                    epoch={gameState.epoch}
-                                    builds={gameState.buildings}
-                                    empireName={gameState.empireName}
-                                    isVisible={true}  // 桌面端侧边栏始终可见
-                                />
-                            </div>
+
 
                             {/* 日志面板 */}
                             <LogPanel logs={deferredLogs} />
@@ -2017,18 +1998,7 @@ function GameApp({ gameState }) {
                 onOpenWiki={() => setIsWikiOpen(true)}
             /> */}
 
-            {/* 交互式新手教程 */}
-            <TutorialOverlay
-                isActive={tutorialSystem.isActive}
-                currentStep={tutorialSystem.currentStep}
-                stepNumber={tutorialSystem.stepNumber}
-                totalSteps={tutorialSystem.totalSteps}
-                targetRect={tutorialSystem.targetRect}
-                onSkip={tutorialSystem.skipTutorial}
-                onNext={tutorialSystem.nextStep}
-                onClick={tutorialSystem.handleClick}
-                isDetailOpen={activeSheet.type !== null}
-            />
+            {/* 交互式新手教程 - 已禁用 */}
 
             {/* 百科模态框 */}
             <WikiModal
