@@ -1,0 +1,742 @@
+:root {
+    --bg-color: #1a1a2e;
+    --battle-bg: #16213e;
+    --grid-bg: #0f3460;
+    --cell-bg: rgba(255, 255, 255, 0.05);
+    --cell-border: rgba(255, 255, 255, 0.1);
+    --cell-locked-bg: rgba(0, 0, 0, 0.4);
+    --accent: #e94560;
+
+    --type-barracks: #4ade80;
+    --type-workshop: #facc15;
+    --type-tower: #60a5fa;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    /* No ugly mobile blue highlight */
+}
+
+body {
+    background-color: var(--bg-color);
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Added for mobile restraint */
+}
+
+.game-container {
+    width: 100%;
+    max-width: 450px;
+    /* Mobile width constraint */
+    max-height: 900px;
+    /* Mobile height constraint */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+    position: relative;
+    /* Added for mobile restraint */
+    background: #111;
+    /* Added for mobile restraint */
+}
+
+/* Top Bar */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: rgba(0, 0, 0, 0.5);
+    border-bottom: 2px solid var(--accent);
+    font-size: 1.2rem;
+    font-weight: bold;
+    z-index: 100;
+}
+
+.gold-text {
+    color: #facc15;
+    margin-right: 5px;
+    margin-left: 10px;
+}
+
+.phase-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 1rem;
+    color: #fff;
+    flex: 1;
+}
+
+.phase-text {
+    margin-bottom: 4px;
+    text-shadow: 0 1px 2px #000;
+}
+
+.phase-bar-container {
+    width: 200px;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+    border: 2px solid #555;
+    transition: opacity 0.3s;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 5px rgba(255, 255, 255, 0.2);
+}
+
+.phase-bar-container.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.phase-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    transition: width 0.1s linear, background 0.3s;
+}
+
+.phase-bar-fill.day {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+/* Battle Area (Upper Half) */
+.battle-area {
+    flex: 6;
+    background-color: var(--battle-bg);
+    transition: background-color 2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 2px solid var(--accent);
+    position: relative;
+    /* overflow: hidden; Removed because entities layer is now global! */
+}
+
+.battle-area.night {
+    background-color: #0b1120;
+}
+
+#entities-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 50;
+}
+
+#entities-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: calc(100% - 10px);
+    /* Leave room for wall */
+    pointer-events: none;
+    /* Let clicks pass through */
+}
+
+/* Wall HP Bar */
+.wall-line {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 10px;
+    background-color: rgba(255, 0, 0, 0.2);
+    display: flex;
+    align-items: flex-end;
+}
+
+.wall-hp-bg {
+    width: 100%;
+    height: 100%;
+    background-color: #440000;
+}
+
+.wall-hp-fill {
+    width: 100%;
+    height: 100%;
+    background-color: #ff3333;
+    transition: width 0.2s ease-out;
+}
+
+.camp-area {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    /* enough to cover the idle units area */
+    background: rgba(0, 50, 200, 0.2);
+    border-top: 2px dashed rgba(100, 150, 255, 0.5);
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* Entities */
+.entity {
+    position: absolute;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    /* Center origin */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.entity.enemy {
+    background: radial-gradient(circle, #f87171, #dc2626);
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+.entity.ally {
+    background: radial-gradient(circle, #34d399, #059669);
+    box-shadow: 0 0 10px rgba(5, 150, 105, 0.5);
+}
+
+.entity.projectile {
+    background: #fde047;
+    box-shadow: 0 0 8px rgba(253, 224, 71, 0.8);
+}
+
+/* Management Area (Lower Half) */
+.management-area {
+    flex: 4;
+    background-color: var(--grid-bg);
+    transition: background-color 2s;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 10px;
+}
+
+.management-area.night {
+    background-color: #05162a;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 4px;
+    aspect-ratio: 7 / 3;
+    width: 100%;
+    max-width: 100%;
+    /* Let flexbox handle the height constraint, but cap it so it doesn't overflow the container */
+    max-height: 100%;
+    height: auto;
+    margin: 0 auto;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 6px;
+    border-radius: 12px;
+}
+
+.cell {
+    background: var(--cell-bg);
+    border: 1px solid var(--cell-border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: background-color 0.2s;
+}
+
+.cell.locked {
+    background: var(--cell-locked-bg);
+    border-color: rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+}
+
+.cell.locked::after {
+    content: "🔒";
+    font-size: 0.8rem;
+    opacity: 0.3;
+}
+
+.cell.unlockable {
+    background: rgba(250, 204, 21, 0.1);
+    border: 2px dashed rgba(250, 204, 21, 0.5);
+    cursor: pointer;
+    pointer-events: auto;
+    /* override locked */
+    display: flex;
+    flex-direction: column;
+}
+
+.cell.unlockable::after {
+    content: "＋";
+    font-size: 1.5rem;
+    opacity: 0.8;
+    color: #facc15;
+}
+
+.cell.unlockable::before {
+    content: attr(data-cost);
+    font-size: 0.8rem;
+    color: #facc15;
+    position: absolute;
+    bottom: 2px;
+}
+
+.cell.unlockable:hover {
+    background: rgba(250, 204, 21, 0.2);
+}
+
+.cell.drag-over {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: var(--accent);
+}
+
+/* Building Entity */
+.building {
+    width: 90%;
+    height: 90%;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    font-size: 1.8rem;
+    /* Increased icon size */
+    position: relative;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.1s;
+    touch-action: none;
+}
+
+.building:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+.building.dragging {
+    opacity: 0;
+    /* Hide original while dragging */
+}
+
+.building.inactive {
+    filter: brightness(0.6) grayscale(0.5);
+    /* Removed opacity drop completely so it's fully opaque */
+}
+
+.info-badge {
+    position: absolute;
+    color: white;
+    font-size: 0.75rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-weight: bold;
+    z-index: 5;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.level-badge {
+    top: -5px;
+    left: -5px;
+}
+
+.building[data-type="angel"] {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.building[data-type="mine"] {
+    background: linear-gradient(135deg, #eab308, #ca8a04);
+}
+
+.building[data-type="fireball"] {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.building[data-type="titan"] {
+    background: linear-gradient(135deg, #9333ea, #7e22ce);
+}
+
+.building[data-type="dragon"] {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+
+/* Building CD Bar */
+.cd-bar-container {
+    position: absolute;
+    bottom: 2px;
+    left: 5%;
+    width: 90%;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.cd-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: #22c55e;
+    transition: width 0.1s linear;
+}
+
+.cd-bar-fill.gold {
+    background: #facc15;
+    box-shadow: 0 0 5px rgba(250, 204, 21, 0.8);
+}
+
+/* Buff visual */
+.building.buffed {
+    box-shadow: 0 0 15px #facc15;
+    animation: pulse 1.5s infinite alternate;
+}
+
+@keyframes pulse {
+    from {
+        box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+    }
+
+    to {
+        box-shadow: 0 0 20px rgba(250, 204, 21, 1);
+    }
+}
+
+/* Shop Bar */
+.shop-bar {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    margin-top: auto;
+    position: relative;
+    z-index: 10;
+}
+
+.buy-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--cell-border);
+    border-radius: 8px;
+    color: white;
+    padding: 10px 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.buy-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.buy-btn:active {
+    transform: scale(0.95);
+}
+
+.special-btn {
+    border-color: #facc15;
+    background: rgba(250, 204, 21, 0.1);
+}
+
+.special-btn:hover {
+    background: rgba(250, 204, 21, 0.2);
+}
+
+.special-btn.hidden {
+    display: none;
+}
+
+/* Toast notifications */
+.toast-message {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, 0);
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    z-index: 1000;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.buy-btn .icon {
+    font-size: 1.5rem;
+}
+
+.buy-btn .name {
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.buy-btn .price {
+    font-size: 0.7rem;
+    color: #fbbf24;
+}
+
+/* King's Gaze */
+.management-area {
+    position: relative;
+}
+
+.gaze-light {
+    position: absolute;
+    background: rgba(250, 204, 21, 0.2);
+    border: 2px solid rgba(250, 204, 21, 0.8);
+    box-shadow: 0 0 30px rgba(250, 204, 21, 0.4), inset 0 0 20px rgba(250, 204, 21, 0.2);
+    border-radius: 12px;
+    pointer-events: none;
+    /* Let clicks pass through to buildings */
+    z-index: 5;
+    transition: left 0.1s, top 0.1s;
+}
+
+.gaze-handle {
+    position: absolute;
+    bottom: -15px;
+    left: -15px;
+    width: 30px;
+    height: 30px;
+    background: rgba(250, 204, 21, 1);
+    border: 2px solid white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: grab;
+    pointer-events: auto;
+    /* Capture dragging events */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
+.gaze-handle:active {
+    cursor: grabbing;
+    transform: scale(0.9);
+}
+
+/* Gaze Control Buttons */
+.gaze-btn {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid #facc15;
+    color: #facc15;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    pointer-events: auto;
+    /* Capture clicks */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+    transition: transform 0.1s, background 0.1s;
+}
+
+.gaze-btn:hover {
+    background: rgba(250, 204, 21, 0.2);
+}
+
+.gaze-btn:active {
+    transform: scale(0.9);
+}
+
+.rotate-btn {
+    bottom: -15px;
+    right: -15px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    padding: 0;
+}
+
+.rotate-btn.hidden {
+    display: none;
+}
+
+.gaze-overlay-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(250, 204, 21, 0.8);
+    color: black;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 20;
+}
+
+/* Floating Resource Text */
+.floating-text {
+    position: absolute;
+    color: #facc15;
+    font-weight: bold;
+    font-size: 16px;
+    text-shadow: 0 1px 2px #000;
+    pointer-events: none;
+    z-index: 20;
+    transform: translate(-50%, -50%);
+    animation: floatUp 1s ease-out forwards;
+}
+
+@keyframes floatUp {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -40px) scale(1.2);
+    }
+}
+
+/* Building inactive state when not in gaze */
+.building.inactive {
+    filter: brightness(0.4) grayscale(0.5);
+}
+
+.building.inactive:active {
+    transform: scale(1);
+    /* prevent shrink on tap */
+}
+
+/* Drag Ghost */
+.drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    width: 50px;
+    /* roughly cell size, will update via JS */
+    height: 50px;
+}
+
+.drag-ghost.hidden {
+    display: none;
+}
+
+/* Slot Machine Styles */
+.slot-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 1;
+    transition: opacity 0.3s;
+}
+
+.slot-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.slot-machine {
+    background: #1f2937;
+    border: 4px solid #facc15;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(250, 204, 21, 0.5);
+    width: 80%;
+    max-width: 400px;
+}
+
+.slot-title {
+    color: #facc15;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.slot-reels {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.slot-reel {
+    width: 60px;
+    height: 80px;
+    background: #374151;
+    border: 2px solid #4b5563;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 4px 6px rgba(0, 0, 0, 0.5);
+}
+
+.slot-spinner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+}
+
+.slot-icon {
+    width: 100%;
+    height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 32px;
+}
+
+.slot-icon.winner {
+    box-shadow: inset 0 0 20px #facc15, 0 0 10px #facc15;
+    border: 2px solid #facc15;
+    border-radius: 8px;
+    background: rgba(250, 204, 21, 0.2);
+}
+
+.cap-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    padding: 2px 4px;
+    border-radius: 4px;
+    border: 1px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    z-index: 5;
+    white-space: nowrap;
+}

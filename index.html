@@ -1,313 +1,90 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 
 <head>
-    <meta charset="UTF-8" />
-    <script>
-        // Polyfill for queueMicrotask - required for older browsers (Chrome < 71, Android WebView < 71)
-        // This must run before any other scripts that might use queueMicrotask
-        (function () {
-            if (typeof queueMicrotask !== 'function') {
-                window.queueMicrotask = function (callback) {
-                    Promise.resolve().then(callback).catch(function (e) {
-                        setTimeout(function () { throw e; }, 0);
-                    });
-                };
-                console.log('[Polyfill] queueMicrotask polyfill applied');
-            }
-        })();
-    </script>
-    <script>
-        // Note: Cloudflare Pages handles routing via _redirects file
-    </script>
-    <script>
-        // Early performance detection - runs before CSS loads to prevent rendering issues
-        // 新策略：默认开启低性能模式，只有检测到高端设备才关闭
-        (function () {
-            var STORAGE_KEY = 'zombie_performance_mode';
-            var savedMode = null;
-            try {
-                savedMode = localStorage.getItem(STORAGE_KEY);
-            } catch (e) { }
-
-            // If user explicitly chose high performance mode, respect that
-            if (savedMode === 'high') {
-                console.log('[Performance] User forced high-perf mode');
-                return; // 不添加 low-perf-mode class
-            }
-
-            // If user explicitly chose low performance mode, apply it
-            if (savedMode === 'low') {
-                document.documentElement.classList.add('low-perf-mode');
-                console.log('[Performance] User forced low-perf mode');
-                return;
-            }
-
-            // 自动检测模式：默认启用低性能模式，只有高端设备才禁用
-            // 高端设备标准：8核以上 CPU 且 8GB 以上内存
-            var isHighEnd = false;
-
-            var deviceMemory = navigator.deviceMemory;
-            var cpuCores = navigator.hardwareConcurrency;
-
-            // 只有同时满足高内存和高核心数才视为高端设备
-            if (deviceMemory !== undefined && cpuCores !== undefined) {
-                if (deviceMemory >= 8 && cpuCores >= 8) {
-                    isHighEnd = true;
-                    console.log('[Performance] High-end device detected: ' + cpuCores + ' cores, ' + deviceMemory + 'GB RAM');
-                }
-            }
-
-            // 额外的高端设备检测：PC 端检测高端 GPU
-            if (!isHighEnd && cpuCores >= 8) {
-                try {
-                    var canvas = document.createElement('canvas');
-                    var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                    if (gl) {
-                        var debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                        if (debugInfo) {
-                            var renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL).toLowerCase();
-                            // 高端 GPU 列表
-                            var highEndGPUs = [
-                                'rtx 30', 'rtx 40', 'rtx 50',  // NVIDIA RTX 30/40/50 系列
-                                'rx 6', 'rx 7',                 // AMD RX 6000/7000 系列
-                                'arc a7',                       // Intel Arc 高端
-                                'apple m1', 'apple m2', 'apple m3', 'apple m4', // Apple Silicon
-                                'adreno 7', 'adreno 8',         // 高通高端
-                                'mali-g7', 'mali-g9',           // ARM 高端
-                            ];
-                            var isHighEndGPU = highEndGPUs.some(function (gpu) {
-                                return renderer.indexOf(gpu) !== -1;
-                            });
-                            if (isHighEndGPU) {
-                                isHighEnd = true;
-                                console.log('[Performance] High-end GPU detected: ' + renderer);
-                            }
-                        }
-                    }
-                } catch (e) { }
-            }
-
-            // 默认启用低性能模式，除非是高端设备
-            if (!isHighEnd) {
-                document.documentElement.classList.add('low-perf-mode');
-                console.log('[Performance] Default low-perf mode enabled (not a high-end device)');
-            } else {
-                console.log('[Performance] High-perf mode enabled for high-end device');
-            }
-        })();
-    </script>
-    <link rel="icon" type="image/png" href="./logo.png" />
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <link rel="manifest" href="./manifest.json" />
-    <meta name="description" content="丧尸文明：末日崛起 - 丧尸末日生存策略游戏，在废墟中建立避难所，研究疫苗，重建人类文明" />
-    <meta name="theme-color" content="#1a0a0a" />
-
-    <!-- Epic Fonts - Historical Typography (使用国内 CDN 镜像) -->
-    <!-- 
-    <link rel="preconnect" href="https://fonts.loli.net" crossorigin>
-    <link rel="preconnect" href="https://fonts.gstatic.cn" crossorigin>
-    <link id="font-css"
-        href="https://fonts.loli.net/css2?family=Cinzel:wght@400;600;700;800&family=Cinzel+Decorative:wght@700;900&family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap"
-        rel="stylesheet"
-        onerror="(function(){var l=document.getElementById('font-css');if(!l||l.dataset.fallbackApplied)return;l.dataset.fallbackApplied='1';l.href='https://fonts.gstatic.cn/css2?family=Cinzel:wght@400;600;700;800&family=Cinzel+Decorative:wght@700;900&family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap';})();"> 
-    -->
-
-    <title>丧尸文明：末日崛起</title>
-
-    <style>
-        /* Loading Screen - Epic Entry */
-        #loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1a0a0a 0%, #2a0f0f 50%, #1a0a0a 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease-out;
-        }
-
-        #loading-screen.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .loading-title {
-            font-family: 'Cinzel Decorative', 'Noto Serif SC', serif;
-            font-size: 3rem;
-            font-weight: 900;
-            background: linear-gradient(135deg, #8b0000 0%, #ff4444 25%, #cc0000 50%, #ff6666 75%, #8b0000 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            background-size: 200% auto;
-            animation: shimmer 3s linear infinite;
-            margin-bottom: 2rem;
-            letter-spacing: 0.2em;
-            text-align: center;
-        }
-
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(139, 0, 0, 0.3);
-            border-top-color: #ff4444;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes shimmer {
-            0% {
-                background-position: -200% center;
-            }
-
-            100% {
-                background-position: 200% center;
-            }
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        @media (max-width: 640px) {
-            .loading-title {
-                font-size: 1.25rem;
-                letter-spacing: 0.1em;
-            }
-
-            .loading-logo {
-                width: 180px;
-                margin-bottom: 1rem;
-            }
-
-            .loading-spinner {
-                width: 40px;
-                height: 40px;
-                border-width: 3px;
-            }
-        }
-
-        .loading-logo {
-            width: 400px;
-            height: auto;
-            margin-bottom: 1.5rem;
-            filter: drop-shadow(0 0 20px rgba(255, 0, 0, 0.5));
-            animation: logo-float 3s ease-in-out infinite;
-            transform: translate3d(0, 0, 0);
-            /* Consistent 3D transform */
-            will-change: transform;
-        }
-
-        @keyframes logo-float {
-            0% {
-                transform: translate3d(0, 0, 0);
-            }
-
-            50% {
-                transform: translate3d(0, -10px, 0);
-            }
-
-            100% {
-                transform: translate3d(0, 0, 0);
-            }
-        }
-
-        /* 低性能模式 - 禁用加载页面动画 */
-        .low-perf-mode .loading-title {
-            animation: none;
-            background: linear-gradient(135deg, #8b0000 0%, #ff4444 50%, #8b0000 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-        }
-
-        .low-perf-mode .loading-spinner {
-            animation: spin 2s linear infinite;
-            /* 保留旋转但减慢 */
-        }
-
-        .low-perf-mode .loading-logo {
-            animation: none;
-            filter: none;
-            /* 禁用 drop-shadow */
-            transform: none;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>King's Gaze - Prototype</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <div id="loading-screen">
-        <img src="./logo.png" class="loading-logo" alt="Hayek's Civilization" />
-        <h1 class="loading-title">丧尸文明：末日崛起</h1>
-        <div class="loading-spinner"></div>
+    <div class="game-container">
+        <!-- Top Bar for Resources -->
+        <div class="top-bar">
+            <div class="gold-container">
+                储备: <span id="gold-display" class="gold-text">50</span> 💰
+            </div>
+            <!-- Phase Info (Bar) -->
+            <div class="phase-container">
+                <div id="phase-text" class="phase-text">☀️ 第 1 天</div>
+                <div id="phase-bar-container" class="phase-bar-container">
+                    <div id="phase-bar-fill" class="phase-bar-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Entities Layer covering everything -->
+        <div id="entities-layer"></div>
+
+        <!-- 上半屏：战斗表现区 -->
+        <div class="battle-area" id="battle-area">
+            <!-- 所有战斗实体(怪物、己方兵、投射物)都会放置在这里 -->
+
+            <!-- 城墙与血条（下边界） -->
+            <div class="wall-line">
+                <div class="wall-hp-bg">
+                    <div class="wall-hp-fill" id="wall-hp-fill"></div>
+                </div>
+            </div>
+            <!-- 校场区域 (透明背景) -->
+            <div class="camp-area"></div>
+        </div>
+
+        <!-- 下半屏：核心操作区 -->
+        <div class="management-area" id="management-area">
+            <div id="gaze-light" class="gaze-light hidden">
+                <!-- Bottom Left: Drag Handle -->
+                <div id="gaze-handle" class="gaze-handle">🖐️</div>
+                <!-- Bottom Right: Rotate Button -->
+                <button id="gaze-rotate" class="gaze-btn rotate-btn hidden">↻</button>
+            </div>
+
+            <div class="grid-container" id="grid">
+                <!-- 7x7 格子将由 JS 动态生成 -->
+            </div>
+
+            <!-- 底部购买槽 -->
+            <div class="shop-bar">
+                <button id="btn-spin-slot" class="buy-btn">
+                    <span class="icon">�</span>
+                    <span class="name">祈愿</span>
+                    <span class="price">10</span>
+                </button>
+                <button id="shop-gaze-upgrade" class="buy-btn special-btn">
+                    <span class="icon">☀️</span>
+                    <span class="name">凝视Lv.2</span>
+                    <span class="price">10</span>
+                </button>
+            </div>
+
+            <!-- Slot Machine Overlay -->
+            <div id="slot-machine-overlay" class="slot-overlay hidden">
+                <div class="slot-machine">
+                    <div class="slot-title">🎰 祈愿中...</div>
+                    <div id="slot-reels" class="slot-reels">
+                        <!-- Slots injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
 
-    <div id="root"></div>
-    <script type="module" src="./src/main.jsx"></script>
+    <!-- 拖拽时的幽灵元素容器 -->
+    <div id="drag-ghost" class="drag-ghost hidden"></div>
 
-    <script>
-        // 全局错误收集器
-        var globalErrors = [];
-        window.addEventListener('error', function (e) {
-            globalErrors.push({
-                type: 'error',
-                message: e.message,
-                filename: e.filename,
-                lineno: e.lineno,
-                colno: e.colno
-            });
-        });
-        window.addEventListener('unhandledrejection', function (e) {
-            globalErrors.push({
-                type: 'unhandledrejection',
-                reason: String(e.reason)
-            });
-        });
-
-        // Hide loading screen when app is ready
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                const loadingScreen = document.getElementById('loading-screen');
-                if (loadingScreen) {
-                    loadingScreen.classList.add('hidden');
-                    setTimeout(() => {
-                        loadingScreen.remove();
-                        // Check if app loaded successfully
-                        const root = document.getElementById('root');
-                        if (root && root.childElementCount === 0) {
-                            // 收集设备信息用于调试
-                            var deviceInfo = 'UA: ' + navigator.userAgent;
-                            var errorInfo = globalErrors.length > 0
-                                ? '错误详情：' + globalErrors.map(function (e) {
-                                    return e.type + ': ' + (e.message || e.reason);
-                                }).join('; ')
-                                : '无捕获的错误';
-
-                            root.innerHTML = '<div style="color: #ff4444; background: #1a0a0a; padding: 20px; font-family: sans-serif; text-align: center; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center;">' +
-                                '<h1>加载失败</h1>' +
-                                '<p>应用程序未能正确启动。</p>' +
-                                '<p style="font-size: 0.8em; opacity: 0.7;">可能原因：资源文件加载失败或路径配置错误。</p>' +
-                                '<p style="font-size: 0.8em; opacity: 0.7;">请尝试刷新页面或联系管理员。</p>' +
-                                '<details style="margin-top: 20px; text-align: left; max-width: 90%; font-size: 0.7em; opacity: 0.6;">' +
-                                '<summary>调试信息</summary>' +
-                                '<p style="word-break: break-all;">' + deviceInfo + '</p>' +
-                                '<p style="word-break: break-all;">' + errorInfo + '</p>' +
-                                '</details>' +
-                                '</div>';
-                        }
-                    }, 500);
-                }
-            }, 500);
-        });
-    </script>
+    <script src="main.js"></script>
 </body>
 
 </html>
