@@ -2,7 +2,7 @@ const GRID_COLS = 7;
 const GRID_ROWS = 3;
 
 // --- Phase 2: Battle Constants ---
-const BUILDING_CD_MAX = 1500; // ms (was 3000)
+const BUILDING_CD_MAX = 4500; // ms (reduced speed by 200% / 3x slower)
 const ENEMY_SPAWN_CD = 1500;  // ms (was 4000)
 const WALL_MAX_HP = 1000;
 
@@ -12,21 +12,13 @@ const state = {
     dragData: {
         active: false,
         element: null,
-        startIndex: -1,
+        sourceType: 'grid', // 'grid' or 'card'
+        startIndex: -1, // index in grid or hand
         buildingData: null,
         offsetX: 0,
         offsetY: 0
     },
-    gazeData: {
-        active: false,
-        offsetX: 0,
-        offsetY: 0,
-        gridX: Math.floor((GRID_COLS - 2) / 2),
-        gridY: Math.floor((GRID_ROWS - 2) / 2),
-        width: 2,
-        height: 2,
-        level: 1 // gaze upgrade level (1, 2, 3)
-    },
+
     battle: {
         wallHP: WALL_MAX_HP,
         entities: [], // Enemies, Allies, Projectiles
@@ -38,15 +30,27 @@ const state = {
         nightTimer: 0,
         lastTime: performance.now()
     },
-    gold: 30 // Starting gold
+    gold: 0,
+    maxEnergy: 10,
+    regenRate: 1.0, // Multiplier for speed
+    energyRegenTimer: 0,
+    cardLevels: {
+        angel: 1, fireball: 1, mine: 1, titan: 1, dragon: 1, gaze: 1
+    },
+    cards: {
+        hand: [],
+        next: null
+    },
+    isChoosingReward: false
 };
 
 const BUILDING_TYPES = {
-    angel: { icon: '👼' },
-    fireball: { icon: '🔥' },
-    mine: { icon: '⛏️' },
-    titan: { icon: '🧌' },
-    dragon: { icon: '🐉' }
+    angel: { icon: '👼', cost: 2, quality: 1 },
+    mine: { icon: '⛏️', cost: 5, quality: 1 },
+    fireball: { icon: '🔥', cost: 4, quality: 2 },
+    titan: { icon: '🧌', cost: 5, quality: 3 },
+    dragon: { icon: '🐉', cost: 8, quality: 3 },
+    gaze: { icon: '👁️', cost: 10, quality: 4 }
 };
 
 const DOM = {
@@ -58,17 +62,14 @@ const DOM = {
     managementArea: document.getElementById('management-area'),
     entitiesLayer: document.getElementById('entities-layer'),
     wallHpFill: document.getElementById('wall-hp-fill'),
-    goldDisplay: document.getElementById('gold-display'),
-    phaseText: document.getElementById('phase-text'),
-    phaseBarContainer: document.getElementById('phase-bar-container'),
-    phaseBarFill: document.getElementById('phase-bar-fill')
+    goldDisplay: document.getElementById('energy-number'),
+    phaseText: document.getElementById('phase-text')
 };
 
 function init() {
     createGrid();
-    setupShop();
+    initCardSystem();
     setupDragEvents();
-    setupGazeEvents();
 
     // Set initial HP fill
     updateWallHP();
@@ -77,138 +78,64 @@ function init() {
     requestAnimationFrame(gameLoop);
 }
 
-function setupGazeEvents() {
-    const gaze = document.getElementById('gaze-light');
-    const handle = document.getElementById('gaze-handle');
-    const rotateBtn = document.getElementById('gaze-rotate');
+function isCellBuffed(idx) {
+    const r = Math.floor(idx / GRID_COLS);
+    const c = idx % GRID_COLS;
 
-    if (gaze && handle) {
-        DOM.gaze = gaze;
-        DOM.gazeHandle = handle;
-        DOM.gazeRotate = rotateBtn;
-        // Position gaze initially
-        updateGazeVisuals();
+    const neighbors = [];
+    if (r > 0) neighbors.push(idx - GRID_COLS); // Up
+    if (r < GRID_ROWS - 1) neighbors.push(idx + GRID_COLS); // Down
+    if (c > 0) neighbors.push(idx - 1); // Left
+    if (c < GRID_COLS - 1) neighbors.push(idx + 1); // Right
 
-        handle.addEventListener('pointerdown', e => {
-            state.gazeData.active = true;
-
-            const rect = gaze.getBoundingClientRect();
-            state.gazeData.offsetX = e.clientX - rect.left;
-            state.gazeData.offsetY = e.clientY - rect.top;
-
-            e.stopPropagation(); // prevent grid building drag
-        });
-
-        document.addEventListener('pointermove', e => {
-            if (!state.gazeData.active) return;
-
-            const gridRect = DOM.grid.getBoundingClientRect();
-
-            // Calculate raw relative position
-            let relX = e.clientX - state.gazeData.offsetX - gridRect.left;
-            let relY = e.clientY - state.gazeData.offsetY - gridRect.top;
-
-            // Cell size
-            const cellW = gridRect.width / GRID_COLS;
-            const cellH = gridRect.height / GRID_ROWS;
-
-            // Snap to grid
-            let gX = Math.round(relX / cellW);
-            let gY = Math.round(relY / cellH);
-
-            // Clamp
-            if (gX < 0) gX = 0;
-            if (gY < 0) gY = 0;
-            if (gX + state.gazeData.width > GRID_COLS) gX = Math.max(0, GRID_COLS - state.gazeData.width);
-            if (gY + state.gazeData.height > GRID_ROWS) gY = Math.max(0, GRID_ROWS - state.gazeData.height);
-
-            if (gX !== state.gazeData.gridX || gY !== state.gazeData.gridY) {
-                state.gazeData.gridX = gX;
-                state.gazeData.gridY = gY;
-                updateGazeVisuals();
-                updateBuildingActiveStates();
-            }
-        });
-
-        document.addEventListener('pointerup', () => {
-            if (state.gazeData.active) {
-                state.gazeData.active = false;
-            }
-        });
-
-        // Rotate logic
-        if (rotateBtn) {
-            rotateBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (state.gazeData.level > 1) {
-                    // Swap width & height
-                    let temp = state.gazeData.width;
-                    state.gazeData.width = state.gazeData.height;
-                    state.gazeData.height = temp;
-
-                    // Re-clamp
-                    if (state.gazeData.gridX + state.gazeData.width > GRID_COLS) {
-                        state.gazeData.gridX = Math.max(0, GRID_COLS - state.gazeData.width);
-                    }
-                    if (state.gazeData.gridY + state.gazeData.height > GRID_ROWS) {
-                        state.gazeData.gridY = Math.max(0, GRID_ROWS - state.gazeData.height);
-                    }
-
-                    updateGazeVisuals();
-                    updateBuildingActiveStates();
-                }
-            });
-        }
-
-        window.addEventListener('resize', updateGazeVisuals);
-    }
+    // Check if any neighbor is a gaze tower
+    return neighbors.some(n => state.grid[n] && state.grid[n].type === 'gaze');
 }
 
 function updateGazeVisuals() {
-    if (!DOM.gaze) return;
+    // Remove old standalone indicators
+    document.querySelectorAll('.standalone-buff-indicator').forEach(el => el.remove());
 
-    const startIdx = state.gazeData.gridY * GRID_COLS + state.gazeData.gridX;
-    // ensure end index takes width/height bounds into account
-    const w = state.gazeData.width - 1;
-    const h = state.gazeData.height - 1;
-
-    // Safety check just in case math goes off bounds
-    let endRow = Math.min(state.gazeData.gridY + h, GRID_ROWS - 1);
-    let endCol = Math.min(state.gazeData.gridX + w, GRID_COLS - 1);
-    const endIdx = endRow * GRID_COLS + endCol;
-
-    const startCell = DOM.grid.children[startIdx];
-    const endCell = DOM.grid.children[endIdx];
-
-    if (startCell && endCell) {
-        const parentRect = DOM.gaze.parentElement.getBoundingClientRect();
-        const startRect = startCell.getBoundingClientRect();
-        const endRect = endCell.getBoundingClientRect();
-
-        DOM.gaze.style.left = `${startRect.left - parentRect.left}px`;
-        DOM.gaze.style.top = `${startRect.top - parentRect.top}px`;
-        DOM.gaze.style.width = `${endRect.right - startRect.left}px`;
-        DOM.gaze.style.height = `${endRect.bottom - startRect.top}px`;
-    }
-}
-
-function isCellInGaze(idx) {
-    const r = Math.floor(idx / GRID_COLS);
-    const c = idx % GRID_COLS;
-    return c >= state.gazeData.gridX && c < state.gazeData.gridX + state.gazeData.width &&
-        r >= state.gazeData.gridY && r < state.gazeData.gridY + state.gazeData.height;
-}
-
-function updateBuildingActiveStates() {
+    const gazePositions = [];
     state.grid.forEach((b, idx) => {
-        const cell = DOM.grid.children[idx];
-        const bEl = cell.querySelector('.building');
-        if (bEl) {
-            if (isCellInGaze(idx)) {
-                bEl.classList.remove('inactive');
-            } else {
-                bEl.classList.add('inactive');
+        if (b && b.type === 'gaze' && (!state.dragData.active || state.dragData.startIndex !== idx)) {
+            gazePositions.push(idx);
+        }
+    });
+
+    // If dragging a gaze tower, calculate its hovered grid cell
+    DOM.ghost.style.visibility = 'hidden';
+    if (state.dragData.active && state.dragData.buildingData.type === 'gaze') {
+        const ghostRect = DOM.ghost.getBoundingClientRect();
+        const targetEl = document.elementFromPoint(
+            ghostRect.left + ghostRect.width / 2,
+            ghostRect.top + ghostRect.height / 2
+        );
+        if (targetEl) {
+            const targetCell = targetEl.closest('.cell:not(.locked)');
+            if (targetCell) {
+                gazePositions.push(parseInt(targetCell.dataset.index));
             }
+        }
+    }
+    DOM.ghost.style.visibility = 'visible';
+
+    const buffedIndices = new Set();
+    gazePositions.forEach(idx => {
+        const r = Math.floor(idx / GRID_COLS);
+        const c = idx % GRID_COLS;
+        if (r > 0) buffedIndices.add(idx - GRID_COLS);
+        if (r < GRID_ROWS - 1) buffedIndices.add(idx + GRID_COLS);
+        if (c > 0) buffedIndices.add(idx - 1);
+        if (c < GRID_COLS - 1) buffedIndices.add(idx + 1);
+    });
+
+    buffedIndices.forEach(idx => {
+        const cell = DOM.grid.children[idx];
+        if (cell && !cell.querySelector('.standalone-buff-indicator')) {
+            const ind = document.createElement('div');
+            ind.className = 'cell-buff-indicator standalone-buff-indicator';
+            cell.appendChild(ind);
         }
     });
 }
@@ -218,16 +145,12 @@ function createGrid() {
     state.grid = []; // Clear state.grid before populating
 
     // 7x3 = 21 slots
-    // Goal: Place 4 combat buildings in a 2x2 exactly under initial Gaze
-    // Initial Gaze is at gridX = Math.floor((GRID_COLS - 2) / 2) = Math.floor(5/2) = 2. gridY = 0.
-    // So Gaze covers cols 2 and 3, rows 0 and 1.
-    // Indices for this 2x2 (width=7):
-    // r0 c2 = 0*7 + 2 = 2
-    // r0 c3 = 0*7 + 3 = 3
-    // r1 c2 = 1*7 + 2 = 9
-    // r1 c3 = 1*7 + 3 = 10
-    const combatIndices = [2, 3, 9, 10];
+    // Place Gaze Tower at index 10 (center of 7x3)
+    // Place 4 combat units up, down, left, right of index 10: 3 (up), 17 (down), 9 (left), 11 (right)
+    const combatIndices = [3, 9, 11, 17];
     const combatTypes = ['titan', 'dragon', 'angel', 'fireball'];
+
+    const gazeIndex = 10;
 
     // Place mine outside on the far right, e.g. at index 6 (r0 c6)
     const mineIndex = 6;
@@ -236,6 +159,8 @@ function createGrid() {
         let b = null;
         if (i === mineIndex) {
             b = { id: `b_${Math.random().toString(36).substr(2, 9)}`, type: 'mine', level: 1, buffed: false, timer: 0 };
+        } else if (i === gazeIndex) {
+            b = { id: `b_${Math.random().toString(36).substr(2, 9)}`, type: 'gaze', level: 1, buffed: false, timer: 0 };
         } else if (combatIndices.includes(i)) {
             const startType = combatTypes[combatIndices.indexOf(i)];
             b = { id: `b_${Math.random().toString(36).substr(2, 9)}`, type: startType, level: 1, buffed: false, timer: 0 };
@@ -250,205 +175,143 @@ function createGrid() {
     // Render initial grid
     state.grid.forEach((_, i) => renderCell(i));
 }
+function initCardSystem() {
+    updateShopUI(); // still handles gold display
 
-function setupShop() {
-    updateShopUI();
-    const spinBtn = document.getElementById('btn-spin-slot');
-    if (spinBtn) {
-        spinBtn.addEventListener('click', () => {
-            if (state.gold >= 10) {
-                // Check if enough empty slots (need at least 3)
-                const emptySlots = [];
-                state.grid.forEach((b, idx) => {
-                    if (!b) emptySlots.push(idx);
-                });
+    // Initial draw to fill hand and next
+    for (let i = 0; i < 4; i++) {
+        state.cards.hand.push(drawRandomCard());
+    }
+    state.cards.next = drawRandomCard();
 
-                // Determine slot count (50% for 3, 25% for 4, 25% for 5)
-                const rand = Math.random();
-                let slotCount = 3;
-                if (rand > 0.5 && rand <= 0.75) slotCount = 4;
-                else if (rand > 0.75) slotCount = 5;
+    renderCardHand();
+}
 
-                if (emptySlots.length < 1) {
-                    showToast(`空格不足(至少需要1格)，整理后再试！`, "error");
-                    return;
-                }
 
-                state.gold -= 10;
+function drawRandomCard() {
+    const types = Object.keys(BUILDING_TYPES);
+    return types[Math.floor(Math.random() * types.length)];
+}
 
-                // Roll items completely randomly
-                const types = Object.keys(BUILDING_TYPES);
-                const rolledItems = [];
-                for (let i = 0; i < slotCount; i++) {
-                    rolledItems.push(types[Math.floor(Math.random() * types.length)]);
-                }
+function playCard(index) {
+    const cardType = state.cards.hand[index];
+    if (!cardType) return; // Empty slot or invalid
 
-                // Tally occurrences to determine winner
-                const counts = {};
-                let maxCount = 0;
-                let winnerType = rolledItems[0];
-                for (const t of rolledItems) {
-                    counts[t] = (counts[t] || 0) + 1;
-                    if (counts[t] > maxCount) {
-                        maxCount = counts[t];
-                        winnerType = t;
-                    }
-                }
-
-                // Sort empty slots based on winner rules
-                // Combat (not mine): Top-to-Bottom, then Left-to-Right -> sort by gridY then gridX
-                // Utility (mine): Top-to-Bottom, then Right-to-Left -> sort by gridY then descending gridX
-                emptySlots.sort((a, b) => {
-                    const rA = Math.floor(a / GRID_COLS);
-                    const cA = a % GRID_COLS;
-                    const rB = Math.floor(b / GRID_COLS);
-                    const cB = b % GRID_COLS;
-
-                    if (rA !== rB) return rA - rB; // Both top-to-bottom first
-
-                    if (winnerType === 'mine') {
-                        return cB - cA; // Right-to-Left
-                    } else {
-                        return cA - cB; // Left-to-Right
-                    }
-                });
-
-                // Show slot machine overlay
-                const overlay = document.getElementById('slot-machine-overlay');
-                const reelsContainer = document.getElementById('slot-reels');
-                reelsContainer.innerHTML = '';
-
-                for (let i = 0; i < slotCount; i++) {
-                    const reel = document.createElement('div');
-                    reel.className = 'slot-reel';
-
-                    const spinner = document.createElement('div');
-                    spinner.className = 'slot-spinner';
-
-                    const icons = [BUILDING_TYPES.titan.icon, BUILDING_TYPES.dragon.icon, BUILDING_TYPES.angel.icon, BUILDING_TYPES.fireball.icon, BUILDING_TYPES.mine.icon];
-                    let html = '';
-                    for (let j = 0; j < 20; j++) {
-                        html += `<div class="slot-icon">${icons[Math.floor(Math.random() * icons.length)]}</div>`;
-                    }
-                    // If it matches the winnerType, make it glow
-                    const isWinner = rolledItems[i] === winnerType;
-                    html += `<div class="slot-icon ${isWinner ? 'winner' : ''}">${BUILDING_TYPES[rolledItems[i]].icon}</div>`;
-
-                    spinner.innerHTML = html;
-                    reel.appendChild(spinner);
-                    reelsContainer.appendChild(reel);
-
-                    // Trigger reflow
-                    void spinner.offsetWidth;
-
-                    setTimeout(() => {
-                        spinner.style.transition = `transform ${0.5 + i * 0.15}s cubic-bezier(0.1, 0.7, 0.1, 1)`;
-                        spinner.style.transform = `translateY(-${20 * 80}px)`;
-                    }, 50);
-                }
-
-                overlay.classList.remove('hidden');
-
-                // Wait for all to finish
-                const maxTime = 0.5 + (slotCount - 1) * 0.15;
-                setTimeout(() => {
-                    overlay.classList.add('hidden');
-                    // Calculate level: 2 -> Lv1, 3 -> Lv2, 4 -> Lv3, 5 -> Lv4. (1 -> Lv1 fallback)
-                    let winLevel = maxCount - 1;
-                    if (winLevel < 1) winLevel = 1;
-
-                    // Only deposit the single winner item into the grid
-                    placeBuilding(emptySlots[0], {
-                        id: `b_${Math.random().toString(36).substr(2, 9)}`,
-                        type: winnerType,
-                        level: winLevel,
-                        buffed: false,
-                        timer: 0
-                    });
-                    updateShopUI();
-                    showToast(`祈愿成功！获得 1 个 Lv.${winLevel} ${BUILDING_TYPES[winnerType].icon}`, "success");
-                }, maxTime * 1000 + 500);
-            } else {
-                showToast("金币不足！", "error");
-            }
-        });
+    const cost = BUILDING_TYPES[cardType].cost;
+    if (state.gold < cost) {
+        showToast(`能量不足！(需要${cost}点)`, "error");
+        return;
     }
 
-    const shopUpgradeBtn = document.getElementById('shop-gaze-upgrade');
-    if (shopUpgradeBtn) {
-        shopUpgradeBtn.addEventListener('click', () => {
-            const gazeCosts = [10, 50, 250]; // Costs for level 2, 3, 4
-            const currentLevel = state.gazeData.level;
-            const cost = gazeCosts[currentLevel - 1];
+    // Find empty slots
+    const emptySlots = [];
+    state.grid.forEach((b, idx) => {
+        if (!b) emptySlots.push(idx);
+    });
 
-            if (cost !== undefined && state.gold >= cost) {
-                state.gold -= cost;
-                state.gazeData.level++;
+    if (emptySlots.length < 1) {
+        showToast("网格已满，无法放置！", "error");
+        return;
+    }
 
-                if (state.gazeData.level === 2) {
-                    state.gazeData.width = 2; // User wants 2x3
-                    state.gazeData.height = 3;
+    // Pay cost
+    state.gold -= cost;
+    updateShopUI();
 
-                    // Enforce clamp
-                    if (state.gazeData.gridX + state.gazeData.width > GRID_COLS) {
-                        state.gazeData.gridX = Math.max(0, GRID_COLS - state.gazeData.width);
-                    }
-                    if (state.gazeData.gridY + state.gazeData.height > GRID_ROWS) {
-                        state.gazeData.gridY = Math.max(0, GRID_ROWS - state.gazeData.height);
-                    }
+    // Sort empty slots: Top-to-Bottom, then Left-to-Right
+    emptySlots.sort((a, b) => {
+        const rA = Math.floor(a / GRID_COLS);
+        const cA = a % GRID_COLS;
+        const rB = Math.floor(b / GRID_COLS);
+        const cB = b % GRID_COLS;
 
-                    if (DOM.gazeRotate) DOM.gazeRotate.classList.remove('hidden');
-                    shopUpgradeBtn.querySelector('.name').textContent = '凝视Lv.3';
-                    shopUpgradeBtn.querySelector('.price').textContent = '50';
-                    showToast('凝视升级到等级2！(2x3)', 'success');
+        if (rA !== rB) return rA - rB;
+        return cA - cB;
+    });
 
-                } else if (state.gazeData.level === 3) {
-                    state.gazeData.width = 3;
-                    state.gazeData.height = 3;
+    const targetSlot = emptySlots[0];
 
-                    // Enforce clamp
-                    if (state.gazeData.gridX + state.gazeData.width > GRID_COLS) {
-                        state.gazeData.gridX = Math.max(0, GRID_COLS - state.gazeData.width);
-                    }
-                    if (state.gazeData.gridY + state.gazeData.height > GRID_ROWS) {
-                        state.gazeData.gridY = Math.max(0, GRID_ROWS - state.gazeData.height);
-                    }
+    // Place building
+    placeBuilding(targetSlot, {
+        id: `b_${Math.random().toString(36).substr(2, 9)}`,
+        type: cardType,
+        level: state.cardLevels[cardType],
+        buffed: false,
+        timer: 0
+    });
 
-                    shopUpgradeBtn.querySelector('.name').textContent = '凝视Lv.Max';
-                    shopUpgradeBtn.querySelector('.price').textContent = '250';
-                    if (DOM.gazeRotate) DOM.gazeRotate.classList.add('hidden'); // 3x3 doesn't rotate
-                    showToast('凝视升至等级3！(3x3)', 'success');
-                } else if (state.gazeData.level === 4) {
-                    state.gazeData.width = 4;
-                    state.gazeData.height = 3;
+    // Shift cards
+    state.cards.hand.splice(index, 1);
+    state.cards.hand.push(state.cards.next);
+    state.cards.next = drawRandomCard();
 
-                    // Enforce clamp
-                    if (state.gazeData.gridX + state.gazeData.width > GRID_COLS) {
-                        state.gazeData.gridX = Math.max(0, GRID_COLS - state.gazeData.width);
-                    }
-                    if (state.gazeData.gridY + state.gazeData.height > GRID_ROWS) {
-                        state.gazeData.gridY = Math.max(0, GRID_ROWS - state.gazeData.height);
-                    }
+    renderCardHand(index); // pass played index to animate new card
+}
 
-                    shopUpgradeBtn.classList.add('hidden');
-                    showToast('凝视升至满级！(4x3)', 'success');
-                }
+function renderCardHand(playedIndex = -1) {
+    const handContainer = document.getElementById('hand-cards');
+    const nextContainer = document.getElementById('next-card');
 
-                updateGazeVisuals();
-                updateBuildingActiveStates();
-                updateShopUI();
-            } else {
-                showToast('金币不足升级凝视！', 'error');
-            }
-        });
+    if (!handContainer || !nextContainer) return;
+
+    // Render Next Card
+    const nextType = state.cards.next;
+    const nextQuality = BUILDING_TYPES[nextType].quality;
+    nextContainer.className = `card-slot next-slot quality-${nextQuality}`;
+    nextContainer.innerHTML = `
+        <div class="icon">${BUILDING_TYPES[nextType].icon}</div>
+        <div class="price-tag">${BUILDING_TYPES[nextType].cost} ⚡</div>
+    `;
+
+    // Render Hand
+    handContainer.innerHTML = '';
+    state.cards.hand.forEach((cardType, idx) => {
+        const cardEl = document.createElement('div');
+        const config = BUILDING_TYPES[cardType];
+        const cost = config.cost;
+        cardEl.className = `card-slot play-card quality-${config.quality}`;
+        cardEl.dataset.index = idx; // Essential for drag-and-drop recognition
+        if (state.gold < cost) cardEl.classList.add('unaffordable');
+
+        // If this is the card that just shifted into the end of the hand (index 3) after a play, animate it
+        if (playedIndex !== -1 && idx === 3) {
+            cardEl.classList.add('card-entering');
+        }
+
+        cardEl.innerHTML = `
+            <div class="icon">${BUILDING_TYPES[cardType].icon}</div>
+            <div class="price-tag">${cost} ⚡</div>
+        `;
+
+        cardEl.addEventListener('click', () => playCard(idx));
+        handContainer.appendChild(cardEl);
+    });
+
+    renderEnergySegments();
+}
+
+function renderEnergySegments() {
+    const container = document.getElementById('energy-segments');
+    if (!container) return;
+    container.innerHTML = '';
+    for (let i = 0; i < state.maxEnergy; i++) {
+        container.appendChild(document.createElement('span'));
     }
 }
 
 function updateShopUI() {
-    // Update the global gold display in top bar
-    if (DOM.goldDisplay) {
-        DOM.goldDisplay.textContent = state.gold;
+    // Re-render card hand to update unaffordable state visually
+    if (state.cards.hand.length > 0) { // check if initialized
+        renderCardHand();
     }
+}
+
+function highlightEnergyBar() {
+    const el = document.getElementById('energy-bar-container');
+    if (!el) return;
+    el.classList.remove('highlight');
+    void el.offsetWidth; // trigger reflow
+    el.classList.add('highlight');
 }
 
 function showToast(msg, type = "info") {
@@ -478,7 +341,23 @@ function restartGame() {
     state.battle.wave = 1;
     state.battle.totalEnemiesSpawned = 0;
     state.battle.lastTime = performance.now();
-    state.gold = 50;
+    state.gold = 0; // Starting energy
+    state.energyRegenTimer = 0;
+    state.cards = {
+        hand: [],
+        next: null
+    };
+
+    state.battle.enemiesSpawnedThisDay = 0;
+    state.battle.dayCounter = 1;
+    state.battle.nightTimer = 0;
+    state.maxEnergy = 10;
+    state.regenRate = 1.0;
+    state.cardLevels = { angel: 1, fireball: 1, mine: 1, titan: 1, dragon: 1, gaze: 1 };
+
+    DOM.battleArea.classList.remove('night');
+    DOM.managementArea.classList.remove('night');
+    DOM.phaseText.textContent = `☀️ 第 1天`;
 
     // Reset visuals
     updateWallHP();
@@ -487,12 +366,13 @@ function restartGame() {
 
     // Rebuild grid base
     createGrid();
+    initCardSystem();
 }
 
 function placeBuilding(index, buildingData) {
     state.grid[index] = buildingData;
     renderCell(index);
-    updateBuildingActiveStates();
+    updateGazeVisuals();
 }
 
 function renderCell(index) {
@@ -501,14 +381,13 @@ function renderCell(index) {
 
     const data = state.grid[index];
     if (data) {
-        const isGazed = isCellInGaze(index);
+        const config = BUILDING_TYPES[data.type];
+        const isBuffed = isCellBuffed(index) || data.type === 'gaze';
         let infoBadgeHtml = `<div class="info-badge level-badge">${data.level}</div>`;
 
         // If it's a spawner, we want to show capacity
-        // For now, only angels, titans, and dragons have caps
         if (['angel', 'titan', 'dragon'].includes(data.type)) {
             if (!data.id) {
-                // Guarantee a unique ID is permanently bound to this data object if missing
                 data.id = 'b_' + Math.random().toString(36).substr(2, 9);
             }
             const currentUnits = state.battle.entities.filter(e => e.type === 'ally' && e.origin === data.id).length;
@@ -516,13 +395,14 @@ function renderCell(index) {
         }
 
         cell.innerHTML = `
-            <div class="building ${data.buffed ? 'buffed' : ''} ${isGazed ? '' : 'inactive'}" data-type="${data.type}" data-level="${data.level}" data-index="${index}">
-                <span class="icon">${BUILDING_TYPES[data.type].icon}</span>
+            <div class="building quality-${config.quality} ${isBuffed ? 'buffed' : ''}" data-type="${data.type}" data-level="${data.level}" data-index="${index}">
+                <span class="icon">${config.icon}</span>
                 ${infoBadgeHtml}
             </div>
             <div class="cd-bar-container"><div class="cd-bar-fill"></div></div>
         `;
     }
+    updateGazeVisuals();
 }
 
 // --- Drag and Drop Logic (Pointer Events for mouse & touch) ---
@@ -530,6 +410,7 @@ function renderCell(index) {
 function setupDragEvents() {
     // We attach listeners to the container to handle events bubble
     DOM.grid.addEventListener('pointerdown', handlePointerDown);
+    document.getElementById('card-hand-bar').addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('pointermove', handlePointerMove);
     document.addEventListener('pointerup', handlePointerUp);
 
@@ -541,39 +422,67 @@ function setupDragEvents() {
 
 function handlePointerDown(e) {
     const buildingEl = e.target.closest('.building');
-    if (!buildingEl) return;
+    const cardEl = e.target.closest('.play-card:not(.unaffordable)');
 
-    const cellEl = buildingEl.closest('.cell');
-    const index = parseInt(cellEl.dataset.index);
+    if (!buildingEl && !cardEl) return;
+
+    let index = -1;
+    let bData = null;
+    let sourceType = 'grid';
+
+    if (buildingEl) {
+        const cellEl = buildingEl.closest('.cell');
+        index = parseInt(cellEl.dataset.index);
+        bData = state.grid[index];
+        sourceType = 'grid';
+    } else if (cardEl) {
+        index = parseInt(cardEl.dataset.index);
+        const cardType = state.cards.hand[index];
+        bData = {
+            type: cardType,
+            level: state.cardLevels[cardType],
+            buffed: false,
+            timer: 0
+        };
+        sourceType = 'card';
+    }
 
     // Setup drag state
     state.dragData.active = true;
-    state.dragData.element = buildingEl;
+    state.dragData.element = buildingEl || cardEl;
+    state.dragData.sourceType = sourceType;
     state.dragData.startIndex = index;
-    state.dragData.buildingData = state.grid[index];
+    state.dragData.buildingData = bData;
 
-    // Calc offset for visual ghost using client rect
-    const rect = buildingEl.getBoundingClientRect();
-    // Since we'll position ghost based on top/left, offsetX/Y is pointer distance from top-left of the building
+    // Visuals
+    const targetElement = buildingEl || cardEl;
+    targetElement.classList.add('dragging');
+
+    // Calc offset
+    const rect = (buildingEl || cardEl).getBoundingClientRect();
     state.dragData.offsetX = e.clientX - rect.left;
     state.dragData.offsetY = e.clientY - rect.top;
 
     // Visuals
-    buildingEl.classList.add('dragging');
-    DOM.ghost.className = 'drag-ghost building';
-    if (buildingEl.classList.contains('inactive')) DOM.ghost.classList.add('inactive');
+    const ghost = DOM.ghost;
+    ghost.className = 'drag-ghost building';
 
-    if (state.dragData.buildingData.buffed) {
-        DOM.ghost.classList.add('buffed');
+    // Always add quality class and data-type for consistent styling
+    const quality = BUILDING_TYPES[bData.type].quality;
+    ghost.classList.add(`quality-${quality}`);
+    ghost.dataset.type = bData.type;
+
+    if (sourceType === 'grid') {
+        if (isCellBuffed(index) || bData.type === 'gaze') ghost.classList.add('buffed');
     }
 
-    DOM.ghost.dataset.type = state.dragData.buildingData.type;
-    DOM.ghost.innerHTML = buildingEl.innerHTML;
-    // Set fixed width/height so it matches exactly
-    DOM.ghost.style.width = `${rect.width}px`;
-    DOM.ghost.style.height = `${rect.height}px`;
+    // Set ghost content to be just the icon for a clean "building ghost" look
+    ghost.innerHTML = `<span class="icon">${BUILDING_TYPES[bData.type].icon}</span>`;
+    ghost.style.width = `${rect.width}px`;
+    ghost.style.height = `${rect.height}px`;
 
     updateGhostPosition(e.clientX, e.clientY);
+    updateGazeVisuals();
 }
 
 function handlePointerMove(e) {
@@ -590,10 +499,13 @@ function handlePointerMove(e) {
 
     if (targetEl) {
         const targetCell = targetEl.closest('.cell:not(.locked)');
-        if (targetCell && targetCell.dataset.index != state.dragData.startIndex) {
+        if (targetCell) {
+            const targetIndex = parseInt(targetCell.dataset.index);
+            if (state.dragData.sourceType === 'grid' && targetIndex == state.dragData.startIndex) return;
             targetCell.classList.add('drag-over');
         }
     }
+    updateGazeVisuals();
 }
 
 function updateGhostPosition(x, y) {
@@ -621,59 +533,67 @@ function handlePointerUp(e) {
         }
     }
 
-    const { startIndex, buildingData, element } = state.dragData;
+    const { startIndex, buildingData, element, sourceType } = state.dragData;
 
-    if (targetIndex !== -1 && targetIndex !== startIndex) {
-        const targetData = state.grid[targetIndex];
+    if (targetIndex !== -1) {
+        if (sourceType === 'grid') {
+            if (targetIndex !== startIndex) {
+                const targetData = state.grid[targetIndex];
+                if (!targetData) {
+                    state.grid[startIndex] = null;
+                    state.grid[targetIndex] = buildingData;
+                } else if (targetData.type === buildingData.type && targetData.level === buildingData.level) {
+                    state.grid[startIndex] = null;
+                    state.grid[targetIndex] = { ...targetData, level: targetData.level + 1, timer: 0 };
+                } else {
+                    state.grid[startIndex] = targetData;
+                    state.grid[targetIndex] = buildingData;
+                }
+                renderCell(startIndex);
+                renderCell(targetIndex);
+            }
+        } else if (sourceType === 'card') {
+            const cardData = buildingData;
+            const targetData = state.grid[targetIndex];
+            const cost = BUILDING_TYPES[cardData.type].cost;
 
-        if (!targetData) {
-            // Move to empty cell
-            state.grid[startIndex] = null;
-            state.grid[targetIndex] = buildingData;
-            renderCell(startIndex);
-            renderCell(targetIndex);
-        } else if (targetData.type === buildingData.type && targetData.level === buildingData.level) {
-            // Merge
-            state.grid[startIndex] = null;
-            state.grid[targetIndex] = {
-                id: targetData.id, // Retain ID of target so existing spawned troops aren't orphaned
-                type: buildingData.type,
-                level: buildingData.level + 1,
-                buffed: false,
-                timer: 0
-            };
-            renderCell(startIndex);
-            renderCell(targetIndex);
-            updateBuildingActiveStates();
-
-            // Optional: play merge animation on the target cell
-            const newBuilding = DOM.grid.children[targetIndex].querySelector('.building');
-            newBuilding.style.transform = 'scale(1.2)';
-            setTimeout(() => newBuilding.style.transform = '', 150);
-        } else {
-            // Swap if different types/levels
-            state.grid[startIndex] = targetData;
-            state.grid[targetIndex] = buildingData;
-            renderCell(startIndex);
-            renderCell(targetIndex);
-            updateBuildingActiveStates();
+            if (state.gold >= cost) {
+                if (!targetData) {
+                    // Place card
+                    state.gold -= cost;
+                    placeBuilding(targetIndex, { ...cardData, id: 'b_' + Math.random().toString(36).substr(2, 9) });
+                    state.cards.hand.splice(startIndex, 1);
+                    state.cards.hand.push(state.cards.next);
+                    state.cards.next = drawRandomCard();
+                    renderCardHand();
+                    updateShopUI();
+                } else if (targetData.type === cardData.type && targetData.level === cardData.level) {
+                    // Merge card onto grid
+                    state.gold -= cost;
+                    state.grid[targetIndex] = { ...targetData, level: targetData.level + 1, timer: 0 };
+                    renderCell(targetIndex);
+                    state.cards.hand.splice(startIndex, 1);
+                    state.cards.hand.push(state.cards.next);
+                    state.cards.next = drawRandomCard();
+                    renderCardHand();
+                    updateShopUI();
+                } else {
+                    // Invalid drop
+                }
+            } else {
+                showToast("能量不足！", "error");
+            }
         }
-    } else {
-        // Snap back
-        element.classList.remove('dragging');
     }
 
     // Reset
+    if (element) element.classList.remove('dragging');
     state.dragData.active = false;
     DOM.ghost.className = 'drag-ghost hidden';
 
     // Safety re-render to clear states
     if (state.grid[startIndex]) renderCell(startIndex);
     if (targetIndex !== -1 && state.grid[targetIndex]) renderCell(targetIndex);
-
-    // Crucial: since we re-rendered the building, it lost its .inactive class.
-    // We must re-eval it so it doesn't appear "highlighted".
-    updateBuildingActiveStates();
 }
 
 // --- Phase 2: Game Loop & Combat Logic ---
@@ -684,7 +604,6 @@ function gameLoop(currentTime) {
     state.battle.lastTime = currentTime;
 
     // Optional: Pause game while dragging to prevent bugs, or keep it running. Let's keep it running.
-    updateGazeVisuals(); // Constant layout alignment
     updateCombat(dt);
     renderEntities();
 
@@ -698,121 +617,115 @@ function updateCombat(dt) {
     }
 
     // 0. Phase Logic
-    const activeEnemies = state.battle.entities.filter(e => e.type === 'enemy' && e.hp > 0);
-
     if (state.battle.phase === 'day') {
-        const deadThisDay = state.battle.enemiesSpawnedThisDay - activeEnemies.length;
-        const progress = Math.min(Math.max(deadThisDay, 0) / 20, 1);
-        DOM.phaseBarFill.style.width = `${progress * 100}%`;
-
+        const activeEnemies = state.battle.entities.filter(e => e.type === 'enemy' && e.hp > 0);
         if (state.battle.enemiesSpawnedThisDay >= 20 && activeEnemies.length === 0) {
-            // Day over, start night
-            state.battle.phase = 'night';
-            state.battle.nightTimer = 0;
-            DOM.phaseText.textContent = `🌙 第 ${state.battle.dayCounter}天`;
-            DOM.phaseBarFill.classList.remove('day');
-            DOM.phaseBarFill.style.width = '0%';
-            DOM.battleArea.classList.add('night');
-            DOM.managementArea.classList.add('night');
-        }
-    } else if (state.battle.phase === 'night') {
-        state.battle.nightTimer += dt;
-        const progress = Math.min(state.battle.nightTimer / 10000, 1);
-        DOM.phaseBarFill.style.width = `${progress * 100}%`;
-
-        if (state.battle.nightTimer >= 10000) {
-            // Night over, start next day
-            state.gold += 10;
-            updateShopUI();
-
-            state.battle.phase = 'day';
-            state.battle.dayCounter++;
-            state.battle.enemiesSpawnedThisDay = 0;
-            DOM.phaseText.textContent = `☀️ 第 ${state.battle.dayCounter}天`;
-            DOM.phaseBarFill.classList.add('day');
-            DOM.phaseBarFill.style.width = '0%';
-            DOM.battleArea.classList.remove('night');
-            DOM.managementArea.classList.remove('night');
-            showToast(`第 ${state.battle.dayCounter} 天开始！敌人变强了！`, "error");
+            // Day over
+            if (state.battle.dayCounter % 3 === 0) {
+                // Reward Day
+                state.battle.phase = 'night';
+                state.isChoosingReward = true;
+                DOM.battleArea.classList.add('night');
+                DOM.managementArea.classList.add('night');
+                showNightChoice();
+            } else {
+                // Regular Day, skip choice
+                applyRewardEnd();
+            }
         }
     }
 
-    // 1. Spawner (Spawn denser: 2 enemies per tick, reduce CD)
-    if (state.battle.phase === 'day' && state.battle.enemiesSpawnedThisDay < 20) {
+    // Energy Regeneration: 1 energy every 3 seconds
+    const regenInterval = 3000 / state.regenRate;
+    if (state.gold < state.maxEnergy && !state.isChoosingReward) {
+        state.energyRegenTimer += dt;
+        if (state.energyRegenTimer >= regenInterval) {
+            state.energyRegenTimer -= regenInterval;
+            state.gold += 1;
+            updateShopUI();
+            highlightEnergyBar();
+        }
+    } else {
+        state.energyRegenTimer = 0;
+    }
+    // Strict cap
+    if (state.gold > state.maxEnergy) state.gold = state.maxEnergy;
+
+    // Update energy visual bar (smooth fill)
+    const energyFillEl = document.getElementById('energy-fill');
+    const energyNumEl = document.getElementById('energy-number');
+    if (energyFillEl) {
+        const totalProgress = (state.gold + (state.gold < state.maxEnergy ? state.energyRegenTimer / regenInterval : 0)) / state.maxEnergy * 100;
+        energyFillEl.style.width = `${Math.min(totalProgress, 100)}%`;
+    }
+    if (energyNumEl) {
+        energyNumEl.textContent = `${state.gold}/${state.maxEnergy}`;
+    }
+
+    // 1. Spawner & Mine Logic with cap checks
+    state.grid.forEach((b, idx) => {
+        if (!b || b.type === 'gaze') return;
+
+        // Check cap dynamically for progress bar and production
+        let isAtCapacity = false;
+        let currentUnits = 0;
+
+        if (['angel', 'titan', 'dragon'].includes(b.type)) {
+            currentUnits = state.battle.entities.filter(e => e.type === 'ally' && e.origin === b.id).length;
+            if (currentUnits >= b.level) isAtCapacity = true;
+        }
+
+        if (b.type === 'mine' && state.gold >= state.maxEnergy) {
+            isAtCapacity = true;
+        }
+
+        if (b.type === 'fireball' && state.battle.entities.filter(e => e.type === 'enemy' && e.hp > 0).length === 0) {
+            isAtCapacity = true;
+        }
+
+        // Ticking
+        if (!isAtCapacity) {
+            const isBuffed = isCellBuffed(idx);
+            const speed = isBuffed ? 1.0 : 0.25;
+            b.timer += dt * speed;
+
+            if (b.timer >= BUILDING_CD_MAX) {
+                b.timer = 0;
+                triggerBuilding(b, idx);
+            }
+        } else {
+            // Option: Reset timer to 0 if at capacity to avoid weird fills
+            b.timer = 0;
+        }
+
+        // Visual updates
+        const cell = DOM.grid.children[idx];
+        const bar = cell.querySelector('.cd-bar-fill');
+        if (bar) {
+            const progress = (b.timer / BUILDING_CD_MAX) * 100;
+            bar.style.width = `${Math.min(progress, 100)}%`;
+            if (isCellBuffed(idx)) bar.classList.add('gold');
+            else bar.classList.remove('gold');
+        }
+
+        // Update cap badges
+        if (['angel', 'titan', 'dragon'].includes(b.type)) {
+            const badge = cell.querySelector('.cap-badge');
+            if (badge) badge.textContent = `${currentUnits}/${b.level}`;
+        }
+    });
+
+    // 2. Spawner (Enemy)
+    if (state.battle.phase === 'day' && state.battle.enemiesSpawnedThisDay < 20 && !state.isChoosingReward) {
         state.battle.enemySpawnTimer += dt;
         if (state.battle.enemySpawnTimer >= ENEMY_SPAWN_CD / 2) {
             state.battle.enemySpawnTimer -= ENEMY_SPAWN_CD / 2;
             spawnEnemy();
-            state.battle.enemiesSpawnedThisDay--; // counteract the double spawn correctly
             if (state.battle.enemiesSpawnedThisDay < 20) {
                 spawnEnemy();
             }
         }
     }
-
-    // 2. Building Tick
-    state.grid.forEach((b, idx) => {
-        if (!b) return;
-
-        const isGazed = isCellInGaze(idx);
-        const speedMult = isGazed ? 1 : 0.25;
-
-        let isAtCapacity = false;
-        let currentUnits = 0;
-
-        // Check cap dynamically
-        if (['angel', 'titan', 'dragon'].includes(b.type)) {
-            currentUnits = state.battle.entities.filter(e => e.type === 'ally' && e.origin === b.id).length;
-            if (currentUnits >= b.level) {
-                isAtCapacity = true;
-            }
-        }
-
-        // Fireball needs targets to charge/shoot
-        if (b.type === 'fireball') {
-            const activeEnems = state.battle.entities.filter(e => e.type === 'enemy' && e.hp > 0);
-            if (activeEnems.length === 0) {
-                isAtCapacity = true;
-            }
-        }
-
-        if (b.timer === undefined) b.timer = 0;
-
-        // Only grow CD if not at capacity
-        if (!isAtCapacity) {
-            b.timer += dt * speedMult;
-        } else {
-            // Keep timer at 0 or wherever it was, but reset to 0 if we want it to visually look "resting"
-            b.timer = 0;
-        }
-
-        // Update CD bars visually
-        const cell = DOM.grid.children[idx];
-        const bar = cell.querySelector('.cd-bar-fill');
-        if (bar) {
-            const progress = Math.min(b.timer / BUILDING_CD_MAX, 1);
-            bar.style.width = `${progress * 100}%`;
-
-            if (isGazed) {
-                bar.classList.add('gold');
-            } else {
-                bar.classList.remove('gold');
-            }
-        }
-
-        // Dynamically update cap badges if spawner
-        if (['angel', 'titan', 'dragon'].includes(b.type)) {
-            const badge = cell.querySelector('.cap-badge');
-            if (badge) {
-                badge.textContent = `${currentUnits}/${b.level}`;
-            }
-        }
-
-        if (!isAtCapacity && b.timer >= BUILDING_CD_MAX) {
-            b.timer -= BUILDING_CD_MAX;
-            triggerBuilding(b, idx);
-        }
-    });
 
     // 3. Move Entities
     const wallY = DOM.battleArea.getBoundingClientRect().height;
@@ -858,10 +771,13 @@ function updateCombat(dt) {
                 const dy = campY - ent.y;
                 const dist = Math.hypot(dx, dy);
 
-                let nx = dx / dist + sepX * 1.5;
-                let ny = dy / dist + sepY * 1.5;
-                const nmag = Math.hypot(nx, ny) || 1;
-                nx /= nmag; ny /= nmag;
+                let nx = 0, ny = 0;
+                if (dist > 0) {
+                    nx = dx / dist + sepX * 1.5;
+                    ny = dy / dist + sepY * 1.5;
+                    const nmag = Math.hypot(nx, ny) || 1;
+                    nx /= nmag; ny /= nmag;
+                }
 
                 if (dist > 5) {
                     const moveDist = ent.speed * (dt / 1000);
@@ -888,10 +804,13 @@ function updateCombat(dt) {
                     const dy = nearest.y - ent.y;
                     const dist = Math.hypot(dx, dy);
 
-                    let nx = dx / dist + sepX * 1.5;
-                    let ny = dy / dist + sepY * 1.5;
-                    const nmag = Math.hypot(nx, ny) || 1;
-                    nx /= nmag; ny /= nmag;
+                    let nx = 0, ny = 0;
+                    if (dist > 0) {
+                        nx = dx / dist + sepX * 1.5;
+                        ny = dy / dist + sepY * 1.5;
+                        const nmag = Math.hypot(nx, ny) || 1;
+                        nx /= nmag; ny /= nmag;
+                    }
 
                     if (dist > 5) { // don't jitter if right on top
                         const moveDist = ent.speed * (dt / 1000);
@@ -899,15 +818,47 @@ function updateCombat(dt) {
                         ent.y += ny * moveDist;
                     }
                 } else {
-                    // No enemies, walk up towards the spawn point (top of battle area)
-                    ent.y -= ent.speed * (dt / 1000);
-                    ent.x += sepX * ent.speed * (dt / 1000);
+                    // No enemies, idle strictly in the camp zone (Day Phase)
+                    const bRect = DOM.battleArea.getBoundingClientRect();
+                    const campTopY = bRect.height * 0.7; // top of camp
+                    const wallY = bRect.height - 10;
 
-                    // Idle at the top instead of dying
-                    if (ent.y <= 10) ent.y = 10;
+                    const hash1 = (ent.id.charCodeAt(2) || 0) * 11;
+                    const hash2 = (ent.id.charCodeAt(3) || 0) * 19;
+
+                    const targetCampY = campTopY + 15 + (hash1 % (wallY - campTopY - 30));
+                    const targetCampX = 20 + (hash2 % Math.max(1, bRect.width - 40));
+
+                    const dx = targetCampX - ent.x;
+                    const dy = targetCampY - ent.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    let nx = 0, ny = 0;
+                    if (dist > 0) {
+                        nx = dx / dist;
+                        ny = dy / dist;
+
+                        // Only apply separation if we are not "close enough" to target to avoid jitter
+                        if (dist > 20) {
+                            nx += sepX * 1.5;
+                            ny += sepY * 1.5;
+                        }
+
+                        const nmag = Math.hypot(nx, ny) || 1;
+                        nx /= nmag; ny /= nmag;
+                    }
+
+                    if (dist > 3) {
+                        const moveDist = ent.speed * (dt / 1000);
+                        ent.x += nx * moveDist;
+                        ent.y += ny * moveDist;
+                    }
+
+                    // Strict bounds clamping just in case
+                    if (ent.y <= campTopY + 10) ent.y = campTopY + 10;
+                    if (ent.y >= wallY) ent.y = wallY;
                     if (ent.x <= 10) ent.x = 10;
-                    const wallX = DOM.battleArea.getBoundingClientRect().width;
-                    if (ent.x >= wallX - 10) ent.x = wallX - 10;
+                    if (ent.x >= bRect.width - 10) ent.x = bRect.width - 10;
                 }
             }
         }
@@ -930,8 +881,10 @@ function updateCombat(dt) {
                     }
                 } else {
                     const moveDist = ent.speed * (dt / 1000);
-                    ent.x += (dx / dist) * moveDist;
-                    ent.y += (dy / dist) * moveDist;
+                    if (dist > 0) {
+                        ent.x += (dx / dist) * moveDist;
+                        ent.y += (dy / dist) * moveDist;
+                    }
                 }
             } else {
                 ent.y -= ent.speed * (dt / 1000); // go straight if target lost
@@ -1023,10 +976,11 @@ function triggerBuilding(b, idx) {
     if (b.type === 'mine') {
         const spawnX = rect.left + rect.width / 2 - containerRect.left;
         const spawnY = rect.top - containerRect.top;
-        const income = b.level; // per instructions: 1 gold base, +1 per level
+        const income = b.level;
         state.gold += income;
         updateShopUI();
-        spawnFloatingText(`+${income}💰`, spawnX, spawnY - 20, '#facc15');
+        highlightEnergyBar();
+        spawnFloatingText(`+${income}⚡`, spawnX, spawnY - 20, '#60a5fa');
     }
     else if (b.type === 'titan') {
         const spawnX = (rect.left + rect.width / 2) - containerRect.left;
@@ -1148,6 +1102,86 @@ function renderEntities() {
             el.textContent = '';
         }
     });
+}
+
+function showNightChoice() {
+    const overlay = document.getElementById('night-choice-overlay');
+    const optionsContainer = document.getElementById('choice-options');
+    if (!overlay || !optionsContainer) return;
+
+    DOM.phaseText.textContent = `🌙 夜间休整`;
+    optionsContainer.innerHTML = '';
+
+    const choices = [
+        {
+            title: '强化训练',
+            sub: '随机一个场上建筑等级 +1',
+            icon: '🔥',
+            action: () => {
+                const builtIndices = state.grid.map((b, i) => b && b.type !== 'gaze' ? i : -1).filter(i => i !== -1);
+                if (builtIndices.length > 0) {
+                    const idx = builtIndices[Math.floor(Math.random() * builtIndices.length)];
+                    state.grid[idx].level++;
+                    renderCell(idx);
+                    showToast(`${BUILDING_TYPES[state.grid[idx].type].icon} 等级提升！`, "success");
+                } else {
+                    showToast("场上没有可强化的建筑", "warning");
+                }
+            }
+        },
+        {
+            title: '能量过载',
+            sub: '能量上限 +2',
+            icon: '⚡',
+            action: () => {
+                state.maxEnergy += 2;
+                renderEnergySegments();
+                updateShopUI(); // Force refresh to show affordability
+                showToast(`能量上限提升至 ${state.maxEnergy}！`, "success");
+            }
+        },
+        {
+            title: '闪电充能',
+            sub: '能量恢复速度 +20%',
+            icon: '🔄',
+            action: () => {
+                state.regenRate += 0.2;
+                showToast(`恢复速度提升！`, "success");
+            }
+        }
+    ];
+
+    choices.forEach(c => {
+        const btn = document.createElement('div');
+        btn.className = 'choice-card';
+        btn.innerHTML = `
+            <div class="card-icon">${c.icon}</div>
+            <div class="card-title">${c.title}</div>
+            <div class="card-sub">${c.sub}</div>
+        `;
+        btn.onclick = () => {
+            c.action();
+            applyRewardEnd();
+        };
+        optionsContainer.appendChild(btn);
+    });
+
+    overlay.classList.remove('hidden');
+}
+
+function applyRewardEnd() {
+    const overlay = document.getElementById('night-choice-overlay');
+    overlay.classList.add('hidden');
+
+    // Proceed to next day
+    state.battle.phase = 'day';
+    state.battle.dayCounter++;
+    state.battle.enemiesSpawnedThisDay = 0;
+    state.isChoosingReward = false;
+    DOM.phaseText.textContent = `☀️ 第 ${state.battle.dayCounter} 天`;
+    DOM.battleArea.classList.remove('night');
+    DOM.managementArea.classList.remove('night');
+    showToast(`第 ${state.battle.dayCounter} 天开始！敌人变强了！`, "error");
 }
 
 // Start
