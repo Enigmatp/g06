@@ -672,7 +672,6 @@ body {
     min-width: 65px;
     /* Increased to fit "0/10" */
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-    margin-right: 10px;
 }
 
 .sell-zone {
@@ -689,6 +688,7 @@ body {
     font-size: 0.8rem;
     transition: all 0.2s;
     pointer-events: auto;
+    margin-right: 10px;
 }
 
 .sell-zone.active {
@@ -1009,9 +1009,4 @@ body {
         opacity: 0;
         border-width: 1px;
     }
-}
-
-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-z-index: 5;
-white-space: nowrap;
 }
