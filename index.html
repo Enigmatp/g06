@@ -3,28 +3,117 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>G05 Fan's Version</title>
-    <link rel="stylesheet" href="viewer.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>英雄领地 - 佣兵小镇</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <div class="viewer-container">
-        <div class="version-column">
-            <div class="version-label">v1</div>
-            <iframe src="v1/index.html" class="game-frame"></iframe>
+    <div class="game-container">
+        <div class="top-bar">
+            <div class="res-item"><span class="res-icon">💰</span><span id="gold-display" class="res-val">0</span></div>
+            <div class="res-item"><span class="res-icon">💎</span><span id="gem-display" class="res-val">10</span></div>
+            <div class="res-item level-item">⚔️ Lv.<span id="level-display" class="res-val">1</span></div>
+            <div class="res-item hero-item">🦸 <span id="hero-count" class="res-val">0</span>/10</div>
         </div>
-        <div class="divider"></div>
-        <div class="version-column">
-            <div class="version-label">v1.5</div>
-            <iframe src="v1.5/index.html" class="game-frame"></iframe>
+        <div class="canvas-area" id="page-main">
+            <canvas id="game-canvas"></canvas>
+            <button id="challenge-btn" class="challenge-btn">⚔️ 挑战</button>
+            <div id="skill-bar" class="skill-bar hidden">
+                <div class="skill-item" id="skill-meteor" data-skill="meteor">
+                    <div class="skill-icon">☄️</div>
+                    <div class="skill-key">1</div>
+                    <div class="skill-cooldown"></div>
+                </div>
+                <div class="skill-item" id="skill-heal" data-skill="heal">
+                    <div class="skill-icon">✨</div>
+                    <div class="skill-key">2</div>
+                    <div class="skill-cooldown"></div>
+                </div>
+                <div class="skill-item" id="skill-warcry" data-skill="warcry">
+                    <div class="skill-icon">📣</div>
+                    <div class="skill-key">3</div>
+                    <div class="skill-cooldown"></div>
+                </div>
+            </div>
         </div>
-        <div class="divider"></div>
-        <div class="version-column">
-            <div class="version-label">v2</div>
-            <iframe src="v2/index.html" class="game-frame"></iframe>
+        <div class="placeholder-page hidden" id="page-shop">
+            <div class="page-title">🛒 商城</div>
+            <div class="page-sub">即将开放</div>
+        </div>
+        <div class="placeholder-page hidden" id="page-summon">
+            <div class="page-title">🎴 召唤</div>
+            <div class="page-sub">即将开放</div>
+        </div>
+        <div class="placeholder-page hidden" id="page-heroes">
+            <div class="page-title">🦸 英雄</div>
+            <div class="page-sub">即将开放</div>
+        </div>
+        <div class="placeholder-page hidden" id="page-challenge">
+            <div class="page-title">📅 活动</div>
+            <div class="page-sub">即将开放</div>
+        </div>
+        <div class="task-bar" id="task-bar">
+            <div class="task-icon" id="task-icon">📋</div>
+            <div class="task-text" id="task-text">通关第 1 关</div>
+            <div class="task-reward" id="task-reward">💰 50</div>
+            <div class="task-btn" id="task-btn">进行中</div>
+        </div>
+        <div class="bottom-nav" id="bottom-nav">
+            <button class="nav-btn" data-page="shop">🛒 商城</button>
+            <button class="nav-btn" data-page="summon">🎴 召唤</button>
+            <button class="nav-btn active" data-page="main">🏠 主城</button>
+            <button class="nav-btn" data-page="heroes">🦸 英雄</button>
+            <button class="nav-btn" data-page="challenge">📅 活动</button>
+        </div>
+        <!-- Result Modals -->
+        <div id="modal-victory" class="modal-overlay hidden">
+            <div class="modal-content victory">
+                <div class="modal-title">🎉 挑战胜利!</div>
+                <div class="modal-body">恭喜获得奖励: <span id="reward-amount">💰 100</span></div>
+                <div class="modal-actions">
+                    <button id="next-challenge-btn" class="modal-btn primary">继续挑战</button>
+                    <button id="vic-back-to-city-btn" class="modal-btn secondary">返回主城</button>
+                </div>
+            </div>
+        </div>
+        <div id="modal-defeat" class="modal-overlay hidden">
+            <div class="modal-content defeat">
+                <div class="modal-title">📉 挑战失败</div>
+                <div class="modal-body">请继续提升英雄实力!</div>
+                <div class="modal-actions">
+                    <button id="def-back-to-city-btn" class="modal-btn secondary">返回主城</button>
+                </div>
+            </div>
+        </div>
+        <!-- Deployment Modal -->
+        <div id="modal-deploy" class="modal-overlay hidden">
+            <div class="modal-content deploy">
+                <div class="modal-title">🏰 军营上阵</div>
+                <div class="modal-body">
+                    <div class="deploy-slots">
+                        <!-- 10 active slots -->
+                        <div class="slot-row" id="deploy-slots-active"></div>
+                        <!-- 5 locked slots -->
+                        <div class="slot-row" id="deploy-slots-locked">
+                            <div class="slot locked">🔒</div>
+                            <div class="slot locked">🔒</div>
+                            <div class="slot locked">🔒</div>
+                            <div class="slot locked">🔒</div>
+                            <div class="slot locked">🔒</div>
+                        </div>
+                    </div>
+                    <div class="roster-title">可上阵英雄 (<span id="deploy-count">0</span>/10)</div>
+                    <div class="hero-roster" id="hero-roster"></div>
+                </div>
+                <div class="modal-actions">
+                    <button id="deploy-confirm-btn" class="modal-btn primary">确定</button>
+                    <button id="deploy-cancel-btn" class="modal-btn secondary">取消</button>
+                </div>
+            </div>
         </div>
     </div>
+    <script src="main.js"></script>
 </body>
 
 </html>
