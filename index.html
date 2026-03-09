@@ -15,36 +15,42 @@
             <div class="res-item"><span class="res-icon">💎</span><span id="gem-display" class="res-val">10</span></div>
             <div class="res-item level-item">⚔️ Lv.<span id="level-display" class="res-val">1</span></div>
             <div class="res-item hero-item">🦸 <span id="hero-count" class="res-val">0</span>/10</div>
+            <div class="mana-bar-container">
+                <div class="mana-bar-fill" id="mana-bar-fill"></div>
+                <div class="mana-text">✨ <span id="mana-display">0</span>/10</div>
+            </div>
+            <div class="res-item"><span class="res-icon">💠</span><span id="ori-display" class="res-val">0</span></div>
         </div>
         <div class="canvas-area" id="page-main">
             <canvas id="game-canvas"></canvas>
             <button id="challenge-btn" class="challenge-btn">⚔️ 挑战</button>
-            <div id="skill-bar" class="skill-bar hidden">
-                <div class="skill-item" id="skill-meteor" data-skill="meteor">
-                    <div class="skill-icon">☄️</div>
-                    <div class="skill-key">1</div>
+            <div id="summon-bar" class="summon-bar hidden">
+                <div class="skill-item" id="summon-0" data-idx="0">
+                    <div class="skill-icon">Empty</div>
                     <div class="skill-cooldown"></div>
                 </div>
-                <div class="skill-item" id="skill-heal" data-skill="heal">
-                    <div class="skill-icon">✨</div>
-                    <div class="skill-key">2</div>
+                <div class="skill-item" id="summon-1" data-idx="1">
+                    <div class="skill-icon">Empty</div>
                     <div class="skill-cooldown"></div>
                 </div>
-                <div class="skill-item" id="skill-warcry" data-skill="warcry">
-                    <div class="skill-icon">📣</div>
-                    <div class="skill-key">3</div>
+                <div class="skill-item" id="summon-2" data-idx="2">
+                    <div class="skill-icon">Empty</div>
                     <div class="skill-cooldown"></div>
                 </div>
+            </div>
+            <div class="capture-ui hidden" id="capture-overlay">
+                <div class="capture-stats">
+                    <div class="capture-prob">捕捉概率: <span id="capture-prob-val">0</span>%</div>
+                    <div class="capture-count">剩余英雄: <span id="capture-hero-count">0</span></div>
+                </div>
+                <button id="capture-bash-btn" class="capture-btn-main">抛出英雄撞击！</button>
             </div>
         </div>
         <div class="placeholder-page hidden" id="page-shop">
             <div class="page-title">🛒 商城</div>
             <div class="page-sub">即将开放</div>
         </div>
-        <div class="placeholder-page hidden" id="page-summon">
-            <div class="page-title">🎴 召唤</div>
-            <div class="page-sub">即将开放</div>
-        </div>
+
         <div class="placeholder-page hidden" id="page-heroes">
             <div class="page-title">🦸 英雄</div>
             <div class="page-sub">即将开放</div>
@@ -53,6 +59,7 @@
             <div class="page-title">📅 活动</div>
             <div class="page-sub">即将开放</div>
         </div>
+
         <div class="task-bar" id="task-bar">
             <div class="task-icon" id="task-icon">📋</div>
             <div class="task-text" id="task-text">通关第 1 关</div>
@@ -61,7 +68,6 @@
         </div>
         <div class="bottom-nav" id="bottom-nav">
             <button class="nav-btn" data-page="shop">🛒 商城</button>
-            <button class="nav-btn" data-page="summon">🎴 召唤</button>
             <button class="nav-btn active" data-page="main">🏠 主城</button>
             <button class="nav-btn" data-page="heroes">🦸 英雄</button>
             <button class="nav-btn" data-page="challenge">📅 活动</button>
@@ -109,6 +115,221 @@
                 <div class="modal-actions">
                     <button id="deploy-confirm-btn" class="modal-btn primary">确定</button>
                     <button id="deploy-cancel-btn" class="modal-btn secondary">取消</button>
+                </div>
+            </div>
+        </div>
+        <!-- Weapon Shop Modal -->
+        <div id="modal-weapon" class="modal-overlay hidden">
+            <!-- View 1: Main Shop -->
+            <div id="weapon-view-main" class="modal-content weapon">
+                <div class="modal-title">⚔️ 武器铺</div>
+                <div class="weapon-tabs">
+                    <button class="w-tab-btn active" data-tab="inv">库存</button>
+                    <button class="w-tab-btn" data-tab="forge">自动铸造</button>
+                </div>
+
+                <!-- Tab 1: Inventory -->
+                <div id="w-tab-content-inv" class="w-tab-content">
+                    <div class="weapon-main-container">
+                        <div class="inventory-list" id="weap-inv-list"></div>
+                        <div class="equip-card" id="weap-curr-card">
+                            <div class="equip-name" id="weap-curr-name">新手长剑</div>
+                            <div class="equip-icon">⚔️</div>
+                            <div class="equip-level">等级 <span id="weap-curr-lv">1</span></div>
+                            <div class="equip-power">战斗力 <span id="weap-curr-power">12</span></div>
+                            <div class="equip-stats">
+                                <div class="stat-section-title">主词条</div>
+                                <div class="stat-row"><span>攻 击 力</span><span id="weap-curr-atk">12</span></div>
+                                <div class="stat-row"><span>生 命 值</span><span id="weap-curr-hp">0</span></div>
+                                <div class="stat-section-title" style="margin-top: 5px;">副词条</div>
+                                <div id="weap-curr-subs"></div>
+                            </div>
+                            <div class="prof-bar-container mini-prof">
+                                <div class="prof-label">熟练度</div>
+                                <div class="prof-track">
+                                    <div class="prof-fill" id="weap-prof-fill" style="width: 0%"></div>
+                                    <div class="prof-text" id="weap-prof-text">0/100</div>
+                                </div>
+                            </div>
+                            <button id="weapon-set-active-btn" class="modal-btn action-btn small-btn"
+                                style="margin-top: 10px; width: 100%;">设定为店铺装备</button>
+                        </div>
+                    </div>
+                    <div class="material-cost">
+                        <div class="mat-item" title="消耗金币">💰 <span id="weap-cost-gold">100</span></div>
+                        <div class="mat-item" title="消耗奥利哈刚">💠 <span id="weap-cost-ori">0/10</span></div>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="weapon-forge-start-btn" class="modal-btn primary">打造</button>
+                        <button id="weapon-close-btn" class="modal-btn secondary">关闭</button>
+                    </div>
+                </div>
+
+                <!-- Tab 2: Auto Forge -->
+                <div id="w-tab-content-forge" class="w-tab-content hidden">
+                    <div class="autoforge-panel">
+                        <div class="af-setting">
+                            <span>自动铸造开关</span>
+                            <label class="switch">
+                                <input type="checkbox" id="af-toggle" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div class="af-setting">
+                            <span>装备等级</span>
+                            <div class="af-level-ctrl">
+                                <button id="af-lv-minus">-</button>
+                                <span id="af-lv-val">1</span>
+                                <button id="af-lv-plus">+</button>
+                            </div>
+                        </div>
+                        <div class="af-info">
+                            <div class="af-row"><span>消耗奥利哈刚</span><span id="af-cost-val"
+                                    style="color:var(--gold)">20</span></div>
+                            <div class="af-row"><span>铸造时间</span><span>5.0s</span></div>
+                        </div>
+                        <div class="af-status">
+                            <div class="af-status-title">正在通过武器铺的英雄...</div>
+                            <div id="af-hero-list" class="af-hero-list">
+                                <!-- Heroes currently forging will show here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="af-close-btn" class="modal-btn secondary">关闭</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View 2: Forging Minigame -->
+            <div id="weapon-view-forge" class="modal-content weapon hidden">
+                <div class="modal-title">🔨 锻打中...</div>
+                <div class="forge-container">
+                    <div class="forge-area">
+                        <div class="forge-clicks">剩余次数: <span id="forge-clicks-left">10</span></div>
+                        <button id="forge-strike-btn" class="modal-btn action-btn">锻打</button>
+                    </div>
+                    <div class="forge-progress-container">
+                        <div class="forge-track">
+                            <div class="forge-target-zone"></div>
+                            <div class="forge-bar-fill" id="forge-bar-fill" style="height: 0%"></div>
+                            <div class="forge-cursor" id="forge-cursor" style="bottom: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View 3: Result Comparison -->
+            <div id="weapon-view-result" class="modal-content weapon result-modal hidden">
+                <div class="modal-title" id="forge-result-title">✨ 打造成功!</div>
+                <div class="comparison-container">
+                    <!-- Old Equip -->
+                    <div class="equip-card" id="weap-old-card">
+                        <div class="equip-name" id="weap-old-name">-</div>
+                        <div class="equip-icon">⚔️</div>
+                        <div class="equip-level">等级 <span id="weap-old-lv">-</span></div>
+                        <div class="equip-power">战斗力 <span id="weap-old-power">-</span></div>
+                        <div class="equip-stats">
+                            <div class="stat-section-title">主词条</div>
+                            <div class="stat-row"><span>攻 击 力</span><span id="weap-old-atk">-</span></div>
+                            <div class="stat-row"><span>生 命 值</span><span id="weap-old-hp">-</span></div>
+                            <div class="stat-section-title" style="margin-top: 5px;">副词条</div>
+                            <div id="weap-old-subs"></div>
+                        </div>
+                        <button id="weapon-keep-old-btn" class="modal-btn secondary select-btn">保留旧装备</button>
+                    </div>
+                    <!-- New Equip -->
+                    <div class="equip-card new-equip" id="weap-new-card">
+                        <div class="equip-name" id="weap-new-name">-</div>
+                        <div class="equip-icon" style="color: #4ade80">✨⚔️</div>
+                        <div class="equip-level">等级 <span id="weap-new-lv">-</span></div>
+                        <div class="equip-power">战斗力 <span id="weap-new-power">-</span></div>
+                        <div class="equip-stats">
+                            <div class="stat-section-title">主词条</div>
+                            <div class="stat-row"><span>攻 击 力</span><span id="weap-new-atk" class="stat-up">-</span>
+                            </div>
+                            <div class="stat-row"><span>生 命 值</span><span id="weap-new-hp" class="stat-up">-</span>
+                            </div>
+                            <div class="stat-section-title" style="margin-top: 5px;">副词条</div>
+                            <div id="weap-new-subs"></div>
+                        </div>
+                        <button id="weapon-equip-new-btn" class="modal-btn primary select-btn">装备新武器</button>
+                    </div>
+                </div>
+                <!-- Prof update -->
+                <div class="prof-bar-container result-prof">
+                    <div class="prof-label">熟练度 <span id="result-prof-add" class="stat-up">+10</span></div>
+                    <div class="prof-track">
+                        <div class="prof-fill" id="result-prof-fill" style="width: 10%"></div>
+                        <div class="prof-text" id="result-prof-text">10/100</div>
+                    </div>
+                </div>
+                <div class="recycle-info">
+                    未选择装备，自动回收获得 💰 <span id="recycle-gold-val">50</span>
+                </div>
+            </div>
+        </div>
+        <!-- Steel Mill Modal -->
+        <div id="modal-steelmill" class="modal-overlay hidden">
+            <div class="modal-content steelmill">
+                <div class="modal-title">🏭 炼钢厂</div>
+                <div class="modal-body">
+                    <div class="bld-stats">
+                        <div class="stat">等级: <span id="mill-lv-val">1</span></div>
+                        <div class="stat">精炼速度: <span id="mill-speed-val">0.5</span>/s</div>
+                    </div>
+                    <p style="font-size: 0.8rem; opacity: 0.7; margin: 10px 0;">自动将战利品转化为奥利哈刚。</p>
+
+                    <!-- Progress Bar -->
+                    <div class="prof-bar-container" style="margin: 15px 0;">
+                        <div class="prof-label">精炼中...</div>
+                        <div class="prof-track">
+                            <div class="prof-fill" id="refine-progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="refine-list" id="refine-list">
+                        <!-- Upcoming Queue -->
+                    </div>
+                    <div class="upgrade-section">
+                        <div class="upgrade-info">下次升级: 速度 +20%</div>
+                        <button id="mill-upgrade-btn" class="modal-btn primary" style="width: 100%;">
+                            消耗 💰 <span id="mill-upgrade-cost">500</span> 升级
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button id="steelmill-close-btn" class="modal-btn secondary">关闭</button>
+                </div>
+            </div>
+        </div>
+        <!-- Bestiary Modal -->
+        <div id="modal-bestiary" class="modal-overlay hidden">
+            <div class="modal-content bestiary">
+                <div class="modal-title">🐾 百兽园</div>
+                <div class="modal-body">
+                    <div class="bld-stats"
+                        style="margin-bottom: 15px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                        <div class="stat">建筑等级: <span id="bestiary-lv-val"
+                                style="color: var(--gold); font-weight: bold;">1</span></div>
+                        <div class="stat">全军属性加成: <span id="bestiary-mult-val"
+                                style="color: var(--gold); font-weight: bold;">1.0</span>x</div>
+                    </div>
+                    <p style="font-size: 0.85rem; opacity: 0.8; margin-bottom: 15px;">升级百兽园可显著提升所有已捕捉巨兽的战斗力。</p>
+
+                    <div id="pet-list-container">
+                        <!-- Pet items will be rendered here -->
+                    </div>
+
+                    <div class="upgrade-section"
+                        style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <button id="bestiary-upgrade-btn" class="modal-btn primary" style="width: 100%;">
+                            消耗 💰 <span id="bestiary-upgrade-cost">1000</span> 升级建筑
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button id="bestiary-close-btn" class="modal-btn secondary">关闭</button>
                 </div>
             </div>
         </div>

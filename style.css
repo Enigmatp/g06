@@ -468,16 +468,16 @@ body {
     }
 }
 
-/* Skill Bar */
-.skill-bar {
+/* Summon Bar */
+.summon-bar {
     position: absolute;
-    bottom: 20px;
+    top: 32%;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 15px;
+    gap: 10px;
     z-index: 1000;
-    padding: 12px;
+    padding: 8px;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(8px);
     border-radius: 20px;
@@ -486,18 +486,27 @@ body {
     transition: opacity 0.3s, transform 0.3s;
 }
 
-.skill-bar.hidden {
+.summon-bar.challenge {
+    top: auto;
+    bottom: 20px;
+}
+
+.summon-bar.hidden {
     opacity: 0;
-    transform: translateX(-50%) translateY(20px);
+    transform: translateX(-50%) translateY(-20px);
     pointer-events: none;
 }
 
+.summon-bar.challenge.hidden {
+    transform: translateX(-50%) translateY(20px);
+}
+
 .skill-item {
-    width: 60px;
-    height: 60px;
+    width: 48px;
+    height: 48px;
     background: linear-gradient(135deg, #1a1a2e, #16213e);
     border: 2px solid rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -517,7 +526,7 @@ body {
 }
 
 .skill-icon {
-    font-size: 1.8rem;
+    font-size: 1rem;
 }
 
 .skill-key {
@@ -548,4 +557,830 @@ body {
     pointer-events: none;
     filter: grayscale(1);
     opacity: 0.6;
+}
+
+
+/* Weapon Modal Override */
+.modal-content.weapon {
+    border-color: rgba(233, 69, 96, 0.4);
+    box-shadow: 0 0 20px rgba(233, 69, 96, 0.15);
+    max-width: 360px;
+    /* Slightly wider for the two-card result view */
+}
+
+/* Equipment Card */
+.weapon-main-container,
+.comparison-container {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.equip-card {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px;
+    width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+.equip-card.new-equip {
+    border-color: rgba(74, 222, 128, 0.4);
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.1);
+}
+
+.equip-name {
+    font-weight: 800;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.equip-icon {
+    font-size: 2.5rem;
+    margin-bottom: 5px;
+}
+
+.equip-level {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 2px;
+}
+
+.equip-power {
+    font-size: 0.8rem;
+    color: var(--gold);
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.equip-stats {
+    width: 100%;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    padding-top: 8px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+}
+
+.stat-section-title {
+    font-size: 0.65rem;
+    color: var(--gold);
+    border-bottom: 1px solid rgba(250, 204, 21, 0.3);
+    padding-bottom: 2px;
+    margin-bottom: 4px;
+    text-align: left;
+    opacity: 0.8;
+}
+
+.sub-stat {
+    font-size: 0.65rem;
+    color: #a1a1aa;
+}
+
+.stat-up {
+    color: #4ade80;
+    font-weight: 700;
+}
+
+.stat-down {
+    color: #f87171;
+    font-weight: 700;
+}
+
+/* Item Quality Colors */
+.q0 {
+    color: #ffffff !important;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.q1 {
+    color: #4ade80 !important;
+    text-shadow: 0 0 5px rgba(74, 222, 128, 0.3);
+    border-color: rgba(74, 222, 128, 0.4) !important;
+}
+
+.q2 {
+    color: #60a5fa !important;
+    text-shadow: 0 0 5px rgba(96, 165, 250, 0.3);
+    border-color: rgba(96, 165, 250, 0.4) !important;
+}
+
+.q3 {
+    color: #c084fc !important;
+    text-shadow: 0 0 5px rgba(192, 132, 252, 0.3);
+    border-color: rgba(192, 132, 252, 0.4) !important;
+}
+
+.q4 {
+    color: #facc15 !important;
+    text-shadow: 0 0 5px rgba(250, 204, 21, 0.3);
+    border-color: rgba(250, 204, 21, 0.4) !important;
+}
+
+/* Equipment Inventory List */
+.inventory-list {
+    width: 140px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 250px;
+    overflow-y: auto;
+}
+
+.inv-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 10px 5px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    position: relative;
+}
+
+.inv-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.inv-item.selected {
+    border-color: #e94560;
+    background: rgba(233, 69, 96, 0.15);
+}
+
+.inv-item-active-mark {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #e94560;
+    color: white;
+    font-size: 0.6rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-weight: 900;
+}
+
+/* Proficiency Bar */
+.prof-bar-container {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.mini-prof {
+    margin-top: 10px;
+    margin-bottom: 0;
+    width: 100%;
+    padding: 8px;
+}
+
+.prof-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: left;
+    margin-bottom: 5px;
+    color: var(--text-dim);
+}
+
+.prof-track {
+    width: 100%;
+    height: 14px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 7px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.prof-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #d97706, #fbbf24);
+    transition: width 0.3s;
+}
+
+.prof-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    font-size: 0.65rem;
+    line-height: 14px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Material Cost */
+.material-cost {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.mat-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* Forging Minigame */
+.forge-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    height: 180px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.forge-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+
+.forge-clicks {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-dim);
+}
+
+.action-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 40px;
+    font-size: 1.2rem;
+    background: linear-gradient(135deg, #e94560, #921b31);
+    border: 4px solid rgba(255, 255, 255, 0.1);
+}
+
+.action-btn:active {
+    transform: scale(0.9);
+}
+
+.forge-progress-container {
+    width: 40px;
+    height: 100%;
+    padding-right: 10px;
+}
+
+.forge-track {
+    width: 20px;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 10px;
+    position: relative;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    margin: 0 auto;
+}
+
+.forge-target-zone {
+    position: absolute;
+    width: 100%;
+    background: rgba(250, 204, 21, 0.3);
+    border-top: 2px solid #facc15;
+    border-bottom: 2px solid #facc15;
+    /* values will be set via JS, e.g. top: 20%; height: 30%; */
+}
+
+.forge-bar-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(0deg, #ef4444, #f97316);
+    border-radius: 8px;
+    transition: height 0.1s linear;
+}
+
+.forge-cursor {
+    position: absolute;
+    left: -10px;
+    width: 40px;
+    height: 4px;
+    background: #fff;
+    box-shadow: 0 0 5px #fff;
+    border-radius: 2px;
+    transition: bottom 0.1s linear;
+    z-index: 2;
+}
+
+/* Result Modal */
+.select-btn {
+    margin-top: 15px;
+    font-size: 0.8rem;
+    padding: 6px 0;
+    width: 100%;
+    border-radius: 8px;
+}
+
+.result-prof {
+    margin: 10px 0;
+}
+
+.recycle-info {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 10px;
+}
+
+/* Existing Steel Mill Modals */
+.modal-content.steelmill {
+    border-color: rgba(96, 165, 250, 0.4);
+    box-shadow: 0 0 20px rgba(96, 165, 250, 0.15);
+}
+
+.bld-stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+.refine-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 15px 0;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+.refine-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    margin-bottom: 5px;
+}
+
+.refine-item button {
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+}
+
+.upgrade-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.upgrade-info {
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+    color: var(--text-dim);
+}
+
+.resource-info {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    text-align: left;
+}
+
+/* Bestiary Styles */
+.pet-container {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.pet-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    padding: 10px;
+}
+
+.pet-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    border-bottom: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.pet-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.pet-item.active {
+    border-color: var(--gold);
+    background: rgba(250, 204, 21, 0.1);
+}
+
+.pet-item.active::after {
+    content: "已出战";
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 0.6rem;
+    background: var(--gold);
+    color: #000;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.pet-icon {
+    font-size: 2.5rem;
+    margin-bottom: 8px;
+}
+
+.pet-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-base);
+}
+
+.pet-info {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 5px;
+}
+
+/* Capture Phase Styles */
+#page-capture {
+    background: linear-gradient(to bottom, #0f172a, #1e293b);
+    position: relative;
+}
+
+.capture-ui {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+    padding: 20px;
+    text-align: center;
+    z-index: 100;
+}
+
+.capture-stats {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 15px;
+}
+
+.capture-prob,
+.capture-count {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    color: white;
+}
+
+.capture-prob span {
+    color: var(--gold);
+    font-size: 1.5rem;
+}
+
+.capture-count span {
+    color: #60a5fa;
+    font-size: 1.5rem;
+}
+
+.capture-btn-main {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    border: none;
+    color: white;
+    padding: 15px 40px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+    transition: all 0.2s;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.capture-btn-main:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
+}
+
+.capture-btn-main:active {
+    transform: scale(0.95);
+}
+
+/* Animations */
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
+}
+
+.shake {
+    animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
+}
+
+/* Mana Bar */
+.mana-bar-container {
+    height: 12px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex: 1;
+    margin: 0 10px;
+    min-width: 80px;
+}
+
+.mana-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #60a5fa, #818cf8);
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.5);
+}
+
+.mana-text {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: #fff;
+    font-weight: bold;
+    pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+
+
+.skill-item.cd .skill-cooldown {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.skill-item:not(.active):not(.cd) {
+    cursor: pointer;
+}
+
+.skill-item.active {
+    border-color: #facc15;
+    box-shadow: 0 0 15px rgba(250, 204, 21, 0.5);
+}
+
+.skill-item.no-mana {
+    filter: grayscale(1);
+    opacity: 0.6;
+}
+
+/* Capture Phase Overlay */
+#capture-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, transparent, rgba(0, 0, 0, 0.6));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 100px 0 150px 0;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.capture-ui * {
+    pointer-events: auto;
+}
+
+/* Weapon Shop Tabs */
+.weapon-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+}
+
+.w-tab-btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-dim);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.w-tab-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(233, 69, 96, 0.3);
+}
+
+.w-tab-content.hidden {
+    display: none;
+}
+
+/* Auto Forge Panel */
+.autoforge-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 10px;
+    text-align: left;
+}
+
+.af-setting {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.af-level-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-weight: 900;
+    font-size: 1.1rem;
+}
+
+.af-level-ctrl button {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    cursor: pointer;
+}
+
+.af-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    border-radius: 12px;
+}
+
+.af-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+}
+
+.af-status {
+    margin-top: 10px;
+}
+
+.af-status-title {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+}
+
+.af-hero-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.af-hero-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+
+.af-progress-bg {
+    flex: 1;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.af-progress-fill {
+    height: 100%;
+    background: var(--gold);
+    transition: width 0.1s linear;
+}
+
+/* Switch Toggle Component */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: .4s;
+    border: 1px solid var(--border);
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+}
+
+input:checked+.slider {
+    background-color: var(--accent);
+}
+
+input:checked+.slider:before {
+    transform: translateX(20px);
+}
+
+.slider.round {
+    border-radius: 24px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
 }
