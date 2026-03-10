@@ -659,6 +659,87 @@ body {
     margin-bottom: 10px;
 }
 
+.res-val {
+    color: var(--gold);
+    font-weight: bold;
+}
+
+/* Top Progress Bar */
+.top-progress-bar-container {
+    position: relative;
+    width: 100%;
+    height: 30px;
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* overflow: hidden removed to allow button to render outside */
+    z-index: 100;
+    /* Ensure it stays above canvas */
+}
+
+.top-progress-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    transition: width 0.3s ease-in-out;
+}
+
+.top-progress-text {
+    position: absolute;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.top-challenge-btn {
+    position: absolute;
+    left: 50%;
+    top: 45px;
+    /* 15px below the 30px progress bar */
+    transform: translateX(-50%);
+    padding: 8px 18px;
+    /* Slightly larger */
+    background: #ef4444;
+    color: white;
+    border: 1px solid #b91c1c;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+    z-index: 3;
+    animation: pulseRed 1.5s infinite;
+}
+
+@keyframes pulseRed {
+    0% {
+        box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+    }
+
+    50% {
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.9);
+    }
+
+    100% {
+        box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+    }
+}
+
+.top-challenge-btn:active {
+    transform: translateX(-50%) scale(0.95);
+}
+
+.top-challenge-btn.hidden {
+    display: none;
+}
+
 .equip-stats {
     width: 100%;
     border-top: 1px dashed rgba(255, 255, 255, 0.1);
