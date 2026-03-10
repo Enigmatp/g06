@@ -702,10 +702,8 @@ body {
     position: absolute;
     left: 50%;
     top: 45px;
-    /* 15px below the 30px progress bar */
-    transform: translateX(-50%);
+    transform: translate(-50%, 0);
     padding: 8px 18px;
-    /* Slightly larger */
     background: #ef4444;
     color: white;
     border: 1px solid #b91c1c;
@@ -733,7 +731,7 @@ body {
 }
 
 .top-challenge-btn:active {
-    transform: translateX(-50%) scale(0.95);
+    transform: translate(-50%, 2px) scale(0.98);
 }
 
 .top-challenge-btn.hidden {
@@ -855,6 +853,43 @@ body {
     padding: 2px 4px;
     border-radius: 4px;
     font-weight: 900;
+}
+
+/* Weapon Quality Colors */
+.q-white {
+    color: #ffffff;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.q-green {
+    color: #4ade80;
+    text-shadow: 0 0 4px rgba(74, 222, 128, 0.2);
+}
+
+.q-blue {
+    color: #60a5fa;
+    text-shadow: 0 0 5px rgba(96, 165, 250, 0.4);
+}
+
+.q-purple {
+    color: #c084fc;
+    text-shadow: 0 0 6px rgba(192, 132, 252, 0.5);
+}
+
+.q-orange {
+    color: #facc15;
+    text-shadow: 0 0 8px rgba(250, 204, 21, 0.6);
+}
+
+.q-red {
+    color: #f87171;
+    text-shadow: 0 0 10px rgba(248, 113, 113, 0.8);
+}
+
+.q-supreme {
+    color: #fbbf24;
+    text-shadow: 0 0 12px rgba(251, 191, 36, 1);
+    font-weight: bold;
 }
 
 /* Proficiency Bar */
@@ -1609,11 +1644,21 @@ body {
 /* Header V6/V7 Styles */
 .shop-header-v3 {
     display: flex;
-    justify-content: center;
-    /* Center the level tag */
+    justify-content: space-between;
     align-items: center;
     padding: 12px 15px 8px 15px;
     width: 100%;
+}
+
+.prob-info-btn.header-btn {
+    margin: 0;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    height: auto;
+    width: auto;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .shop-title-v3 {
@@ -1637,84 +1682,106 @@ body {
     letter-spacing: 1px;
 }
 
-.smith-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    perspective: 1200px;
-    width: 90%;
-    margin: 20px auto 0 auto;
-}
-
-.smith-card {
-    aspect-ratio: 1/0.9;
-    cursor: pointer;
+.fruits-machine-wrapper {
     position: relative;
-    transform-style: preserve-3d;
-    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.smith-card.flipped {
-    transform: rotateY(180deg);
-}
-
-.card-face {
-    position: absolute;
     width: 100%;
-    height: 100%;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
+    margin-top: 10px;
+}
+
+.fruits-machine-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 6px;
+    width: 95%;
+    margin: 0 auto;
+    aspect-ratio: 1/1;
+}
+
+.slot-item {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    padding: 2px;
+    transition: all 0.2s;
+    overflow: hidden;
 }
 
-.card-front {
-    background: linear-gradient(135deg, #334155, #1e293b);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+.slot-item.active {
+    border-color: #fbbf24;
+    background: linear-gradient(135deg, #451a03, #78350f);
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+    transform: scale(1.05);
+    z-index: 10;
+}
+
+.slot-item .card-icon {
+    font-size: 1.2rem;
+    margin-bottom: 1px;
+}
+
+.slot-item .card-name {
+    font-size: 0.6rem;
     color: #94a3b8;
-    font-size: 2.2rem;
-    font-weight: 900;
-    transform: rotateY(0deg);
-    /* Ensure front is visible initially */
-    z-index: 2;
+    text-transform: uppercase;
+    transform: scale(0.9);
 }
 
-.card-back {
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    transform: rotateY(180deg);
-    border: 1px solid rgba(59, 130, 246, 0.4);
-    padding: 4px;
-    z-index: 1;
-}
-
-.card-back.q1 {
-    border-color: #60a5fa;
-    background: linear-gradient(135deg, #1e293b, #1e3a8a);
-}
-
-.card-back.q3 {
-    border-color: #fbd38d;
-    background: linear-gradient(135deg, #1e293b, #744210);
-}
-
-.card-icon {
-    font-size: 1.4rem;
-}
-
-.card-name {
-    font-size: 0.7rem;
-    color: #94a3b8;
-    text-align: center;
-}
-
-.card-val {
-    font-size: 1rem;
-    font-weight: 900;
+.slot-item .card-val {
+    font-size: 0.85rem;
+    font-weight: 800;
     color: #4ade80;
+}
+
+.forge-spin-btn {
+    grid-column: 2 / span 3;
+    grid-row: 2 / span 3;
+    background: radial-gradient(circle at center, #f59e0b, #b45309);
+    border: 3px solid #78350f;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 0 25px rgba(180, 83, 9, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.2);
+    transition: all 0.15s;
+    user-select: none;
+    z-index: 20;
+}
+
+.forge-spin-btn:hover {
+    transform: scale(1.02);
+    filter: brightness(1.1);
+}
+
+.forge-spin-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 0 10px rgba(180, 83, 9, 0.5);
+}
+
+.forge-spin-btn .spin-text {
+    font-size: 1.4rem;
+    font-weight: 900;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    margin-bottom: -2px;
+}
+
+.forge-spin-btn .spin-subtext {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    font-weight: 700;
+}
+
+.forge-spin-btn.disabled {
+    filter: grayscale(1) opacity(0.5);
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 /* Footer V3 - Three Column Layout */
@@ -2406,4 +2473,65 @@ body {
 
 .slot-refresh-pulse {
     animation: slotRefreshPulse 0.8s ease-out;
+}
+
+/* Shop Progress Bar */
+.shop-lv-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.shop-exp-bar {
+    width: 60px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.shop-exp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #facc15, #fbbf24);
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
+}
+
+.fruits-machine-wrapper.highlight {
+    animation: highlightPulse 2s infinite;
+}
+
+@keyframes highlightPulse {
+    0% {
+        box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 30px rgba(250, 204, 21, 0.6);
+    }
+
+    100% {
+        box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
+    }
+}
+
+.highlight .forge-spin-btn {
+    background: linear-gradient(135deg, #fbbf24, #d97706) !important;
+    animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
 }

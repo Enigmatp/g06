@@ -171,9 +171,29 @@ const G = {
         staffAtkBonus: 0, staffHpBonus: 0,
         spearAtkBonus: 0, spearHpBonus: 0
     },
-    activeBlueprints: [0, 0, 0, 0], // Selected blueprint index for each of the 4 weapon slots
-    gridRefreshing: false
+    weaponQualities: [0, 0, 0, 0], // Store 0-6 tier for Swordsman, Archer, Staff, Spear
+    gridRefreshing: false,
+    shopExp: 0,
+    isHighlight: false
 };
+
+// ---- WEAPON QUALITY TIERS ----
+const WEAPON_TIERS = [
+    { color: '#ffffff', class: 'q-white', name: '粗糙', statMult: 1.0 },   // 0: 白
+    { color: '#4ade80', class: 'q-green', name: '普通', statMult: 1.2 },   // 1: 绿
+    { color: '#60a5fa', class: 'q-blue', name: '精良', statMult: 1.5 },    // 2: 蓝
+    { color: '#c084fc', class: 'q-purple', name: '史诗', statMult: 2.0 },  // 3: 紫
+    { color: '#facc15', class: 'q-orange', name: '传说', statMult: 3.0 },  // 4: 橙
+    { color: '#f87171', class: 'q-red', name: '神话', statMult: 5.0 },     // 5: 红
+    { color: '#fbbf24', class: 'q-supreme', name: '至高', statMult: 10.0 },// 6: 至高
+];
+
+const WEAPON_NAMES = [
+    ['粗制剑', '铁制剑', '精钢剑', '骑士大剑', '斩骨巨剑', '龙血重剑', '圣剑·艾斯卡诺'], // Swordsman
+    ['短木弓', '紫衫长弓', '复合强弓', '精灵神弓', '风神之怒', '陨星龙弓', '后羿落日弓'], // Archer
+    ['学徒短杖', '法师长杖', '秘纹法杖', '元素法杖', '大魔导师杖', '灭世真理', '起源之杖'], // Staff
+    ['削尖木枪', '铁刺长枪', '精钢重兵', '破甲战矛', '龙骑兵枪', '战争巨矛', '永恒之枪'] // Spear
+];
 
 // Instead of static recipes, dynamically generate them based on level
 function getRecipeDef(lv) {
@@ -286,10 +306,10 @@ function updateHeroes(dt) {
                     }
                     const slotIdx = getHeroWeaponSlot(h.type);
 
-                    // 2. Fetch the player's actively selected blueprint for this slot
-                    const activeBpIdx = G.activeBlueprints[slotIdx] || 0;
-                    const rec = BLUEPRINTS[slotIdx][activeBpIdx];
-                    const costOri = rec.cost; // Dynamic cost from blueprint
+                    // 2. Fetch quality tier (0-6)
+                    const quality = Math.min(6, G.weaponQualities[slotIdx] || 0);
+                    const tierData = WEAPON_TIERS[quality];
+                    const costOri = 1; // Simplified cost for V2
 
                     // 3. Only progress the forging timer if we have enough Orichalcum
                     if (G.ori >= costOri) {
@@ -301,22 +321,32 @@ function updateHeroes(dt) {
                     if (h.forgeTimer >= 3000) {
                         G.ori -= costOri;
 
-                        const shopBonus = (G.weaponShopLv - 1) * 0.05;
-                        const nAtk = forgeAffixValue(rec.baseAtk * (1 + shopBonus), rec.baseAtk * (1.5 + shopBonus), 50);
-                        const nHp = forgeAffixValue(rec.baseHp * (1 + shopBonus), rec.baseHp * (1.5 + shopBonus), 50);
-
-                        // Use the pre-rolled quality from `sideIn`
-                        let finalQ = h.forgeQuality || 0;
+                        const baseAtk = [15, 20, 25, 20][slotIdx];
+                        const baseHp = [150, 100, 80, 250][slotIdx];
+                        const currentAtk = Math.floor(baseAtk * tierData.statMult);
+                        const currentHp = Math.floor(baseHp * tierData.statMult);
+                        const wName = WEAPON_NAMES[slotIdx][quality];
 
                         const newEq = {
-                            name: rec.name, icon: rec.icon, lv: rec.unlockLevel, q: finalQ,
-                            atk: nAtk, hp: nHp, subs: [], prof: 50, isForged: true
+                            name: wName,
+                            icon: ['🗡️', '🏹', '🪄', '🔱'][slotIdx],
+                            lv: quality,
+                            q: quality, // tier as quality internal
+                            atk: currentAtk,
+                            hp: currentHp,
+                            subs: [],
+                            prof: 50,
+                            isForged: true
                         };
-                        // if (finalQ >= 3) showSurprise(newEq); - Removed purple equipment popup
 
-                        // Apply stats directly to the hero (Base stats + Weapon stats)
-                        h.atk = HTYPES[h.type].atk + newEq.atk;
-                        h.maxHp = HTYPES[h.type].hp + newEq.hp;
+                        // Apply stats directly to the hero (Base stats + Weapon stats + Absolute Bonuses)
+                        const typeToAtkBonusMap = ['swordsmanAtkBonus', 'archerAtkBonus', 'staffAtkBonus', 'spearAtkBonus'];
+                        const typeToHpBonusMap = ['swordsmanHpBonus', 'archerHpBonus', 'staffHpBonus', 'spearHpBonus'];
+                        const atkBonusAbs = G.gridOffsets[typeToAtkBonusMap[slotIdx]] || 0;
+                        const hpBonusAbs = G.gridOffsets[typeToHpBonusMap[slotIdx]] || 0;
+
+                        h.atk = (HTYPES[h.type].atk || 10) + newEq.atk + atkBonusAbs;
+                        h.maxHp = (HTYPES[h.type].hp || 100) + newEq.hp + hpBonusAbs;
                         h.hp = h.maxHp; // Full heal on getting new gear
 
                         // Update inventory visual overhead icons
@@ -551,7 +581,6 @@ function endChallenge(win) {
 
         G.chCount++; // Increment for next time
         $('modal-victory').classList.remove('hidden');
-        if ($('next-challenge-btn')) $('next-challenge-btn').classList.add('hidden'); // Remove continue challenge button
     } else {
         $('modal-defeat').classList.remove('hidden');
     }
@@ -1324,7 +1353,7 @@ renderTask();
 $('challenge-btn').onclick = startChallenge;
 if ($('top-challenge-btn')) $('top-challenge-btn').onclick = startChallenge;
 
-$('next-challenge-btn').onclick = () => { $('modal-victory').classList.add('hidden'); startChallenge(); };
+
 $('vic-back-to-city-btn').onclick = () => {
     $('modal-victory').classList.add('hidden'); G.mode = 'city';
     $('task-bar').classList.remove('hidden'); $('bottom-nav').classList.remove('hidden');
@@ -1394,24 +1423,7 @@ const WEAPON_SLOTS = [
     { nameIcon: '枪', icon: '🔱' }
 ];
 
-const BLUEPRINTS = [[], [], [], []];
-// Generate 20 tiers of blueprints for each weapon type
-const TIER_PREFIXES = ['粗制', '铁质', '钢制', '精钢', '秘银', '精金', '炫光', '暗影', '破晓', '陨星', '苍穹', '虚空', '混沌', '神圣', '不朽', '龙骨', '深渊', '创世', '星辰', '无极'];
-for (let typeIdx = 0; typeIdx < 4; typeIdx++) {
-    for (let tier = 0; tier < 20; tier++) {
-        const unlockLv = tier === 0 ? 1 : tier * 10;
-        const multiplier = Math.pow(1.5, tier); // Exponential power scaling
-        BLUEPRINTS[typeIdx].push({
-            tier: tier,
-            name: `${TIER_PREFIXES[tier]}${WEAPON_SLOTS[typeIdx].nameIcon}`,
-            icon: WEAPON_SLOTS[typeIdx].icon,
-            unlockLevel: unlockLv,
-            baseAtk: Math.floor(5 * multiplier * (tier + 1)),
-            baseHp: Math.floor(10 * multiplier * (tier + 1)),
-            cost: Math.floor(10 * Math.pow(1.2, tier)) // Costs scale up slightly
-        });
-    }
-}
+
 
 function renderWeaponShop() {
     try {
@@ -1436,55 +1448,50 @@ function renderWeaponShop() {
             // Map the hero in forging state exactly to this slot based on class
             const h = forgingHeroes.find(hero => getHeroWeaponSlot(hero.type) === i);
 
-            // Fetch active blueprint
-            const activeBpIdx = G.activeBlueprints[i] || 0;
-            const activeBp = BLUEPRINTS[i][activeBpIdx];
+            // Fetch quality tier (0-6)
+            const quality = Math.min(6, G.weaponQualities[i] || 0);
+            const tierData = WEAPON_TIERS[quality];
 
-            slotEl.querySelector('.slot-name').textContent = activeBp.name;
-            const displayLv = activeBp.unlockLevel * 10 - 9; // e.g., lv1 -> 1, lv2 -> 11, lv3 -> 21
-            slotEl.querySelector('.slot-lv').textContent = `(lv ${Math.max(1, displayLv)})`;
-            slotEl.querySelector('.slot-icon').textContent = activeBp.icon;
+            const baseAtkBase = [15, 20, 25, 20][i];
+            const baseHpBase = [150, 100, 80, 250][i];
+
+            const currentAtk = Math.floor(baseAtkBase * tierData.statMult);
+            const currentHp = Math.floor(baseHpBase * tierData.statMult);
+
+            const wName = WEAPON_NAMES[i][quality];
+            const wIcon = ['🗡️', '🏹', '🪄', '🔱'][i];
+
+            slotEl.querySelector('.slot-name').textContent = wName;
+            slotEl.querySelector('.slot-name').style.color = tierData.color;
+            slotEl.querySelector('.slot-name').className = `slot-name ${tierData.class}`;
+            slotEl.querySelector('.slot-lv').textContent = `[${tierData.name}]`;
+            slotEl.querySelector('.slot-lv').style.color = tierData.color;
+            slotEl.querySelector('.slot-icon').textContent = wIcon;
 
             // Stats Update
             const typeToAtkBonusMap = ['swordsmanAtkBonus', 'archerAtkBonus', 'staffAtkBonus', 'spearAtkBonus'];
             const typeToHpBonusMap = ['swordsmanHpBonus', 'archerHpBonus', 'staffHpBonus', 'spearHpBonus'];
 
-            const atkBonusPct = G.gridOffsets[typeToAtkBonusMap[i]] || 0;
-            const hpBonusPct = G.gridOffsets[typeToHpBonusMap[i]] || 0;
-
-            const atkBonusAbs = Math.floor(activeBp.baseAtk * atkBonusPct);
-            const hpBonusAbs = Math.floor(activeBp.baseHp * hpBonusPct);
+            const atkBonusAbs = G.gridOffsets[typeToAtkBonusMap[i]] || 0;
+            const hpBonusAbs = G.gridOffsets[typeToHpBonusMap[i]] || 0;
 
             let atkBonusHtml = atkBonusAbs > 0 ? ` <span style="color:#4ade80; font-size:0.65rem;">(+${atkBonusAbs})</span>` : '';
             let hpBonusHtml = hpBonusAbs > 0 ? ` <span style="color:#4ade80; font-size:0.65rem;">(+${hpBonusAbs})</span>` : '';
 
-            slotEl.querySelector('.slot-atk').innerHTML = `${activeBp.baseAtk}${atkBonusHtml}`;
-            slotEl.querySelector('.slot-hp').innerHTML = `${activeBp.baseHp}${hpBonusHtml}`;
+            slotEl.querySelector('.slot-atk').innerHTML = `${currentAtk}${atkBonusHtml}`;
+            slotEl.querySelector('.slot-hp').innerHTML = `${currentHp}${hpBonusHtml}`;
 
 
-            // Make slot clickable to change blueprint
-            slotEl.onclick = () => openBlueprintSelector(i);
-            slotEl.style.cursor = 'pointer';
+            // Make slot NOT clickable for blueprint anymore
+            slotEl.onclick = null;
+            slotEl.style.cursor = 'default';
 
             if (h) {
                 slotEl.style.opacity = '1';
-                slotEl.querySelector('.slot-cost-val').textContent = activeBp.cost;
-                const pct = Math.min(100, (h.forgeTimer / 3000 * 100)).toFixed(0);
-                const fillEl = slotEl.querySelector('.slot-progress-fill');
-
-                let barColor = '#fff'; // Common fallback
-                if (h.forgeQuality !== undefined) {
-                    if (h.forgeQuality === 2) barColor = '#60a5fa'; // Rare
-                    else if (h.forgeQuality === 3) barColor = '#c084fc'; // Epic
-                }
-
-                fillEl.style.width = pct + '%';
-                fillEl.style.background = barColor;
-                fillEl.style.boxShadow = `0 0 10px ${barColor}80`;
-                slotEl.querySelector('.slot-progress-text').textContent = pct + '%';
+                slotEl.querySelector('.slot-cost-val').textContent = "1";
             } else {
                 slotEl.style.opacity = '0.6';
-                slotEl.querySelector('.slot-cost-val').textContent = activeBp.cost;
+                slotEl.querySelector('.slot-cost-val').textContent = "1";
                 const fillEl = slotEl.querySelector('.slot-progress-fill');
                 fillEl.style.width = '0%';
                 fillEl.style.background = 'transparent';
@@ -1493,27 +1500,8 @@ function renderWeaponShop() {
             }
         }
 
-        // Probability Panel - Using getShopProbs
-        const probs = getShopProbs(0); // Use first slot as general display
-
-        const shopLv = (Number(G.weaponShopLv) || 1);
-        const epicProb = probs.epic;
-        const rareProb = probs.rare;
-        const commonProb = probs.common;
-
-        console.log(`[Shop Render] Lv:${shopLv} Probs: E:${(epicProb * 100).toFixed(0)}% R:${(rareProb * 100).toFixed(0)}% C:${(commonProb * 100).toFixed(0)}%`);
-
-        if ($('shop-lv-display')) $('shop-lv-display').textContent = shopLv;
-
-        // Update labels
-        if ($('prob-q0')) $('prob-q0').textContent = (commonProb * 100).toFixed(0) + '%';
-        if ($('prob-q1')) $('prob-q1').textContent = (rareProb * 100).toFixed(0) + '%';
-        if ($('prob-q3')) $('prob-q3').textContent = (epicProb * 100).toFixed(0) + '%';
-
-        // Update segmented bar widths
-        if ($('seg-q0')) $('seg-q0').style.width = (commonProb * 100) + '%';
-        if ($('seg-q1')) $('seg-q1').style.width = (rareProb * 100) + '%';
-        if ($('seg-q3')) $('seg-q3').style.width = (epicProb * 100) + '%';
+        // Update labels and segments (REMOVED: qualities are now cards)
+        if ($('shop-lv-display')) $('shop-lv-display').textContent = G.weaponShopLv;
 
         // Upgrade Button - Fixed Cost 10
         // Update the upgrade cost in the grid header
@@ -1528,6 +1516,16 @@ function renderWeaponShop() {
         if ($('shop-res-mat')) $('shop-res-mat').textContent = Math.floor(G.shopMaterials);
         if ($('shop-res-ori')) $('shop-res-ori').textContent = Math.floor(G.ori);
 
+        if ($('shop-exp-fill')) $('shop-exp-fill').style.width = G.shopExp + '%';
+        const wrapper = document.querySelector('.fruits-machine-wrapper');
+        if (wrapper) wrapper.classList.toggle('highlight', G.isHighlight);
+        if (G.isHighlight) {
+            const spinSubtext = document.querySelector('.forge-spin-btn .spin-subtext');
+            if (spinSubtext) spinSubtext.textContent = '🌟 高光时刻！';
+            const spinText = document.querySelector('.forge-spin-btn .spin-text');
+            if (spinText) spinText.textContent = '突破';
+        }
+
         renderSmithCards(); // Ensure cards are always up to date
     } catch (e) {
         console.error("[Shop Render Error]", e);
@@ -1540,74 +1538,207 @@ function renderWeaponShopUpgrade() {
 }
 
 function generateGridTier() {
-    console.log("[Grid] Generating new v6 tier pool...");
-    // Category 1: Quality
+    console.log("[FruitsMachine] Generating 16 rewards...");
+    const lv = Number(G.weaponShopLv) || 1;
+
+    // Quality/Ascension cards
     const qualityPool = [
-        { name: '精良概率', icon: '🔷', type: 'rareProb', val: 0.05, unit: '%', q: 1 },
-        { name: '史诗概率', icon: '💎', type: 'epicProb', val: 0.03, unit: '%', q: 3 },
+        { name: '长剑升阶', icon: '⚔️', type: 'swordsmanQualBonus', val: 1, unit: '阶', q: 3 },
+        { name: '长弓升阶', icon: '🏹', type: 'archerQualBonus', val: 1, unit: '阶', q: 3 },
+        { name: '法杖升阶', icon: '🪄', type: 'staffQualBonus', val: 1, unit: '阶', q: 3 },
+        { name: '长枪升阶', icon: '🔱', type: 'spearQualBonus', val: 1, unit: '阶', q: 3 },
     ];
-    // Category 2: Attribute (Weapon Type Bonuses, dynamically ATK or HP)
+
+    // Normal attribute cards (scaling with level)
     const attrPool = [
-        { name: '长剑攻击', icon: '⚔️', type: 'swordsmanAtkBonus', val: 0.1, unit: '%', q: 1 },
-        { name: '长剑生命', icon: '🛡️', type: 'swordsmanHpBonus', val: 0.1, unit: '%', q: 1 },
-        { name: '长弓攻击', icon: '🏹', type: 'archerAtkBonus', val: 0.1, unit: '%', q: 1 },
-        { name: '长弓生命', icon: '🛡️', type: 'archerHpBonus', val: 0.1, unit: '%', q: 1 },
-        { name: '法杖攻击', icon: '🪄', type: 'staffAtkBonus', val: 0.1, unit: '%', q: 1 },
-        { name: '法杖生命', icon: '🛡️', type: 'staffHpBonus', val: 0.1, unit: '%', q: 1 },
-        { name: '长枪攻击', icon: '🔱', type: 'spearAtkBonus', val: 0.1, unit: '%', q: 1 },
-        { name: '长枪生命', icon: '🛡️', type: 'spearHpBonus', val: 0.1, unit: '%', q: 1 },
+        { name: '长剑攻击', icon: '⚔️', type: 'swordsmanAtkBonus', val: 5 * lv, unit: '', q: 1 },
+        { name: '长剑生命', icon: '🛡️', type: 'swordsmanHpBonus', val: 50 * lv, unit: '', q: 1 },
+        { name: '长弓攻击', icon: '🏹', type: 'archerAtkBonus', val: 5 * lv, unit: '', q: 1 },
+        { name: '长弓生命', icon: '🛡️', type: 'archerHpBonus', val: 50 * lv, unit: '', q: 1 },
+        { name: '法杖攻击', icon: '🪄', type: 'staffAtkBonus', val: 5 * lv, unit: '', q: 1 },
+        { name: '法杖生命', icon: '🛡️', type: 'staffHpBonus', val: 50 * lv, unit: '', q: 1 },
+        { name: '长枪攻击', icon: '🔱', type: 'spearAtkBonus', val: 5 * lv, unit: '', q: 1 },
+        { name: '长枪生命', icon: '🛡️', type: 'spearHpBonus', val: 50 * lv, unit: '', q: 1 },
     ];
 
     G.gridCards = [];
-    const combined = [...qualityPool, ...attrPool];
 
-    // Fill 9 slots by picking from combined pool (shuffled)
-    for (let i = 0; i < 9; i++) {
-        const base = combined[Math.floor(Math.random() * combined.length)];
-        G.gridCards.push({ ...base, flipped: false });
+    if (G.isHighlight) {
+        // Highlight Moment: Only Ascension cards
+        for (let i = 0; i < 16; i++) {
+            const base = qualityPool[Math.floor(Math.random() * qualityPool.length)];
+            G.gridCards.push({ ...base, flipped: true });
+        }
+    } else {
+        // Normal State: Attribute and some Ascension cards
+        for (let i = 0; i < 16; i++) {
+            let base;
+            if (Math.random() < 0.2) {
+                base = qualityPool[Math.floor(Math.random() * qualityPool.length)];
+            } else {
+                base = attrPool[Math.floor(Math.random() * attrPool.length)];
+            }
+            G.gridCards.push({ ...base, flipped: true });
+        }
     }
-
-    // Sorting removed as requested
-    console.log("[Grid] Tier generated (v7):", G.gridCards);
 }
 
-function openSmithGrid() {
-    if (!G.gridCards || G.gridCards.length === 0 || G.gridCards.every(c => c.flipped)) {
-        generateGridTier();
-    }
-    renderSmithCards();
-    $('modal-smith-grid').classList.remove('hidden');
-}
+let fruitActiveIdx = -1;
+let fruitSpinning = false;
 
 function renderSmithCards() {
-    const container = $('smith-cards-container');
+    const container = $('fruits-machine-container');
     if (!container) return;
-
-    if (!G.gridCards || G.gridCards.length === 0) {
-        generateGridTier();
-    }
+    if (!G.gridCards || G.gridCards.length !== 16) generateGridTier();
 
     container.innerHTML = '';
-    G.gridCards.forEach((card, i) => {
-        const cardEl = document.createElement('div');
-        cardEl.className = 'smith-card' + (card.flipped ? ' flipped' : '');
 
-        let valStr = (card.val > 0 ? '+' : '') + (card.val * 100).toFixed(0) + card.unit;
+    // Border Mapping for 5x5 (16 border slots)
+    // T: (1,1) (1,2) (1,3) (1,4) (1,5) -> coords [1, x]
+    // R: (2,5) (3,5) (4,5) (5,5)       -> coords [x, 5]
+    // B: (5,4) (5,3) (5,2) (5,1)       -> coords [5, x]
+    // L: (4,1) (3,1) (2,1)             -> coords [x, 1]
+    const borderCoords = [
+        [1, 1], [1, 2], [1, 3], [1, 4], [1, 5], // 0-4
+        [2, 5], [3, 5], [4, 5], [5, 5],       // 5-8
+        [5, 4], [5, 3], [5, 2], [5, 1],       // 9-12
+        [4, 1], [3, 1], [2, 1]             // 13-15
+    ];
 
-        cardEl.innerHTML = `
-            <div class="card-face card-front">?</div>
-            <div class="card-face card-back q${card.q || 0}">
-                <div class="card-icon">${card.icon}</div>
-                <div class="card-name">${card.name}</div>
-                <div class="card-val">${valStr}</div>
-            </div>
+    G.gridCards.forEach((c, i) => {
+        const div = document.createElement('div');
+        div.className = 'slot-item' + (i === fruitActiveIdx ? ' active' : '');
+        div.style.gridRow = borderCoords[i][0];
+        div.style.gridColumn = borderCoords[i][1];
+        div.innerHTML = `
+            <div class="card-icon">${c.icon}</div>
+            <div class="card-name">${c.name}</div>
+            <div class="card-val">${c.val > 0 ? '+' : ''}${c.val}${c.unit}</div>
         `;
-
-        if (!card.flipped) {
-            cardEl.onclick = () => flipSmithCard(i);
-        }
-        container.appendChild(cardEl);
+        container.appendChild(div);
     });
+
+    // Central Button
+    const btn = document.createElement('div');
+    btn.className = 'forge-spin-btn' + (fruitSpinning ? ' disabled' : '');
+    const matCost = Number(G.weaponShopLv) || 1;
+    btn.innerHTML = `
+        <div class="spin-text">打造</div>
+        <div class="spin-subtext">💎 ${matCost}</div>
+    `;
+    btn.onclick = () => {
+        if (!fruitSpinning) startForgeSpin();
+    };
+    container.appendChild(btn);
+}
+
+function startForgeSpin() {
+    const matCost = Number(G.weaponShopLv) || 1;
+    if (G.shopMaterials < matCost) return alert(`材料不足 (需要 💎${matCost})`);
+
+    G.shopMaterials -= matCost;
+    fruitSpinning = true;
+    renderWeaponShop();
+
+    let speed = 40; // Initial speed
+    let laps = 3;   // Min laps
+    let finalTarget = Math.floor(Math.random() * 16);
+    let totalTicks = laps * 16 + finalTarget;
+    let currentTick = 0;
+
+    function tick() {
+        fruitActiveIdx = currentTick % 16;
+        currentTick++;
+        renderSmithCards();
+
+        if (currentTick < totalTicks) {
+            // Speed adjusted for 5x performance (initial 8ms, etc.)
+            let remaining = totalTicks - currentTick;
+            if (remaining < 10) speed += 6;   // decelerate
+            else if (remaining < 20) speed += 2;
+            else speed = 8; // 5x faster than 40ms base
+            setTimeout(tick, speed);
+        } else {
+            // STOP
+            setTimeout(() => {
+                const reward = G.gridCards[fruitActiveIdx];
+                applyForgeReward(reward);
+                fruitSpinning = false;
+                renderWeaponShop();
+            }, 500);
+        }
+    }
+    tick();
+}
+
+function applyForgeReward(card) {
+    if (G.gridOffsets.hasOwnProperty(card.type)) {
+        G.gridOffsets[card.type] += card.val;
+    } else if (card.type.endsWith('QualBonus')) {
+        const typeIndexMap = {
+            'swordsmanQualBonus': 0, 'archerQualBonus': 1, 'staffQualBonus': 2, 'spearQualBonus': 3
+        };
+        const idx = typeIndexMap[card.type];
+        if (idx !== undefined) {
+            G.weaponQualities[idx] = Math.min(6, G.weaponQualities[idx] + 1);
+        }
+    }
+
+    if (G.isHighlight) {
+        G.isHighlight = false;
+        G.weaponShopLv++;
+        G.shopExp = 0;
+        generateGridTier(); // Back to normal items
+        renderWeaponShop();
+    } else {
+        if (card.type === 'star') {
+            // Star Card Logic: Grant 3 extra random attributes
+            const lv = Number(G.weaponShopLv) || 1;
+            const attrPool = [
+                { name: '长剑攻击', icon: '⚔️', type: 'swordsmanAtkBonus', val: 5 * lv, unit: '', q: 1 },
+                { name: '长剑生命', icon: '🛡️', type: 'swordsmanHpBonus', val: 50 * lv, unit: '', q: 1 },
+                { name: '长弓攻击', icon: '🏹', type: 'archerAtkBonus', val: 5 * lv, unit: '', q: 1 },
+                { name: '长弓生命', icon: '🛡️', type: 'archerHpBonus', val: 50 * lv, unit: '', q: 1 },
+                { name: '法杖攻击', icon: '🪄', type: 'staffAtkBonus', val: 5 * lv, unit: '', q: 1 },
+                { name: '法杖生命', icon: '🛡️', type: 'staffHpBonus', val: 50 * lv, unit: '', q: 1 },
+                { name: '长枪攻击', icon: '🔱', type: 'spearAtkBonus', val: 5 * lv, unit: '', q: 1 },
+                { name: '长枪生命', icon: '🛡️', type: 'spearHpBonus', val: 50 * lv, unit: '', q: 1 },
+            ];
+
+            for (let i = 0; i < 3; i++) {
+                const extraCard = attrPool[Math.floor(Math.random() * attrPool.length)];
+                applyForgeReward(extraCard, true); // silent exp gain
+            }
+        }
+
+        // Silent parameter to avoid recursive exp gain
+        const isExtraReward = arguments[1] === true;
+        if (!isExtraReward) {
+            G.shopExp += 20;
+            if (G.shopExp >= 100) {
+                G.shopExp = 100;
+                G.isHighlight = true;
+                generateGridTier(); // Switch to Ascension items
+            }
+        }
+    }
+
+    // Toast
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    let valMsg = (card.val > 0 ? '+' : '') + card.val + card.unit;
+    if (card.type === 'star') {
+        toast.innerHTML = `⭐ <span style="color:#fbbf24; font-weight:bold;">幸运星！额外获得3项奖励！</span>`;
+    } else {
+        toast.innerHTML = `✨ 获得奖励: <span style="color:#fbbf24">${card.name} ${valMsg}</span>`;
+    }
+    if (G.isHighlight) {
+        toast.innerHTML += `<br><span style="color:#fbbf24; font-weight:bold;">🌟 进入高光时刻！</span>`;
+    }
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
+
+    renderUI();
 }
 
 function getShopProbs(slotIdx = 0) {
@@ -1627,114 +1758,7 @@ function getShopProbs(slotIdx = 0) {
     };
 }
 
-function autoFlipSmithCard() {
-    if (!G.gridCards || G.gridCards.length === 0) return;
-    const available = G.gridCards.map((c, i) => ({ ...c, idx: i })).filter(c => !c.flipped);
-    if (available.length === 0) return;
-    const target = available[Math.floor(Math.random() * available.length)];
-    flipSmithCard(target.idx);
-}
 
-function flipSmithCard(idx) {
-    if (G.gridCards[idx].flipped) return;
-
-    const matCost = G.weaponShopLv; // Level 1 starts at 1 cost
-    if (G.shopMaterials < matCost) {
-        return alert(`材料不足 (需要 💎${matCost})`);
-    }
-
-    G.shopMaterials -= matCost;
-    const card = G.gridCards[idx];
-    card.flipped = true;
-
-    // Apply Effect
-    if (G.gridOffsets.hasOwnProperty(card.type)) {
-        G.gridOffsets[card.type] += card.val;
-    }
-
-    G.weaponShopLv++;
-
-    renderSmithCards();
-
-    // Targeted Feedback Animations (Extreme Pulse for v9.1)
-    if (['epicProb', 'rareProb'].includes(card.type)) {
-        const barContainer = document.querySelector('.prob-segmented-container');
-        if (barContainer) {
-            barContainer.classList.remove('bar-refresh-pulse');
-            void barContainer.offsetWidth; // Force reflow
-            barContainer.classList.add('bar-refresh-pulse');
-            setTimeout(() => barContainer.classList.remove('bar-refresh-pulse'), 800);
-        }
-    } else {
-        const infoIcon = document.querySelector('.prob-info-btn');
-        if (infoIcon) {
-            infoIcon.classList.remove('icon-refresh-pulse');
-            void infoIcon.offsetWidth; // Force reflow
-            infoIcon.classList.add('icon-refresh-pulse');
-            setTimeout(() => infoIcon.classList.remove('icon-refresh-pulse'), 800);
-        }
-
-        const typeToSlot = {
-            'swordsmanAtkBonus': 'weap-slot-0',
-            'swordsmanHpBonus': 'weap-slot-0',
-            'archerAtkBonus': 'weap-slot-1',
-            'archerHpBonus': 'weap-slot-1',
-            'staffAtkBonus': 'weap-slot-2',
-            'staffHpBonus': 'weap-slot-2',
-            'spearAtkBonus': 'weap-slot-3',
-            'spearHpBonus': 'weap-slot-3'
-        };
-        const slotId = typeToSlot[card.type];
-        if (slotId) {
-            const slotEl = document.getElementById(slotId);
-            if (slotEl) {
-                slotEl.classList.remove('slot-refresh-pulse');
-                void slotEl.offsetWidth;
-                slotEl.classList.add('slot-refresh-pulse');
-                setTimeout(() => slotEl.classList.remove('slot-refresh-pulse'), 800);
-            }
-        }
-    }
-
-    // Check if all 9 are flipped (Robust length check)
-    const flippedCount = G.gridCards.filter(c => c.flipped).length;
-    if (flippedCount === 9 && !G.gridRefreshing) {
-        G.gridRefreshing = true;
-
-        // Show 9th card content
-        renderSmithCards();
-
-        // Visual transition effect FIRST
-        const container = $('smith-cards-container');
-        if (container) {
-            container.classList.remove('grid-refresh-animate');
-            void container.offsetWidth;
-            container.classList.add('grid-refresh-animate');
-        }
-
-        setTimeout(() => {
-            generateGridTier();
-            G.gridRefreshing = false;
-            if (container) container.classList.remove('grid-refresh-animate');
-            renderWeaponShop(); // This calls renderSmithCards internally
-
-            const refreshToast = document.createElement('div');
-            refreshToast.className = 'toast';
-            refreshToast.innerHTML = `✨ 九宫格已重置！`;
-            document.body.appendChild(refreshToast);
-            setTimeout(() => refreshToast.remove(), 2000);
-        }, 800);
-    }
-
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.innerHTML = `✨ 获得奖励: <span style="color:#fbbf24">${card.name} ${(card.val > 0 ? '+' : '') + (card.val * 100).toFixed(0)}${card.unit}</span>`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2000);
-
-    renderUI();
-    renderWeaponShop();
-}
 
 function renderBonusInfo() {
     // Show weapon-specific bonuses in debug or UI if needed
@@ -1749,7 +1773,8 @@ function upgradeWeaponShop() {
         }
 
         G.shopMaterials -= matCost;
-        openSmithGrid();
+        generateGridTier();
+        renderWeaponShop();
 
         renderUI();
         renderWeaponShop();
@@ -1984,53 +2009,7 @@ $('mill-upgrade-btn').onclick = () => {
 $('steelmill-close-btn').onclick = () => $('modal-steelmill').classList.add('hidden');
 
 // ---- BLUEPRINT SELECTION UI ----
-function openBlueprintSelector(typeIdx) {
-    const listEl = $('blueprint-list');
-    listEl.innerHTML = '';
 
-    // The player's current deepest floor reached
-    const currentMaxLevel = G.chCount;
-
-    // Build the list of available blueprints for this strict instrument
-    BLUEPRINTS[typeIdx].forEach(bp => {
-        const isUnlocked = currentMaxLevel >= bp.unlockLevel;
-        const isActive = G.activeBlueprints[typeIdx] === bp.tier;
-
-        const itemEl = document.createElement('div');
-        itemEl.className = 'blueprint-item';
-        if (!isUnlocked) itemEl.classList.add('bp-locked');
-        if (isActive) itemEl.style.borderColor = '#fbbf24'; // Highlight active
-
-        itemEl.innerHTML = `
-            <div class="bp-icon-box">${bp.icon}</div>
-            <div class="bp-info">
-                <div class="bp-header">
-                    <div class="bp-name">${bp.name} ${isActive ? '<span style="color:#fbbf24;font-size:0.75rem;margin-left:5px;">(已装备)</span>' : ''}</div>
-                    ${!isUnlocked ? `<div class="bp-unlock-text">深渊${bp.unlockLevel}关掉落</div>` : ''}
-                </div>
-                <div class="bp-stats">
-                    <span style="color:#f87171;">攻: ${bp.baseAtk}</span>
-                    <span style="color:#4ade80;">命: ${bp.baseHp}</span>
-                    <span class="bp-cost">💎 ${bp.cost}</span>
-                </div>
-            </div>
-        `;
-
-        if (isUnlocked) {
-            itemEl.onclick = () => selectBlueprint(typeIdx, bp.tier);
-        }
-
-        listEl.appendChild(itemEl);
-    });
-
-    $('modal-blueprint').classList.remove('hidden');
-}
-
-function selectBlueprint(typeIdx, tierIdx) {
-    G.activeBlueprints[typeIdx] = tierIdx;
-    $('modal-blueprint').classList.add('hidden');
-    renderWeaponShop(); // refresh the shop slots to show the newly selected blueprint
-}
 
 function openShopLevelSelector() {
     renderShopLevels();
@@ -2049,16 +2028,14 @@ function renderShopLevels() {
         { key: 'staffAtkBonus', name: '法杖攻击' },
         { key: 'staffHpBonus', name: '法杖生命' },
         { key: 'spearAtkBonus', name: '长枪攻击' },
-        { key: 'spearHpBonus', name: '长枪生命' },
-        { key: 'rareProb', name: '精良概率' },
-        { key: 'epicProb', name: '史诗概率' }
+        { key: 'spearHpBonus', name: '长枪生命' }
     ];
 
     let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
     fields.forEach(f => {
         const val = G.gridOffsets[f.key] || 0;
         const color = val > 0 ? '#4ade80' : '#94a3b8';
-        const valStr = val > 0 ? '+' + (val * 100).toFixed(0) + '%' : '0%';
+        const valStr = val > 0 ? '+' + val : '0';
         html += `
             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; font-size: 0.9rem;">
                 <span style="color: #cbd5e1;">${f.name}</span>

@@ -83,8 +83,7 @@
                 <div class="modal-title">🎉 挑战胜利!</div>
                 <div class="modal-body">恭喜获得奖励: <span id="reward-amount">💰 100</span></div>
                 <div class="modal-actions">
-                    <button id="next-challenge-btn" class="modal-btn primary">继续挑战</button>
-                    <button id="vic-back-to-city-btn" class="modal-btn secondary">返回主城</button>
+                    <button id="vic-back-to-city-btn" class="modal-btn secondary" style="width: 100%;">返回主城</button>
                 </div>
             </div>
         </div>
@@ -150,7 +149,7 @@
                             <!-- 4 Slots -->
                             <div class="weapon-slot" id="weap-slot-0">
                                 <div class="slot-name-row">
-                                    <span class="slot-name">铁剑</span> <span class="slot-lv">(lv 1)</span>
+                                    <span class="slot-name">...</span> <span class="slot-lv"></span>
                                 </div>
                                 <div class="slot-middle-row"
                                     style="display: flex; align-items: center; justify-content: space-around; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; margin-bottom: 4px;">
@@ -165,8 +164,8 @@
                                 </div>
                                 <div class="slot-cost-row"
                                     style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 0.8rem; margin-top: 4px;">
-                                    <div class="slot-cost">消耗 💠 <span class="slot-cost-val">10</span></div>
-                                    <button class="slot-change-btn">更换</button>
+                                    <div class="slot-cost">消耗: <span class="res-icon">💠</span><span
+                                            class="slot-cost-val">1</span></div>
                                 </div>
                                 <div class="slot-progress">
                                     <div class="slot-progress-fill" style="width: 0%"></div>
@@ -175,7 +174,7 @@
                             </div>
                             <div class="weapon-slot" id="weap-slot-1">
                                 <div class="slot-name-row">
-                                    <span class="slot-name">玄铁弓</span> <span class="slot-lv">(lv 1)</span>
+                                    <span class="slot-name">...</span> <span class="slot-lv"></span>
                                 </div>
                                 <div class="slot-middle-row"
                                     style="display: flex; align-items: center; justify-content: space-around; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; margin-bottom: 4px;">
@@ -190,8 +189,8 @@
                                 </div>
                                 <div class="slot-cost-row"
                                     style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 0.8rem; margin-top: 4px;">
-                                    <div class="slot-cost">消耗 💠 <span class="slot-cost-val">10</span></div>
-                                    <button class="slot-change-btn">更换</button>
+                                    <div class="slot-cost">消耗: <span class="res-icon">💠</span><span
+                                            class="slot-cost-val">1</span></div>
                                 </div>
                                 <div class="slot-progress">
                                     <div class="slot-progress-fill" style="width: 0%"></div>
@@ -200,7 +199,7 @@
                             </div>
                             <div class="weapon-slot" id="weap-slot-2">
                                 <div class="slot-name-row">
-                                    <span class="slot-name">法杖</span> <span class="slot-lv">(lv 1)</span>
+                                    <span class="slot-name">...</span> <span class="slot-lv"></span>
                                 </div>
                                 <div class="slot-middle-row"
                                     style="display: flex; align-items: center; justify-content: space-around; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; margin-bottom: 4px;">
@@ -215,8 +214,8 @@
                                 </div>
                                 <div class="slot-cost-row"
                                     style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 0.8rem; margin-top: 4px;">
-                                    <div class="slot-cost">消耗 💠 <span class="slot-cost-val">10</span></div>
-                                    <button class="slot-change-btn">更换</button>
+                                    <div class="slot-cost">消耗: <span class="res-icon">💠</span><span
+                                            class="slot-cost-val">1</span></div>
                                 </div>
                                 <div class="slot-progress">
                                     <div class="slot-progress-fill" style="width: 0%"></div>
@@ -225,7 +224,7 @@
                             </div>
                             <div class="weapon-slot" id="weap-slot-3">
                                 <div class="slot-name-row">
-                                    <span class="slot-name">骑士枪</span> <span class="slot-lv">(lv 1)</span>
+                                    <span class="slot-name">...</span> <span class="slot-lv"></span>
                                 </div>
                                 <div class="slot-middle-row"
                                     style="display: flex; align-items: center; justify-content: space-around; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px; margin-bottom: 4px;">
@@ -240,8 +239,8 @@
                                 </div>
                                 <div class="slot-cost-row"
                                     style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 0.8rem; margin-top: 4px;">
-                                    <div class="slot-cost">消耗 💠 <span class="slot-cost-val">10</span></div>
-                                    <button class="slot-change-btn">更换</button>
+                                    <div class="slot-cost">消耗: <span class="res-icon">💠</span><span
+                                            class="slot-cost-val">1</span></div>
                                 </div>
                                 <div class="slot-progress">
                                     <div class="slot-progress-fill" style="width: 0%"></div>
@@ -254,31 +253,22 @@
                     <!-- Bottom: Smith's Legacy Grid -->
                     <div class="shop-box smith-grid-box border-glow">
                         <div class="shop-header-v3">
-                            <span class="shop-lv-tag">Lv.<span id="shop-lv-display">1</span></span>
-                        </div>
-
-
-                        <!-- Relocated Probability Bar with Info Icon -->
-                        <div class="prob-row-container">
-                            <div class="prob-segmented-container compact" onclick="openShopLevelSelector()"
-                                style="cursor: pointer;">
-                                <div class="prob-segmented-bar">
-                                    <div id="seg-q0" class="prob-seg seg-common" style="width: 70%">
-                                        <div class="seg-label"><span>普通</span> <span id="prob-q0">70%</span></div>
-                                    </div>
-                                    <div id="seg-q1" class="prob-seg seg-rare" style="width: 20%">
-                                        <div class="seg-label"><span>精良</span> <span id="prob-q1">20%</span></div>
-                                    </div>
-                                    <div id="seg-q3" class="prob-seg seg-epic" style="width: 10%">
-                                        <div class="seg-label"><span>史诗</span> <span id="prob-q3">10%</span></div>
-                                    </div>
+                            <div class="shop-lv-container">
+                                <span class="shop-lv-tag">Lv.<span id="shop-lv-display">1</span></span>
+                                <div class="shop-exp-bar">
+                                    <div id="shop-exp-fill" class="shop-exp-fill" style="width: 0%"></div>
                                 </div>
                             </div>
-                            <div class="prob-info-btn" onclick="openShopLevelSelector()">📊</div>
+                            <div class="prob-info-btn header-btn" onclick="openShopLevelSelector()">属性总览 📊</div>
                         </div>
 
-                        <div class="smith-cards-grid" id="smith-cards-container">
-                            <!-- Cards injected by JS -->
+
+
+
+                        <div class="fruits-machine-wrapper">
+                            <div class="fruits-machine-grid" id="fruits-machine-container">
+                                <!-- 16 Slots + Central Button injected by JS -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -289,9 +279,6 @@
                         <div class="back-arrow-btn bottom-left" id="mode-weapon-close-btn">←</div>
                     </div>
                     <div class="footer-center">
-                        <button class="auto-flip-btn-v3" onclick="autoFlipSmithCard()">🎲 随机翻开</button>
-                    </div>
-                    <div class="footer-right">
                         <div class="shop-upgrade-cost-v3">消耗：<span class="res-icon">💎</span><span
                                 id="weap-upgrade-mat-new">1</span></div>
                     </div>
@@ -314,23 +301,7 @@
                 </div>
             </div>
 
-            <!-- Blueprint Selection Modal -->
-            <div id="modal-blueprint" class="modal-overlay hidden"
-                style="align-items: center; background: rgba(0,0,0,0.6);">
-                <div class="modal-content"
-                    style="max-width: 300px; padding: 20px; background: rgba(15, 23, 42, 0.95); overflow: hidden;">
-                    <div class="modal-title" id="bp-modal-title" style="font-size: 1.2rem; margin-bottom: 15px;">查看图纸
-                    </div>
-                    <div class="blueprint-scroll-view" id="blueprint-list"
-                        style="max-height: 400px; overflow-y: auto; margin-bottom: 15px; text-align: left; padding-right: 5px;">
-                        <!-- JS injected list items -->
-                    </div>
-                    <div class="modal-actions" style="margin-top: 0;">
-                        <button class="modal-btn secondary" style="width: 100%;"
-                            onclick="$('modal-blueprint').classList.add('hidden')">关闭</button>
-                    </div>
-                </div>
-            </div>
+
 
             <!-- View 2: Forging Minigame -->
             <div id="weapon-view-forge" class="modal-content weapon hidden">
