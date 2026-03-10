@@ -70,9 +70,9 @@ function posAtT(t) {
 const BLDS = [
     { t: 0.12, icon: '💊', label: '制药所', id: 'hospital', side: 1 },
     { t: 0.28, icon: '🏰', label: '兵营', id: 'barracks_bld', side: -1 },
-    { t: 0.46, icon: '⚔️', label: '武器铺', id: 'weapon', side: 1 },
+    { t: 0.46, icon: '⚔️', label: '武器铺', id: 'weapon', side: 1, equip: { icon: '⚔️', stat: 'atk', bonus: 0.2 } },
     { t: 0.64, icon: '🛡️', label: '护甲铺', id: 'armor', side: -1, equip: { icon: '🛡️', stat: 'def', bonus: 0.3 } },
-    { t: 0.82, icon: '✨', label: '增益铺', id: 'buff', side: 1, equip: { icon: '✨', stat: 'spd', bonus: 0.25 } },
+    { t: 0.82, icon: '✨', label: '增益铺', id: 'buff', side: 1 },
 ];
 const BARRACKS_BLD_IDX = 1; // [1]=兵营: new heroes spawn here, skip hospital
 
@@ -102,7 +102,7 @@ const BRANCHES = [];
         { parentIdx: 0, icon: '🌿', label: '药田', ox: 0.12, oy: 0.00 },  // 药田 → 制药所
         { parentIdx: 2, icon: '🏭', label: '炼钢厂', ox: 0.12, oy: 0.00 },  // 炼钢厂 → 武器铺
         { parentIdx: 3, icon: '🐄', label: '皮革厂', ox: -0.10, oy: 0.05 },  // 皮革厂 → 护甲铺
-        { parentIdx: 4, icon: '⛪', label: '祕告室', ox: 0.10, oy: -0.05 }, // 祕告室 → 增益铺
+        { parentIdx: 4, icon: '🔮', label: '晶石矿场', ox: 0.10, oy: -0.05 }, // 晶石矿场 → 增益铺
         { parentIdx: 0, icon: '🐾', label: '百兽园', ox: -0.12, oy: 0.01 }, // 百兽园
     ].forEach(d => {
         const par = BLDS[d.parentIdx];
@@ -122,7 +122,8 @@ const BY_MIN = 0.04, BY_MAX = 0.24;
 
 // ---- GAME STATE ----
 const G = {
-    gold: 0, gems: 10, level: 1,
+    // 初始给一点测试用金币
+    gold: 100, gems: 10, level: 1,
     heroes: [], spawnTimer: 0, pTimer: 0,
     enemies: [], particles: [], lastTime: 0,
     mode: 'city',
@@ -140,41 +141,93 @@ const G = {
         { type: 'swordsman', icon: '⚔️' }, { type: 'archer', icon: '🏹' },
     ],
     queue: [],
-    inventory: [
-        { name: '新手木棍', lv: 1, atk: 5, hp: 10, subs: [], prof: 0, icon: '🦯', q: 0, isForged: true } // allow first one to be active
+    // 配方栏 - 只存放解锁的配方（来自 BOSS 挑战）
+    // 现在每条配方会带一个 role 字段，表示适用职业
+    // 为方便体验，4 个职业一开始各自有一把默认武器配方
+    recipes: [
+        { name: '新手铁剑', lv: 1, baseAtk: 5, baseHp: 10, icon: '🗡️', q: 0, role: 'warrior' },
+        { name: '新手长弓', lv: 1, baseAtk: 5, baseHp: 8,  icon: '🏹', q: 0, role: 'archer' },
+        { name: '新手法杖', lv: 1, baseAtk: 7, baseHp: 6,  icon: '🪄', q: 0, role: 'mage' },
+        { name: '新手长枪', lv: 1, baseAtk: 6, baseHp: 12, icon: '🔱', q: 0, role: 'knight' },
     ],
+    // 当前激活的模具 - 单独存储，不在配方栏显示
+    mold: {
+        name: '新手木棍',
+        lv: 1,
+        atk: 5,
+        hp: 10,
+        subs: [],
+        q: 0,
+        icon: '🦯',
+        prof: 0,
+        role: 'warrior'
+    },
     recipesUnlocked: [1],
-    activeWeaponIdx: 0,
-    materials: {}, // lv: amount
+    activeRecipeIdx: 0,  // 当前选中的配方索引（用于铸造）
+    // 地图材料：key 为地图等级，value 为数量。方便测试，初始给 100 份 1 级材料
+    materials: { 1: 100 }, // lv: amount
     pets: [],
     deployedPetIdxs: [], // up to 3 pets
     activeSummonCity: null,
     activeSummonChallenge: null,
     captureProb: 0,
     isCaptureFinished: false,
-    ori: 1000,
+    ori: 0,
     steelMillLv: 1,
     refineTimer: 0,
     bestiaryLv: 1,
     captureTarget: 0,
-    weaponShopLv: 1,
-    shopMaterials: 10000,
-    blueprints: [1], // Lv.1 is unlocked by default
     autoForge: {
         enabled: true,
         level: 1,
     },
-    gridCards: [],
-    gridOffsets: {
-        epicProb: 0,
-        rareProb: 0,
-        swordsmanBonus: 0,
-        archerBonus: 0,
-        staffBonus: 0,
-        spearBonus: 0
-    },
-    activeBlueprints: [0, 0, 0, 0], // Selected blueprint index for each of the 4 weapon slots
-    gridRefreshing: false
+    shopProf: 0,      // cumulative proficiency points for the weapon shop
+    shopProfLv: 0,    // weapon shop proficiency level (each gives +5% main stats)
+    expeditions: [],  // active expeditions: { heroes, level, endTime, reward }
+    floatTexts: [],   // floating combat power change labels: { rx, ry, text, color, t, dur }
+    crystals: 0,          // 增益晶石
+    crystalMineLv: 1,     // 晶石矿场等级
+    crystalMineTimer: 0,  // 晶石矿场生产计时
+    buffAccAtk: 0,        // 增益铺累计攻击加成
+    buffAccHp: 0,         // 增益铺累计生命加成
+    slotUses: 0,          // 老虎机已使用次数
+};
+
+// ---- 统一战斗力公式 ----
+// 装备战斗力：atk×10 + hp（副词条以加成形式附加）
+function calcEquipPower(eq) {
+    let p = eq.atk * 10 + eq.hp;
+    (eq.subs || []).forEach(s => {
+        if (s.type === 'atkPct') p += eq.atk * s.val / 10;
+        else if (s.type === 'hpPct') p += eq.hp * s.val / 10;
+        else if (s.type === 'crit') p += s.val * 8;
+        else if (s.type === 'spdPct') p += s.val * 5;
+    });
+    return Math.floor(p);
+}
+// 英雄战斗力：当前实际atk×10 + maxHp
+function calcHeroPower(h) {
+    return Math.floor(h.atk * 10 + h.maxHp);
+}
+
+// 四个职业：战士/弓手/法师/骑士
+const ROLES = ['warrior', 'archer', 'mage', 'knight'];
+
+// Hero 类型 → 职业映射
+const HERO_ROLE_MAP = {
+    swordsman: 'warrior',
+    pikeman: 'warrior',
+    titan: 'warrior',
+
+    archer: 'archer',
+    griffin: 'archer',
+
+    mage: 'mage',
+    monk: 'mage',
+    angel: 'mage',
+
+    cavalry: 'knight',
+    dragon: 'knight',
 };
 
 // Instead of static recipes, dynamically generate them based on level
@@ -187,7 +240,9 @@ function getRecipeDef(lv) {
         baseAtk: 5 * lv,
         baseHp: 10 * lv,
         icon: '⚔️',
-        q: q
+        q: q,
+        // 默认给战士武器，后续在武器铺中可以扩展按职业区分配方
+        role: 'warrior'
     };
 }
 
@@ -197,6 +252,21 @@ const SUB_AFFIX_POOL = [
     { name: '生命加成', min: 2, max: 20, isPct: true, type: 'hpPct' },
     { name: '攻击速度', min: 2, max: 15, isPct: true, type: 'spdPct' }
 ];
+
+// Weapon shop proficiency level system
+// Thresholds: level 1=50, level 2=150, level 3=250, level 4=400, level 5=600 (cumulative)
+const SHOP_PROF_THRESHOLDS = [50, 150, 250, 400, 600];
+
+function tryUpgradeShopProf() {
+    while (G.shopProfLv < SHOP_PROF_THRESHOLDS.length && G.shopProf >= SHOP_PROF_THRESHOLDS[G.shopProfLv]) {
+        G.shopProfLv++;
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerHTML = `⭐ 武器铺熟练等级提升！Lv.${G.shopProfLv} 主属性 +${G.shopProfLv * 5}%`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+}
 
 G.queue = G.deployment.map(d => d.type);
 
@@ -209,11 +279,13 @@ function mkHero(type) {
         type, icon: t.icon, maxHp: t.hp,
         hp: t.hp, atk: t.atk, spd: t.spd, range: t.range,
         baseAtk: t.atk, baseSpd: t.spd,
+        role: HERO_ROLE_MAP[type] || 'warrior',
         // Start walking from barracks (skip hospital - full HP on spawn)
         state: 'walking', pathT: BLDS[BARRACKS_BLD_IDX].exitT,
         nextBldIdx: BARRACKS_BLD_IDX + 1,
         sideProgress: 0, currentBld: null,
         equips: [], healTimer: 0, forgeTimer: 0, atkTimer: 0,
+        appliedBuffAtk: 0, appliedBuffHp: 0, // 已应用的增益铺增益
         rx: barPos.rx, ry: barPos.ry,
         off: Math.random() * Math.PI * 2,
     };
@@ -255,16 +327,13 @@ function updateHeroes(dt) {
                 h.ry = u * u * b.entryRy + 2 * u * t * b.cpInY + t * t * b.ry;
                 if (h.sideProgress >= 1) {
                     if (b.id === 'hospital' && h.hp < h.maxHp * 0.99) { h.state = 'atBuilding'; h.healTimer = 0; }
-                    else if (b.id === 'weapon' && G.weaponShopLv >= 1) {
-                        h.state = 'atBuilding';
-                        h.forgeTimer = 0;
-                        // Pre-roll quality to color the progress bars instantly
-                        const qRoll = Math.random();
-                        const pEpic = Math.min(0.6, 0.1 + (G.weaponShopLv - 1) * 0.02);
-                        const pRare = Math.min(0.8, 0.2 + (G.weaponShopLv - 1) * 0.05);
-                        if (qRoll < pEpic) h.forgeQuality = 3; // Epic
-                        else if (qRoll < pEpic + pRare) h.forgeQuality = 2; // Rare
-                        else h.forgeQuality = 0; // Common
+                    else if (b.id === 'weapon' && G.autoForge.enabled && G.mold) {
+                        // 强制在武器铺等待，直到铸造完成
+                        h.state = 'atBuilding'; h.forgeTimer = 0;
+                    }
+                    else if (b.id === 'buff' && (G.buffAccAtk > h.appliedBuffAtk || G.buffAccHp > h.appliedBuffHp)) {
+                        // 有新增益可获取，停留3秒
+                        h.state = 'atBuilding'; h.healTimer = 0;
                     }
                     else { h.state = 'sideOut'; h.sideProgress = 0; }
                 }
@@ -277,61 +346,67 @@ function updateHeroes(dt) {
                     h.hp = h.maxHp * (LOW_HP + (1 - LOW_HP) * Math.min(1, h.healTimer / HEAL_DUR));
                     h.rx = b.rx + jx; h.ry = b.ry + jy;
                     if (h.healTimer >= HEAL_DUR) { h.hp = h.maxHp; h.state = 'sideOut'; h.sideProgress = 0; }
-                } else if (b.id === 'weapon') {
-                    // 1. Determine which of the 4 weapon slots this hero class uses
-                    function getHeroWeaponSlot(type) {
-                        if (['swordsman', 'cavalry', 'angel'].includes(type)) return 0;
-                        if (['archer', 'griffin', 'dragon'].includes(type)) return 1;
-                        if (['mage', 'monk'].includes(type)) return 2;
-                        if (['pikeman', 'titan'].includes(type)) return 3;
-                        return 0;
-                    }
-                    const slotIdx = getHeroWeaponSlot(h.type);
-
-                    // 2. Fetch the player's actively selected blueprint for this slot
-                    const activeBpIdx = G.activeBlueprints[slotIdx] || 0;
-                    const rec = BLUEPRINTS[slotIdx][activeBpIdx];
-                    const costOri = rec.cost; // Dynamic cost from blueprint
-
-                    // 3. Only progress the forging timer if we have enough Orichalcum
-                    if (G.ori >= costOri) {
-                        h.forgeTimer += dt;
-                    }
+                } else if (b.id === 'weapon' && G.autoForge.enabled && G.mold && (!G.mold.role || G.mold.role === h.role)) {
+                    // 自动铸造消耗：每级 +10（Lv.1=10, Lv.5=50, Lv.10=100），且仅适用对应职业武器
+                    const costOri = G.mold.lv * 10;
                     h.rx = b.rx + jx; h.ry = b.ry + jy;
-
-                    // 4. Forging Complete 
-                    if (h.forgeTimer >= 3000) {
-                        G.ori -= costOri;
-
-                        const shopBonus = (G.weaponShopLv - 1) * 0.05;
-                        const nAtk = forgeAffixValue(rec.baseAtk * (1 + shopBonus), rec.baseAtk * (1.5 + shopBonus), 50);
-                        const nHp = forgeAffixValue(rec.baseHp * (1 + shopBonus), rec.baseHp * (1.5 + shopBonus), 50);
-
-                        // Use the pre-rolled quality from `sideIn`
-                        let finalQ = h.forgeQuality || 0;
-
-                        const newEq = {
-                            name: rec.name, icon: rec.icon, lv: rec.unlockLevel, q: finalQ,
-                            atk: nAtk, hp: nHp, subs: [], prof: 50, isForged: true
-                        };
-                        // if (finalQ >= 3) showSurprise(newEq); - Removed purple equipment popup
-
-                        // Apply stats directly to the hero (Base stats + Weapon stats)
-                        h.atk = HTYPES[h.type].atk + newEq.atk;
-                        h.maxHp = HTYPES[h.type].hp + newEq.hp;
-                        h.hp = h.maxHp; // Full heal on getting new gear
-
-                        // Update inventory visual overhead icons
-                        const existingEq = h.equips.find(e => e.icon === newEq.icon);
-                        if (!existingEq) {
-                            h.equips.push({ icon: newEq.icon, q: newEq.q });
-                        } else if (newEq.q > (existingEq.q || 0)) {
-                            existingEq.q = newEq.q;
+                    if (G.ori >= costOri) {
+                        // 资源足够，推进铸造计时
+                        h.forgeTimer += dt;
+                        if (h.forgeTimer >= 5000) {
+                            G.ori -= costOri;
+                            const m = G.mold;
+                            // 旧战斗力（用统一公式）
+                            const oldPower = calcHeroPower(h);
+                            // 计算新属性（含副词条）
+                            let wAtkMult = 1, wHpMult = 1;
+                            (m.subs || []).forEach(sub => {
+                                if (sub.type === 'atkPct') wAtkMult += sub.val / 100;
+                                if (sub.type === 'hpPct') wHpMult += sub.val / 100;
+                            });
+                            const newAtk = (h.baseAtk + m.atk) * wAtkMult;
+                            const newMaxHp = (HTYPES[h.type].hp + m.hp) * wHpMult;
+                            h.atk = newAtk;
+                            h.maxHp = newMaxHp;
+                            // 新战斗力
+                            const newPower = calcHeroPower(h);
+                            const diff = newPower - oldPower;
+                            if (diff !== 0) {
+                                // 英雄头顶浮动小提示
+                                G.floatTexts.push({
+                                    rx: h.rx, ry: h.ry,
+                                    text: (diff > 0 ? '+' : '') + diff,
+                                    color: diff > 0 ? '#4ade80' : '#f87171',
+                                    t: 0, dur: 2200
+                                });
+                            }
+                            h.hp = h.maxHp;
+                            if (!h.equips.find(e => e.icon === m.icon)) h.equips.push({ icon: m.icon });
+                            h.forgeTimer = 0;
+                            h.state = 'sideOut'; h.sideProgress = 0;
                         }
-
-                        h.forgeTimer = 0;
-                        h.state = 'sideOut';
-                        h.sideProgress = 0;
+                    }
+                    // 资源不足时原地等待，forgeTimer 不增长
+                } else if (b.id === 'buff') {
+                    // 停留3秒，获得增益铺累计属性（增量部分）
+                    h.healTimer += dt;
+                    h.rx = b.rx + jx; h.ry = b.ry + jy;
+                    if (h.healTimer >= 3000) {
+                        const deltaAtk = G.buffAccAtk - h.appliedBuffAtk;
+                        const deltaHp  = G.buffAccHp  - h.appliedBuffHp;
+                        const oldPower = calcHeroPower(h);
+                        if (deltaAtk > 0) { h.atk += deltaAtk; h.appliedBuffAtk = G.buffAccAtk; }
+                        if (deltaHp  > 0) { h.maxHp += deltaHp; h.hp = Math.min(h.hp + deltaHp, h.maxHp); h.appliedBuffHp = G.buffAccHp; }
+                        const diff = calcHeroPower(h) - oldPower;
+                        if (diff > 0) {
+                            G.floatTexts.push({
+                                rx: h.rx, ry: h.ry - 0.03,
+                                text: '✨ +' + diff,
+                                color: '#a78bfa',
+                                t: 0, dur: 2400
+                            });
+                        }
+                        h.state = 'sideOut'; h.sideProgress = 0;
                     }
                 } else {
                     h.state = 'sideOut'; h.sideProgress = 0;
@@ -349,7 +424,27 @@ function updateHeroes(dt) {
                         if (h.currentBld.equip.stat === 'atk') h.atk = h.baseAtk * (1 + h.currentBld.equip.bonus);
                         if (h.currentBld.equip.stat === 'spd') h.spd = h.baseSpd * (1 + h.currentBld.equip.bonus);
                     }
-                    // Weapon stats are now applied immediately during forging in atBuilding
+                    if (h.currentBld.id === 'weapon' && G.mold && (!G.mold.role || G.mold.role === h.role)) {
+                        // Apply mold stats - 英雄获得模具的复制品（仅匹配职业的武器）
+                        let m = G.mold;
+                        let wAtkMult = 1, wHpMult = 1, wSpdMult = 1, wCrit = 0;
+                        m.subs.forEach(sub => {
+                            if (sub.type === 'atkPct') wAtkMult += sub.val / 100;
+                            if (sub.type === 'hpPct') wHpMult += sub.val / 100;
+                            if (sub.type === 'spdPct') wSpdMult += sub.val / 100;
+                            if (sub.type === 'crit') wCrit += sub.val;
+                        });
+                        h.atk = (h.baseAtk + m.atk) * wAtkMult;
+                        h.maxHp = (HTYPES[h.type].hp + m.hp) * wHpMult;
+                        // HP retains its percentage
+                        let hpPct = h.hp / HTYPES[h.type].hp;
+                        h.hp = h.maxHp * hpPct;
+                        h.spd = h.baseSpd * wSpdMult;
+                        // For simplicity, store crit temp or ignore crit mechanics since crit wasn't fully implemented in battle previously
+                        if (!h.equips.find(e => e.icon === m.icon)) {
+                            h.equips.push({ icon: m.icon });
+                        }
+                    }
                     h.state = 'walking'; h.pathT = h.currentBld.exitT; h.nextBldIdx++; h.currentBld = null;
                     // Skip barracks_bld when returning (retreating heroes already spawned there)
                     if (h.nextBldIdx < BLDS.length && BLDS[h.nextBldIdx].id === 'barracks_bld') {
@@ -375,6 +470,7 @@ function updateHeroes(dt) {
                     // Enter path at t=0 (hospital first); HP stays low — hospital heals
                     h.state = 'walking'; h.pathT = 0; h.nextBldIdx = 0;
                     h.equips = []; h.atk = h.baseAtk; h.spd = h.baseSpd;
+                    h.appliedBuffAtk = 0; h.appliedBuffHp = 0; // 撤退后重置，下次经过增益铺可重新获得
                     const p = posAtT(0); h.rx = p.x; h.ry = p.y;
                 }
                 break;
@@ -448,7 +544,10 @@ function updateBattle(dt) {
     updatePetAttack(dt);
 }
 
-function startChallenge() {
+function startChallenge(targetLevel) {
+    // targetLevel: 可选，指定要挑战的关卡（用于重新挑战已完成的关卡）
+    const challengeLevel = targetLevel !== undefined ? targetLevel : G.chCount;
+    G.currentChallengeLevel = challengeLevel; // 保存当前挑战的关卡，用于 endChallenge 判断
     G.mode = 'challenge';
     G.chHeroes = []; G.chEnemies = []; G.fx = [];
     const pool = ['swordsman', 'archer', 'pikeman', 'griffin', 'monk', 'cavalry', 'mage'];
@@ -457,27 +556,27 @@ function startChallenge() {
     updateSummonBar();
     let hMult = 1, aMult = 1;
     // Boss scales 1.2x per level
-    let eHMult = Math.pow(1.2, G.chCount - 1);
-    let eAMult = Math.pow(1.2, G.chCount - 1);
+    let eHMult = Math.pow(1.2, challengeLevel - 1);
+    let eAMult = Math.pow(1.2, challengeLevel - 1);
     for (let i = 0; i < 15; i++) {
         const type = pool[Math.floor(Math.random() * pool.length)], t = HTYPES[type];
         let heroAtk = t.atk * aMult, heroMaxHp = t.hp * hMult, heroSpd = t.spd;
         let pEquips = [{ icon: '⚔️' }, { icon: '🛡️' }, { icon: '✨' }];
 
-        // Apply weapon shop buff
-        if (G.inventory[G.activeWeaponIdx]) {
-            let w = G.inventory[G.activeWeaponIdx];
+        // Apply mold buff - 挑战模式中也使用当前模具的属性
+        if (G.mold) {
+            let m = G.mold;
             let wAtkMult = 1, wHpMult = 1, wSpdMult = 1, wCrit = 0;
-            w.subs.forEach(sub => {
+            m.subs.forEach(sub => {
                 if (sub.type === 'atkPct') wAtkMult += sub.val / 100;
                 if (sub.type === 'hpPct') wHpMult += sub.val / 100;
                 if (sub.type === 'spdPct') wSpdMult += sub.val / 100;
                 if (sub.type === 'crit') wCrit += sub.val;
             });
-            heroAtk = (heroAtk + w.atk) * wAtkMult;
-            heroMaxHp = (heroMaxHp + w.hp) * wHpMult;
+            heroAtk = (heroAtk + m.atk) * wAtkMult;
+            heroMaxHp = (heroMaxHp + m.hp) * wHpMult;
             heroSpd = heroSpd * wSpdMult;
-            if (!pEquips.find(e => e.icon === w.icon)) pEquips.push({ icon: w.icon });
+            if (!pEquips.find(e => e.icon === m.icon)) pEquips.push({ icon: m.icon });
         }
 
         G.chHeroes.push({
@@ -525,23 +624,29 @@ function updateChallenge(dt) {
 function endChallenge(win) {
     if (win) {
         G.level++; // Increment global wave level
-        const rew = 100 + G.chCount * 50; G.gold += rew;
+        const challengeLevel = G.currentChallengeLevel !== undefined ? G.currentChallengeLevel : G.chCount;
+        const rew = 100 + challengeLevel * 50; G.gold += rew;
         if ($('reward-amount')) $('reward-amount').textContent = '💰 ' + rew;
 
-        // Give new recipe based on challenge count
-        let newLv = G.chCount * 5;
-        if (!G.recipesUnlocked.includes(newLv)) {
-            G.recipesUnlocked.push(newLv);
-            let rec = getRecipeDef(newLv);
-            G.inventory.push({ name: rec.name, lv: rec.lv, atk: rec.baseAtk, hp: rec.baseHp, subs: [], prof: 0, icon: rec.icon, q: rec.q, isForged: false });
-            const toast = document.createElement('div');
-            toast.className = 'toast'; toast.textContent = `🎊 击败首领！解锁配方: ${rec.name}`;
-            document.body.appendChild(toast); setTimeout(() => toast.remove(), 4000);
+        // 只有挑战新关卡时才解锁配方和增加 chCount
+        const isNewChallenge = challengeLevel >= G.chCount;
+        if (isNewChallenge) {
+            // Give new recipe based on challenge count
+            let newLv = G.chCount * 5;
+            if (!G.recipesUnlocked.includes(newLv)) {
+                G.recipesUnlocked.push(newLv);
+                let rec = getRecipeDef(newLv);
+                // 配方只存基础定义，不包含具体属性值
+                G.recipes.push({ name: rec.name, lv: rec.lv, baseAtk: rec.baseAtk, baseHp: rec.baseHp, icon: rec.icon, q: rec.q });
+                const toast = document.createElement('div');
+                toast.className = 'toast'; toast.textContent = `🎊 击败首领！解锁配方: ${rec.name}`;
+                document.body.appendChild(toast); setTimeout(() => toast.remove(), 4000);
+            }
+            G.chCount++; // Increment for next time
         }
-
-        G.chCount++; // Increment for next time
         $('modal-victory').classList.remove('hidden');
     } else {
+        G.currentChallengeLevel = undefined; // 失败时也清除
         $('modal-defeat').classList.remove('hidden');
     }
     G.mode = 'city';
@@ -804,6 +909,29 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     };
 });
 
+// ---- 全队战斗力大提示 ----
+let _powerBannerTimer = null;
+function showPowerBanner(heroIcon, diff) {
+    // 若上一个还没消失则叠加数值
+    let existing = document.querySelector('.power-banner');
+    if (existing && existing._diff !== undefined) {
+        diff += existing._diff;
+        existing.remove();
+        clearTimeout(_powerBannerTimer);
+    }
+    const el = document.createElement('div');
+    el.className = 'power-banner';
+    el._diff = diff;
+    const isUp = diff > 0;
+    el.innerHTML = `
+        <div class="power-banner-diff ${isUp ? 'up' : 'down'}">
+            ⚔️ ${isUp ? '+' : ''}${diff}
+        </div>
+    `;
+    document.querySelector('.game-container').appendChild(el);
+    _powerBannerTimer = setTimeout(() => el.remove(), 2800);
+}
+
 // ---- RENDER: CITY ----
 function draw(ctx, W, H) {
     ctx.clearRect(0, 0, W, H);
@@ -880,9 +1008,18 @@ function draw(ctx, W, H) {
         ctx.beginPath(); ctx.moveTo(b.rx * W, b.ry * H); ctx.lineTo(p.rx * W, p.ry * H); ctx.stroke();
         ctx.setLineDash([]);
     });
-    // Resource side-buildings (hexagons, same size as main buildings)
+    // Resource side-buildings (hexagons, same size as normal buildings) + clickable highlight
     BRANCHES.forEach((b, i) => {
         const x = b.rx * W, y = b.ry * H, r = 30; // same size as normal buildings
+        // 外层高亮描边，提示可点击
+        const isClickable = ['炼钢厂', '百兽园', '晶石矿场'].includes(b.label);
+        if (isClickable) {
+            ctx.beginPath();
+            ctx.arc(x, y, r + 6, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(251,191,36,0.55)';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
         ctx.beginPath();
         for (let j = 0; j < 6; j++) {
             const angle = Math.PI / 3 * j - Math.PI / 2; // Pointy top
@@ -909,9 +1046,25 @@ function draw(ctx, W, H) {
     BLDS.forEach((b, i) => {
         const x = b.rx * W, y = b.ry * H;
         const pulse = 1 + 0.04 * Math.sin(now / 800 + i * 1.2), r = 30 * pulse;
+        // 外描边高亮圈，提示可点击（护甲铺不高亮）
+        const isMainClickable = ['weapon', 'buff'].includes(b.id);
+        if (isMainClickable) {
+            ctx.beginPath();
+            ctx.arc(x, y, r + 6, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(96,165,250,0.7)';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(10,18,30,0.92)'; ctx.fill();
-        const glow = b.equip ? 'rgba(74,222,128,0.55)' : b.id === 'hospital' ? 'rgba(248,113,113,0.5)' : b.id === 'barracks_bld' ? 'rgba(96,165,250,0.5)' : 'rgba(255,255,255,0.15)';
+        // 护甲铺不再作为可点击/功能建筑高亮显示，使用普通描边
+        const glow = (b.equip && b.id !== 'armor')
+            ? 'rgba(74,222,128,0.55)'
+            : b.id === 'hospital'
+                ? 'rgba(248,113,113,0.5)'
+                : b.id === 'barracks_bld'
+                    ? 'rgba(96,165,250,0.5)'
+                    : 'rgba(255,255,255,0.15)';
         ctx.strokeStyle = glow; ctx.lineWidth = 1.5; ctx.stroke();
         ctx.font = '27px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(b.icon, x, y);
@@ -926,20 +1079,31 @@ function draw(ctx, W, H) {
                 ctx.arc(x, y, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
                 ctx.strokeStyle = 'rgba(248,113,113,0.85)'; ctx.lineWidth = 3; ctx.stroke();
             });
-        } else if (b.id === 'weapon') {
-            const forgingHeroes = G.heroes.filter(h => h.state === 'atBuilding' && h.currentBld && h.currentBld.id === 'weapon' && h.forgeTimer > 0);
-            forgingHeroes.forEach((h, idx) => {
-                const pct = Math.min(1, h.forgeTimer / 3000);
-                let ringColor = '#fff'; // White for common (0)
-                if (h.forgeQuality === 2) ringColor = '#60a5fa'; // Blue for Rare
-                else if (h.forgeQuality === 3) ringColor = '#c084fc'; // Purple for Epic
+        }
 
+        // Weapon Shop: draw circular forging progress ring for heroes inside
+        if (b.id === 'weapon') {
+            G.heroes.filter(h => h.state === 'atBuilding' && h.currentBld && h.currentBld.id === 'weapon' && h.forgeTimer > 0).forEach(h => {
+                const pct = Math.min(1, h.forgeTimer / 5000);
                 ctx.beginPath();
-                // r is 24, we start at r + 5, then expand out by 4px per hero
-                ctx.arc(x, y, r + 5 + idx * 4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
-                ctx.strokeStyle = ringColor;
-                ctx.lineWidth = 2.5; ctx.stroke();
+                ctx.arc(x, y, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+                ctx.strokeStyle = 'rgba(250,204,21,0.85)'; ctx.lineWidth = 3; ctx.stroke();
             });
+        }
+        // Buff Shop: draw circular buff progress ring for heroes inside
+        if (b.id === 'buff') {
+            G.heroes.filter(h => h.state === 'atBuilding' && h.currentBld && h.currentBld.id === 'buff').forEach(h => {
+                const pct = Math.min(1, h.healTimer / 3000);
+                ctx.beginPath();
+                ctx.arc(x, y, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+                ctx.strokeStyle = 'rgba(167,139,250,0.9)'; ctx.lineWidth = 3; ctx.stroke();
+            });
+            // 显示当前累计增益
+            if (G.buffAccAtk > 0 || G.buffAccHp > 0) {
+                ctx.font = '8px Inter,sans-serif'; ctx.fillStyle = 'rgba(167,139,250,0.8)';
+                ctx.textAlign = 'center';
+                ctx.fillText(`+${G.buffAccAtk}⚔️ +${G.buffAccHp}❤️`, x, y + r + 20);
+            }
         }
     });
 
@@ -961,52 +1125,23 @@ function draw(ctx, W, H) {
     });
 
     // Heroes
-    const Q_COLORS = ['#fff', '#4ade80', '#60a5fa', '#c084fc', '#facc15'];
     G.heroes.forEach(h => {
         const x = h.rx * W, y = h.ry * H, pct = Math.max(0, h.hp / h.maxHp);
-
-        let hasEpic = false;
         if (h.equips.length) {
             const ew = h.equips.length * 14;
             h.equips.forEach((eq, i) => {
                 const ex = x - ew / 2 + i * 14 + 7, ey = y - 36;
-                ctx.beginPath(); ctx.arc(ex, ey, 6.5, 0, Math.PI * 2);
-                let qColor = '#fff';
-                if (eq.q === 2) qColor = '#60a5fa';
-                else if (eq.q === 3) qColor = '#c084fc';
-
-                // Solid colored circle background
-                ctx.fillStyle = qColor;
-                ctx.fill();
-
-                // Pure black icon cutout
-                ctx.fillStyle = '#111';
-                ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.beginPath(); ctx.arc(ex, ey, 6, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+                ctx.font = '8px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(eq.icon, ex, ey);
-                if (eq.q === 3) hasEpic = true;
             });
         }
         ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x - 14, y - 22, 28, 4);
         ctx.fillStyle = pct > 0.5 ? '#4ade80' : pct > 0.2 ? '#facc15' : '#f87171';
         ctx.fillRect(x - 14, y - 22, 28 * pct, 4);
-
         ctx.font = '20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-
-        // Find max equipped weapon quality and draw stroke
-        let maxQ = 0;
-        if (h.equips && h.equips.length) maxQ = Math.max(...h.equips.map(eq => eq.q || 0));
-        let strokeColor = '#fff';
-        if (maxQ === 2) strokeColor = '#60a5fa';
-        else if (maxQ >= 3) strokeColor = '#c084fc';
-
-        ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = 3;
-        // Stroke with a slightly transparent outline
-        ctx.globalAlpha = 0.8;
-        ctx.strokeText(h.icon, x, y - 4);
-        ctx.globalAlpha = 1;
-
-        ctx.fillStyle = hasEpic ? '#a855f7' : '#fff'; // Purple if Epic weapon equipped
         ctx.fillText(h.icon, x, y - 4);
     });
 
@@ -1018,6 +1153,28 @@ function draw(ctx, W, H) {
         ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x - bw, y - 24 * sz, bw * 2, 4 * sz);
         ctx.fillStyle = e.boss ? '#ff6b6b' : '#f87171'; ctx.fillRect(x - bw, y - 24 * sz, bw * 2 * pct, 4 * sz);
         ctx.font = fs + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(e.icon, x, y - 4);
+    });
+
+    // Float texts (combat power change)
+    G.floatTexts.forEach(ft => {
+        const x = ft.rx * W;
+        const y = ft.ry * H - ft.t * 60; // 向上浮动 60px
+        const alpha = ft.t < 0.6 ? 1 : 1 - (ft.t - 0.6) / 0.4; // 后40%淡出
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        // 阴影发光
+        ctx.shadowColor = ft.color;
+        ctx.shadowBlur = 8;
+        // 背景描边（可读性）
+        ctx.font = 'bold 13px Inter,sans-serif';
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.lineWidth = 3;
+        ctx.strokeText('⚔️ ' + ft.text, x, y);
+        ctx.fillStyle = ft.color;
+        ctx.fillText('⚔️ ' + ft.text, x, y);
+        ctx.restore();
     });
 }
 
@@ -1042,43 +1199,16 @@ function drawChallenge(ctx, W, H) {
             const ew = u.equips.length * 10;
             u.equips.forEach((eq, i) => {
                 const ex = x - ew / 2 + i * 10 + 5, ey = y - 28 * sz;
-                ctx.beginPath(); ctx.arc(ex, ey, 5, 0, Math.PI * 2);
-
-                let qColor = '#fff';
-                if (eq.q === 2) qColor = '#60a5fa';
-                else if (eq.q === 3) qColor = '#c084fc';
-
-                // Solid colored circle background
-                ctx.fillStyle = qColor;
-                ctx.fill();
-
-                // Pure black icon cutout
-                ctx.fillStyle = '#111';
-                ctx.font = '7.5px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(eq.icon, ex, ey);
+                ctx.beginPath(); ctx.arc(ex, ey, 4.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 0.8; ctx.stroke();
+                ctx.font = '7px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(eq.icon, ex, ey);
             });
         }
         ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x - 12 * sz, y - 18 * sz, 24 * sz, 3 * sz);
         ctx.fillStyle = u.boss ? '#f6c943' : (G.chHeroes.includes(u) ? '#4ade80' : '#f87171');
         ctx.fillRect(x - 12 * sz, y - 18 * sz, 24 * sz * pct, 3 * sz);
-        ctx.font = (20 * sz) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-
-        // For heroes, draw the quality stroke
-        if (G.chHeroes.includes(u)) {
-            let maxQ = 0;
-            if (u.equips && u.equips.length) maxQ = Math.max(...u.equips.map(eq => eq.q || 0));
-            let strokeColor = '#fff';
-            if (maxQ === 2) strokeColor = '#60a5fa';
-            else if (maxQ >= 3) strokeColor = '#c084fc';
-
-            ctx.strokeStyle = strokeColor;
-            ctx.lineWidth = 3;
-            ctx.globalAlpha = 0.8;
-            ctx.strokeText(u.icon, x, y);
-            ctx.globalAlpha = 1;
-        }
-
-        ctx.fillText(u.icon, x, y);
+        ctx.font = (20 * sz) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(u.icon, x, y);
     });
     G.fx.forEach(f => {
         ctx.globalAlpha = 1 - f.t;
@@ -1101,6 +1231,8 @@ function renderUI() {
 
     // Orichalcum UI
     $('ori-display').textContent = Math.floor(G.ori);
+    // Crystal UI
+    $('crystal-display').textContent = Math.floor(G.crystals);
 
     // Summon Bar slots
     const activeS = (G.mode === 'challenge') ? G.activeSummonChallenge : G.activeSummonCity;
@@ -1136,6 +1268,10 @@ function loop(ts) {
     const c = $('game-canvas'), r = c.parentElement.getBoundingClientRect();
     if (c.width !== Math.floor(r.width) || c.height !== Math.floor(r.height)) { c.width = Math.floor(r.width); c.height = Math.floor(r.height); }
     const ctx = c.getContext('2d');
+    updateExpeditions();
+    updateCrystalMine(dt);
+    G.floatTexts.forEach(ft => { ft.t += dt / ft.dur; });
+    G.floatTexts = G.floatTexts.filter(ft => ft.t < 1);
     if (G.mode === 'city') {
         updateSpawn(dt); updateHeroes(dt); updateRes(dt); updateBattle(dt);
         if (typeof updateForgeLogic === 'function') updateForgeLogic(dt);
@@ -1150,7 +1286,7 @@ function loop(ts) {
     }
     if (ts % 500 < dt) {
         renderUI();
-        if (!$('modal-weapon').classList.contains('hidden')) renderWeaponShop();
+        if (!$('modal-weapon').classList.contains('hidden')) renderAutoForgeStatus();
     }
     requestAnimationFrame(loop);
 }
@@ -1252,6 +1388,14 @@ $('game-canvas').onmousedown = (e) => {
     // Click on 百兽园 (bestiary)
     const bestiaryBld = BRANCHES.find(b => b.label === '百兽园');
     if (bestiaryBld && Math.hypot(rx - bestiaryBld.rx, ry - bestiaryBld.ry) < 0.08) openBestiary();
+
+    // Click on 增益铺 (buff shop) → 打开老虎机
+    const buffBld = BLDS.find(b => b.id === 'buff');
+    if (buffBld && Math.hypot(rx - buffBld.rx, ry - buffBld.ry) < 0.08) openSlotMachine();
+
+    // Click on 晶石矿场 (crystal mine)
+    const crystalMineBld = BRANCHES.find(b => b.label === '晶石矿场');
+    if (crystalMineBld && Math.hypot(rx - crystalMineBld.rx, ry - crystalMineBld.ry) < 0.08) openCrystalMine();
 };
 
 // ---- TAB SWITCHING ----
@@ -1297,7 +1441,160 @@ $('task-bar').addEventListener('click', () => {
 });
 renderTask();
 
-$('challenge-btn').onclick = startChallenge;
+// ---- CHALLENGE LIST ----
+function openChallengeList() {
+    if (G.mode !== 'city') return;
+    renderChallengeList();
+    $('modal-challenge-list').classList.remove('hidden');
+}
+
+function renderChallengeList() {
+    const body = $('challenge-list-body');
+    body.innerHTML = '';
+    // 当前可挑战关卡 + 已通关（降序）
+    const levels = [{ level: G.chCount, cleared: false }];
+    for (let i = G.chCount - 1; i >= 1; i--) levels.push({ level: i, cleared: true });
+
+    levels.forEach(({ level, cleared }) => {
+        const reward = 100 + level * 50;
+        const activeExp = G.expeditions.find(e => e.level === level);
+        const timeLeft = activeExp ? Math.ceil((activeExp.endTime - Date.now()) / 1000) : 0;
+
+        const row = document.createElement('div');
+        row.className = 'challenge-row';
+        row.innerHTML = `
+            <div class="challenge-row-info">
+                <div class="challenge-row-title">第 ${level} 关</div>
+                <div class="challenge-row-sub">奖励 💰 ${reward}${cleared ? ' · 可远征' : ' · 首次挑战'}</div>
+                ${activeExp ? `<div class="challenge-row-timer">⏱ 远征中 ${timeLeft}s</div>` : ''}
+            </div>
+            <div class="challenge-row-actions">
+                <button class="modal-btn primary challenge-row-btn challenge-row-primary"
+                    ${activeExp ? 'style="opacity:0.45;pointer-events:none;"' : ''}>
+                    挑战
+                </button>
+                ${cleared ? `
+                <button class="modal-btn secondary challenge-row-btn challenge-row-expedition"
+                    ${activeExp ? 'style="opacity:0.45;pointer-events:none;"' : ''}>
+                    ${activeExp ? '远征中' : '远征'}
+                </button>
+                ` : ''}
+            </div>
+        `;
+        const challengeBtn = row.querySelector('.challenge-row-primary');
+        const expeditionBtn = row.querySelector('.challenge-row-expedition');
+        if (!activeExp) {
+            // 挑战按钮：所有关卡都可以挑战
+            challengeBtn.onclick = () => {
+                $('modal-challenge-list').classList.add('hidden');
+                startChallenge(level);
+            };
+            // 远征按钮：只有已完成的关卡才有
+            if (expeditionBtn) {
+                expeditionBtn.onclick = () => openExpedition(level);
+            }
+        }
+        body.appendChild(row);
+    });
+}
+
+$('challenge-list-close-btn').onclick = () => $('modal-challenge-list').classList.add('hidden');
+
+// ---- EXPEDITION ----
+let expeditionLevel = 0;
+let expeditionSelectedIdxs = []; // indices into eligible hero list
+
+function openExpedition(level) {
+    expeditionLevel = level;
+    expeditionSelectedIdxs = [];
+    $('expedition-level-name').textContent = `第 ${level} 关`;
+    $('expedition-reward-text').textContent = `💰 ${100 + level * 50}`;
+    $('expedition-selected-count').textContent = '0';
+    renderExpeditionHeroList();
+    $('modal-expedition').classList.remove('hidden');
+}
+
+function renderExpeditionHeroList() {
+    const list = $('expedition-hero-list');
+    list.innerHTML = '';
+    // 可选：所有未在战斗中的英雄
+    const eligible = G.heroes
+        .map((h, i) => ({ h, i }))
+        .filter(({ h }) => h.state !== 'fighting');
+
+    if (eligible.length === 0) {
+        list.innerHTML = '<div style="text-align:center;opacity:0.5;padding:20px;">没有可用的英雄（英雄均在战斗中）</div>';
+        return;
+    }
+
+    eligible.forEach(({ h, i }) => {
+        const isSelected = expeditionSelectedIdxs.includes(i);
+        const div = document.createElement('div');
+        div.className = `roster-item${isSelected ? ' selected' : ''}`;
+        div.style.cssText = 'font-size:1.5rem;width:46px;height:46px;';
+        div.textContent = h.icon;
+        div.onclick = () => {
+            if (isSelected) {
+                expeditionSelectedIdxs = expeditionSelectedIdxs.filter(idx => idx !== i);
+            } else if (expeditionSelectedIdxs.length < 2) {
+                expeditionSelectedIdxs.push(i);
+            }
+            $('expedition-selected-count').textContent = expeditionSelectedIdxs.length;
+            renderExpeditionHeroList();
+        };
+        list.appendChild(div);
+    });
+}
+
+$('expedition-confirm-btn').onclick = () => {
+    if (expeditionSelectedIdxs.length !== 2) return alert('请选择 2 名英雄！');
+    // 从大到小 splice，避免索引错位
+    const sorted = [...expeditionSelectedIdxs].sort((a, b) => b - a);
+    const expHeroes = sorted.map(idx => G.heroes.splice(idx, 1)[0]);
+
+    G.expeditions.push({
+        heroes: expHeroes,
+        level: expeditionLevel,
+        endTime: Date.now() + 30000,
+        reward: { gold: 100 + expeditionLevel * 50 }
+    });
+
+    $('modal-expedition').classList.add('hidden');
+    $('modal-challenge-list').classList.add('hidden');
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = `🗺️ ${expHeroes.map(h => h.icon).join(' ')} 出发远征第 ${expeditionLevel} 关！`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+};
+
+$('expedition-cancel-btn').onclick = () => $('modal-expedition').classList.add('hidden');
+
+function updateExpeditions() {
+    const now = Date.now();
+    G.expeditions = G.expeditions.filter(exp => {
+        if (now < exp.endTime) return true;
+        // 远征完成：英雄归队，发放奖励
+        exp.heroes.forEach(h => {
+            h.state = 'walking';
+            h.pathT = BLDS[BARRACKS_BLD_IDX].exitT;
+            h.nextBldIdx = BARRACKS_BLD_IDX + 1;
+            h.currentBld = null;
+            G.heroes.push(h);
+        });
+        G.gold += exp.reward.gold;
+        renderUI();
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = `🎉 远征完成！${exp.heroes.map(h => h.icon).join(' ')} 归队，获得 💰 ${exp.reward.gold}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+        return false;
+    });
+}
+
+$('challenge-btn').onclick = openChallengeList;
 
 
 
@@ -1314,22 +1611,77 @@ $('def-back-to-city-btn').onclick = () => {
 // ---- FORGING SYSTEM ----
 let F = {
     state: 'idle',
-    clicks: 10,
+    clicks: 1,
     progress: 0,
-    targetMin: 60,
-    targetMax: 80,
-    decayRate: 40,
-    strikeBoost: 25,
+    forgeValue: 0,      // raw random 1-100
+    displayValue: 0,    // adjusted for bar display
+    greatSuccess: false,
     newEquip: null,
-    selectedIdx: 0
+    selectedIdx: 0,
+    roleFilter: 'warrior'   // 当前在武器铺中浏览的职业
 };
 
 function openWeaponShop() {
+    $('weapon-view-main').classList.remove('hidden');
+    $('weapon-view-forge').classList.add('hidden');
+    $('weapon-view-result').classList.add('hidden');
     $('modal-weapon').classList.remove('hidden');
-    renderWeaponShop();
+
+    // 默认展示战士武器
+    F.roleFilter = F.roleFilter || 'warrior';
+    // 更新职业按钮高亮
+    document.querySelectorAll('.ws-role-btn').forEach(btn => {
+        btn.classList.toggle('ws-role-btn-active', btn.dataset.role === F.roleFilter);
+    });
+    renderInventory();
 }
 
-// Obsolete weapon shop functions removed
+function switchWeaponTab(tab) {
+    // No-op: tabs merged into unified view
+}
+
+// Tab buttons removed: tabs merged into unified view
+
+// 职业筛选按钮事件
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.ws-role-btn');
+    if (!btn) return;
+    const role = btn.dataset.role;
+    if (!role || !ROLES.includes(role)) return;
+    F.roleFilter = role;
+    document.querySelectorAll('.ws-role-btn').forEach(b => {
+        b.classList.toggle('ws-role-btn-active', b === btn);
+    });
+    // 切换职业后，重置选中索引到该职业的第一条配方
+    const firstIdx = G.recipes.findIndex(r => (r.role || 'warrior') === role);
+    if (firstIdx >= 0) {
+        F.selectedIdx = firstIdx;
+        G.activeRecipeIdx = firstIdx;
+    }
+    renderInventory();
+});
+
+function renderInventory() {
+    const list = $('weap-inv-list');
+    list.innerHTML = '';
+    // 配方栏只显示当前职业的配方列表
+    G.recipes.forEach((recipe, idx) => {
+        if (recipe.role && recipe.role !== F.roleFilter) return;
+        const div = document.createElement('div');
+        div.className = `inv-item q${recipe.q}` + (idx === F.selectedIdx ? ' selected' : '');
+        div.innerHTML = `
+            <span>${recipe.icon}</span>
+            <span class="inv-item-lv">Lv.${recipe.lv}</span>
+        `;
+        // 标记当前选中的配方
+        if (idx === G.activeRecipeIdx) {
+            div.innerHTML += `<div class="inv-item-active-mark">选</div>`;
+        }
+        div.onclick = () => { F.selectedIdx = idx; renderInventory(); };
+        list.appendChild(div);
+    });
+    renderWeaponShop();
+}
 
 function renderEqStats(eq, prefix) {
     if (!$(`${prefix}-name`)) return;
@@ -1342,9 +1694,8 @@ function renderEqStats(eq, prefix) {
     }
     $(`${prefix}-lv`).textContent = eq.lv;
 
-    // Calculate pseudo power
-    let pwr = Math.floor(eq.atk * 1 + eq.hp * 0.1);
-    eq.subs.forEach(s => pwr += s.val * 5);
+    // 使用统一战斗力公式
+    const pwr = calcEquipPower(eq);
     if ($(`${prefix}-power`)) $(`${prefix}-power`).textContent = pwr;
 
     if ($(`${prefix}-atk`)) $(`${prefix}-atk`).textContent = eq.atk;
@@ -1364,476 +1715,249 @@ function renderEqStats(eq, prefix) {
     }
 }
 
-const WEAPON_SLOTS = [
-    { nameIcon: '剑', icon: '🗡️' },
-    { nameIcon: '弓', icon: '🏹' },
-    { nameIcon: '杖', icon: '🪄' },
-    { nameIcon: '枪', icon: '🔱' }
-];
-
-const BLUEPRINTS = [[], [], [], []];
-// Generate 20 tiers of blueprints for each weapon type
-const TIER_PREFIXES = ['粗制', '铁质', '钢制', '精钢', '秘银', '精金', '炫光', '暗影', '破晓', '陨星', '苍穹', '虚空', '混沌', '神圣', '不朽', '龙骨', '深渊', '创世', '星辰', '无极'];
-for (let typeIdx = 0; typeIdx < 4; typeIdx++) {
-    for (let tier = 0; tier < 20; tier++) {
-        const unlockLv = tier === 0 ? 1 : tier * 10;
-        const multiplier = Math.pow(1.5, tier); // Exponential power scaling
-        BLUEPRINTS[typeIdx].push({
-            tier: tier,
-            name: `${TIER_PREFIXES[tier]}${WEAPON_SLOTS[typeIdx].nameIcon}`,
-            icon: WEAPON_SLOTS[typeIdx].icon,
-            unlockLevel: unlockLv,
-            baseAtk: Math.floor(5 * multiplier * (tier + 1)),
-            baseHp: Math.floor(10 * multiplier * (tier + 1)),
-            cost: Math.floor(10 * Math.pow(1.2, tier)) // Costs scale up slightly
-        });
-    }
-}
-
 function renderWeaponShop() {
-    try {
-        // Top Resources
-        if ($('shop-res-ori')) $('shop-res-ori').textContent = Math.floor(G.ori);
-        if ($('shop-res-mat')) $('shop-res-mat').textContent = Math.floor(G.shopMaterials);
+    const selRecipe = G.recipes[F.selectedIdx]; // 选中的配方（用于铸造）
+    const mold = G.mold; // 当前模具
 
-        // Define forgingHeroes locally
-        const forgingHeroes = G.heroes.filter(h => h.state === 'atBuilding' && h.currentBld && h.currentBld.id === 'weapon' && h.forgeTimer > 0);
-
-        function getHeroWeaponSlot(type) {
-            if (['swordsman', 'cavalry', 'angel'].includes(type)) return 0;
-            if (['archer', 'griffin', 'dragon'].includes(type)) return 1;
-            if (['mage', 'monk'].includes(type)) return 2;
-            if (['pikeman', 'titan'].includes(type)) return 3;
-            return 0;
-        }
-
-        for (let i = 0; i < 4; i++) {
-            const slotEl = $(`weap-slot-${i}`);
-            if (!slotEl) continue;
-            // Map the hero in forging state exactly to this slot based on class
-            const h = forgingHeroes.find(hero => getHeroWeaponSlot(hero.type) === i);
-
-            // Fetch active blueprint
-            const activeBpIdx = G.activeBlueprints[i] || 0;
-            const activeBp = BLUEPRINTS[i][activeBpIdx];
-
-            slotEl.querySelector('.slot-name').textContent = activeBp.name;
-            const displayLv = activeBp.unlockLevel * 10 - 9; // e.g., lv1 -> 1, lv2 -> 11, lv3 -> 21
-            slotEl.querySelector('.slot-lv').textContent = `(lv ${Math.max(1, displayLv)})`;
-            slotEl.querySelector('.slot-icon').textContent = activeBp.icon;
-
-            // Stats Update
-            const typeToBonusMap = ['swordsmanBonus', 'archerBonus', 'staffBonus', 'spearBonus'];
-            const bonusVal = G.gridOffsets[typeToBonusMap[i]] || 0;
-
-            slotEl.querySelector('.slot-atk').textContent = activeBp.baseAtk;
-            slotEl.querySelector('.slot-hp').textContent = activeBp.baseHp;
-            slotEl.querySelector('.slot-bonus-val').textContent = '+' + (bonusVal * 100).toFixed(0) + '%';
-
-
-            // Make slot clickable to change blueprint
-            slotEl.onclick = () => openBlueprintSelector(i);
-            slotEl.style.cursor = 'pointer';
-
-            if (h) {
-                slotEl.style.opacity = '1';
-                slotEl.querySelector('.slot-cost-val').textContent = activeBp.cost;
-                const pct = Math.min(100, (h.forgeTimer / 3000 * 100)).toFixed(0);
-                const fillEl = slotEl.querySelector('.slot-progress-fill');
-
-                let barColor = '#fff'; // Common fallback
-                if (h.forgeQuality !== undefined) {
-                    if (h.forgeQuality === 2) barColor = '#60a5fa'; // Rare
-                    else if (h.forgeQuality === 3) barColor = '#c084fc'; // Epic
-                }
-
-                fillEl.style.width = pct + '%';
-                fillEl.style.background = barColor;
-                fillEl.style.boxShadow = `0 0 10px ${barColor}80`;
-                slotEl.querySelector('.slot-progress-text').textContent = pct + '%';
+    // --- Upper: show CURRENT MOLD ---
+    if (mold) {
+        // Icon box
+        const iconBox = $('ws-icon-box');
+        if (iconBox) { iconBox.textContent = mold.icon; iconBox.className = `ws-icon-box q${mold.q}`; }
+        // Name & Level
+        const nameEl = $('weap-curr-name');
+        if (nameEl) { nameEl.textContent = mold.name; nameEl.className = `ws-equip-name q${mold.q}`; }
+        const lvEl = $('weap-curr-lv');
+        if (lvEl) lvEl.textContent = mold.lv;
+        // Stats
+        const atkEl = $('weap-curr-atk'); if (atkEl) atkEl.textContent = mold.atk;
+        const hpEl = $('weap-curr-hp'); if (hpEl) hpEl.textContent = mold.hp;
+        const subsEl = $('weap-curr-subs');
+        if (subsEl) {
+            if (!mold.subs || mold.subs.length === 0) {
+                subsEl.innerHTML = '<div class="stat-row sub-stat"><span>无副词条</span></div>';
             } else {
-                slotEl.style.opacity = '0.6';
-                slotEl.querySelector('.slot-cost-val').textContent = activeBp.cost;
-                const fillEl = slotEl.querySelector('.slot-progress-fill');
-                fillEl.style.width = '0%';
-                fillEl.style.background = 'transparent';
-                fillEl.style.boxShadow = 'none';
-                slotEl.querySelector('.slot-progress-text').textContent = ''; // Removed text as requested
+                subsEl.innerHTML = mold.subs.map(s => `<div class="stat-row sub-stat"><span>${s.name}</span><span>${s.val}${s.isPct ? '%' : ''}</span></div>`).join('');
             }
         }
+        // Auto forge cost badge：每级 +10
+        const afCost = mold.lv * 10;
+        const afCostEl = $('af-cost-val');
+        if (afCostEl) afCostEl.textContent = `💠 ${afCost}`;
+    }
 
-        // Probability Panel - Using getShopProbs
-        const probs = getShopProbs(0); // Use first slot as general display
+    // --- Lower: selected recipe costs (for manual forge) ---
+    if (selRecipe) {
+        const costGold = selRecipe.lv * 10;
+        const costMat = 10;
+        const goldEl = $('weap-cost-gold');
+        if (goldEl) goldEl.textContent = costGold;
 
-        const shopLv = (Number(G.weaponShopLv) || 1);
-        const epicProb = probs.epic;
-        const rareProb = probs.rare;
-        const commonProb = probs.common;
-
-        console.log(`[Shop Render] Lv:${shopLv} Probs: E:${(epicProb * 100).toFixed(0)}% R:${(rareProb * 100).toFixed(0)}% C:${(commonProb * 100).toFixed(0)}%`);
-
-        if ($('shop-lv-display')) $('shop-lv-display').textContent = shopLv;
-
-        // Update labels
-        if ($('prob-q0')) $('prob-q0').textContent = (commonProb * 100).toFixed(0) + '%';
-        if ($('prob-q1')) $('prob-q1').textContent = (rareProb * 100).toFixed(0) + '%';
-        if ($('prob-q3')) $('prob-q3').textContent = (epicProb * 100).toFixed(0) + '%';
-
-        // Update segmented bar widths
-        if ($('seg-q0')) $('seg-q0').style.width = (commonProb * 100) + '%';
-        if ($('seg-q1')) $('seg-q1').style.width = (rareProb * 100) + '%';
-        if ($('seg-q3')) $('seg-q3').style.width = (epicProb * 100) + '%';
-
-        // Upgrade Button - Fixed Cost 10
-        // Update the upgrade cost in the grid header
-        if ($('weap-upgrade-mat-new')) {
-            const matCost = G.weaponShopLv + 1;
-            $('weap-upgrade-mat-new').textContent = matCost;
-            $('weap-upgrade-mat-new').style.color = G.shopMaterials >= matCost ? '' : '#f87171';
+        const matCount = G.materials[selRecipe.lv] || 0;
+        const oriEl = $('weap-cost-ori');
+        if (oriEl) {
+            oriEl.textContent = `${matCount}/${costMat}`;
+            oriEl.style.color = matCount >= costMat ? '' : '#f87171';
         }
 
-        if ($('shop-lv-display')) $('shop-lv-display').textContent = Number(G.weaponShopLv) || 1;
-
-        if ($('shop-res-mat')) $('shop-res-mat').textContent = Math.floor(G.shopMaterials);
-        if ($('shop-res-ori')) $('shop-res-ori').textContent = Math.floor(G.ori);
-
-        renderSmithCards(); // Ensure cards are always up to date
-    } catch (e) {
-        console.error("[Shop Render Error]", e);
-    }
-}
-
-function renderWeaponShopUpgrade() {
-    // This is now partially handled in renderWeaponShop for the new UI
-    // But we keep it for any additional logic
-}
-
-function generateGridTier() {
-    console.log("[Grid] Generating new v6 tier pool...");
-    // Category 1: Quality
-    const qualityPool = [
-        { name: '精良概率', icon: '🔷', type: 'rareProb', val: 0.05, unit: '%', q: 1 },
-        { name: '史诗概率', icon: '💎', type: 'epicProb', val: 0.03, unit: '%', q: 3 },
-    ];
-    // Category 2: Attribute (Weapon Type Bonuses)
-    const attrPool = [
-        { name: '长剑加成', icon: '⚔️', type: 'swordsmanBonus', val: 0.1, unit: '%', q: 1 },
-        { name: '长弓加成', icon: '🏹', type: 'archerBonus', val: 0.1, unit: '%', q: 1 },
-        { name: '法杖加成', icon: '🪄', type: 'staffBonus', val: 0.1, unit: '%', q: 1 },
-        { name: '长枪加成', icon: '🔱', type: 'spearBonus', val: 0.1, unit: '%', q: 1 },
-    ];
-
-    G.gridCards = [];
-    const combined = [...qualityPool, ...attrPool];
-
-    // Fill 9 slots by picking from combined pool (shuffled)
-    for (let i = 0; i < 9; i++) {
-        const base = combined[Math.floor(Math.random() * combined.length)];
-        G.gridCards.push({ ...base, flipped: false });
+        // 模具熟练度显示
+        const profFill = $('weap-prof-fill');
+        if (profFill) profFill.style.width = (G.shopProfLv * 20) + '%'; // 简化显示
+        const profText = $('weap-prof-text');
+        if (profText) profText.textContent = `Lv.${G.shopProfLv}`;
     }
 
-    // Sorting removed as requested
-    console.log("[Grid] Tier generated (v7):", G.gridCards);
-}
-
-function openSmithGrid() {
-    if (!G.gridCards || G.gridCards.length === 0 || G.gridCards.every(c => c.flipped)) {
-        generateGridTier();
-    }
-    renderSmithCards();
-    $('modal-smith-grid').classList.remove('hidden');
-}
-
-function renderSmithCards() {
-    const container = $('smith-cards-container');
-    if (!container) return;
-
-    if (!G.gridCards || G.gridCards.length === 0) {
-        generateGridTier();
-    }
-
-    container.innerHTML = '';
-    G.gridCards.forEach((card, i) => {
-        const cardEl = document.createElement('div');
-        cardEl.className = 'smith-card' + (card.flipped ? ' flipped' : '');
-
-        let valStr = (card.val > 0 ? '+' : '') + (card.val * 100).toFixed(0) + card.unit;
-
-        cardEl.innerHTML = `
-            <div class="card-face card-front">?</div>
-            <div class="card-face card-back q${card.q || 0}">
-                <div class="card-icon">${card.icon}</div>
-                <div class="card-name">${card.name}</div>
-                <div class="card-val">${valStr}</div>
-            </div>
-        `;
-
-        if (!card.flipped) {
-            cardEl.onclick = () => flipSmithCard(i);
-        }
-        container.appendChild(cardEl);
-    });
-}
-
-function getShopProbs(slotIdx = 0) {
-    const baseEpic = 0.1;
-    const baseRare = 0.2;
-
-    // v6: Only use epicProb and rareProb from gridOffsets
-    let epic = baseEpic + G.gridOffsets.epicProb;
-    let rare = baseRare + G.gridOffsets.rareProb;
-    let common = Math.max(0, 1 - epic - rare);
-
-    const total = epic + rare + common;
-    return {
-        epic: epic / total,
-        rare: rare / total,
-        common: common / total
-    };
-}
-
-function autoFlipSmithCard() {
-    if (!G.gridCards || G.gridCards.length === 0) return;
-    const available = G.gridCards.map((c, i) => ({ ...c, idx: i })).filter(c => !c.flipped);
-    if (available.length === 0) return;
-    const target = available[Math.floor(Math.random() * available.length)];
-    flipSmithCard(target.idx);
-}
-
-function flipSmithCard(idx) {
-    if (G.gridCards[idx].flipped) return;
-
-    const matCost = G.weaponShopLv; // Level 1 starts at 1 cost
-    if (G.shopMaterials < matCost) {
-        return alert(`材料不足 (需要 💎${matCost})`);
-    }
-
-    G.shopMaterials -= matCost;
-    const card = G.gridCards[idx];
-    card.flipped = true;
-
-    // Apply Effect
-    if (G.gridOffsets.hasOwnProperty(card.type)) {
-        G.gridOffsets[card.type] += card.val;
-    }
-
-    G.weaponShopLv++;
-
-    renderSmithCards();
-
-    // Targeted Feedback Animations (Extreme Pulse for v9.1)
-    if (['epicProb', 'rareProb'].includes(card.type)) {
-        const barContainer = document.querySelector('.prob-segmented-container');
-        if (barContainer) {
-            barContainer.classList.remove('bar-refresh-pulse');
-            void barContainer.offsetWidth; // Force reflow
-            barContainer.classList.add('bar-refresh-pulse');
-            setTimeout(() => barContainer.classList.remove('bar-refresh-pulse'), 800);
-        }
-    } else {
-        const infoIcon = document.querySelector('.prob-info-btn');
-        if (infoIcon) {
-            infoIcon.classList.remove('icon-refresh-pulse');
-            void infoIcon.offsetWidth; // Force reflow
-            infoIcon.classList.add('icon-refresh-pulse');
-            setTimeout(() => infoIcon.classList.remove('icon-refresh-pulse'), 800);
-        }
-
-        const typeToSlot = {
-            'swordsmanBonus': 'weap-slot-0',
-            'archerBonus': 'weap-slot-1',
-            'staffBonus': 'weap-slot-2',
-            'spearBonus': 'weap-slot-3'
-        };
-        const slotId = typeToSlot[card.type];
-        if (slotId) {
-            const slotEl = document.getElementById(slotId);
-            if (slotEl) {
-                slotEl.classList.remove('slot-refresh-pulse');
-                void slotEl.offsetWidth;
-                slotEl.classList.add('slot-refresh-pulse');
-                setTimeout(() => slotEl.classList.remove('slot-refresh-pulse'), 800);
-            }
+    // --- Set Active Recipe Button ---
+    const activeBtn = $('weapon-set-active-btn');
+    if (activeBtn) {
+        if (F.selectedIdx === G.activeRecipeIdx) {
+            activeBtn.textContent = '✅ 当前选中配方';
+            activeBtn.disabled = true;
+            activeBtn.style.opacity = '0.5';
+        } else {
+            activeBtn.textContent = '设为当前配方';
+            activeBtn.disabled = false;
+            activeBtn.style.opacity = '1';
         }
     }
 
-    // Check if all 9 are flipped (Robust length check)
-    const flippedCount = G.gridCards.filter(c => c.flipped).length;
-    if (flippedCount === 9 && !G.gridRefreshing) {
-        G.gridRefreshing = true;
+    // --- Auto Forge Toggle ---
+    $('af-toggle').checked = G.autoForge.enabled;
 
-        // Show 9th card content
-        renderSmithCards();
-
-        // Visual transition effect FIRST
-        const container = $('smith-cards-container');
-        if (container) {
-            container.classList.remove('grid-refresh-animate');
-            void container.offsetWidth;
-            container.classList.add('grid-refresh-animate');
-        }
-
-        setTimeout(() => {
-            generateGridTier();
-            G.gridRefreshing = false;
-            if (container) container.classList.remove('grid-refresh-animate');
-            renderWeaponShop(); // This calls renderSmithCards internally
-
-            const refreshToast = document.createElement('div');
-            refreshToast.className = 'toast';
-            refreshToast.innerHTML = `✨ 九宫格已重置！`;
-            document.body.appendChild(refreshToast);
-            setTimeout(() => refreshToast.remove(), 2000);
-        }, 800);
-    }
-
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.innerHTML = `✨ 获得奖励: <span style="color:#fbbf24">${card.name} ${(card.val > 0 ? '+' : '') + (card.val * 100).toFixed(0)}${card.unit}</span>`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2000);
-
-    renderUI();
-    renderWeaponShop();
-}
-
-function renderBonusInfo() {
-    // Show weapon-specific bonuses in debug or UI if needed
-    // v6 attribute category logic replaces generic bonus display
-}
-
-function upgradeWeaponShop() {
-    try {
-        const matCost = 10;
-        if (G.shopMaterials < matCost) {
-            return alert(`材料不足 (需要 💎${matCost})`);
-        }
-
-        G.shopMaterials -= matCost;
-        openSmithGrid();
-
-        renderUI();
-        renderWeaponShop();
-    } catch (e) {
-        console.error("[Shop Upgrade Error]", e);
-    }
-}
-
-// $('weapon-shop-upgrade-btn-new').onclick = upgradeWeaponShop; // Obsolete
-if ($('mode-weapon-close-btn')) {
-    $('mode-weapon-close-btn').onclick = () => $('modal-weapon').classList.add('hidden');
+    renderAutoForgeStatus();
 }
 
 function renderAutoForgeStatus() {
-    // Deprecated for the new grid layout
+    const list = $('af-hero-list');
+    if (!list) return;
+    list.innerHTML = '';
+    G.heroes.filter(h => h.state === 'atBuilding' && h.currentBld && h.currentBld.id === 'weapon' && h.forgeTimer > 0).forEach(h => {
+        const div = document.createElement('div');
+        div.className = 'af-hero-item';
+        const pct = (h.forgeTimer / 5000 * 100).toFixed(0);
+        div.innerHTML = `
+            <span>${h.icon}</span>
+            <div class="af-progress-bg"><div class="af-progress-fill" style="width:${pct}%"></div></div>
+            <span style="font-size:0.7rem; width:30px; text-align:right">${pct}%</span>
+        `;
+        list.appendChild(div);
+    });
+    if (list.innerHTML === '') list.innerHTML = '<div style="text-align:center; opacity:0.4; font-size:0.8rem; padding:10px;">暂无英雄正在铸造</div>';
 }
 
-// Removed old forge buttons as redesign uses grid
+$('af-toggle').onchange = (e) => {
+    G.autoForge.enabled = e.target.checked;
+};
 
-$('forge-strike-btn').onclick = () => {
-    if (F.state !== 'forging') return;
-    F.progress += F.strikeBoost;
-    if (F.progress > 100) F.progress = 100;
-    F.clicks--;
-    updateForgeUI();
 
-    if (F.clicks <= 0) {
-        F.state = 'result';
-        setTimeout(finishForging, 500);
+$('weapon-set-active-btn').onclick = () => {
+    G.activeRecipeIdx = F.selectedIdx;
+    renderInventory();
+};
+
+$('weapon-forge-start-btn').onclick = () => {
+    const recipe = G.recipes[F.selectedIdx];
+    let costGold = recipe.lv * 10;
+    let costMat = 10;
+
+    if (G.gold < costGold || (G.materials[recipe.lv] || 0) < costMat) {
+        return alert(`材料不足 (需要 ${costGold} 金币, ${costMat} 个 Lv.${recipe.lv} 地图材料)`);
+    }
+    G.gold -= costGold;
+    G.materials[recipe.lv] -= costMat;
+    renderUI();
+
+    // 进入锻打界面，不再需要手动点击“锻打”按钮，改为 2 秒自动锻打过程
+    F.state = 'forging';
+    F.clicks = 1;
+    F.progress = 0;
+    F.animTime = 0;
+    F.animDur = 1000; // ms
+    // 生成本次锻打数值
+    F.forgeValue = Math.floor(Math.random() * 100) + 1; // 1~100
+    F.greatSuccess = (F.forgeValue >= 90);
+    // 显示用的进度值
+    F.displayValue = F.forgeValue <= 50 ? F.forgeValue + 30 : F.forgeValue;
+
+    $('weapon-view-main').classList.add('hidden');
+    $('weapon-view-forge').classList.remove('hidden');
+
+    // Great success 区域依然展示
+    const zone = document.querySelector('.forge-target-zone');
+    if (zone) {
+        zone.style.bottom = '90%';
+        zone.style.height = '10%';
     }
 };
 
+// forge-strike-btn 不再需要点击逻辑，改为在开始铸造时自动完成一次锻打
+
 function updateForgeUI() {
-    $('forge-clicks-left').textContent = F.clicks;
+    const clicksEl = $('forge-clicks-left');
+    if (clicksEl) clicksEl.textContent = F.clicks;
     $('forge-bar-fill').style.height = F.progress + '%';
     $('forge-cursor').style.bottom = F.progress + '%';
 }
 
 function updateForgeLogic(dt) {
-    if (F.state !== 'forging') return;
-    F.progress -= (F.decayRate * dt / 1000);
-    if (F.progress < 0) F.progress = 0;
-    updateForgeUI();
+    if (F.state === 'forging') {
+        // 2 秒内缓动到目标值
+        F.animTime += dt;
+        const t = Math.min(1, F.animTime / (F.animDur || 1000));
+        // easeOutQuad 缓动
+        const eased = 1 - (1 - t) * (1 - t);
+        F.progress = F.displayValue * eased;
+        updateForgeUI();
+        if (t >= 1) {
+            F.state = 'result';
+            finishForging();
+        }
+    }
 }
 
 function forgeAffixValue(min, max, prof) {
-    // Proficiency shifts random distribution closer to 1
-    let r1 = Math.random(), r2 = Math.random();
-    let weight = prof / 100; // 0 to 1
-    let rand = r1 * (1 - weight) + Math.max(r1, r2) * weight;
-    return Math.floor(min + (max - min) * rand);
+    // 武器铺熟练等级同时提升属性上下限，每级 +5%
+    const boost = 1 + (G.shopProfLv * 0.05);
+    const boostedMin = min * boost;
+    const boostedMax = max * boost;
+    // 在提升后的区间内纯随机
+    return Math.floor(boostedMin + (boostedMax - boostedMin) * Math.random());
 }
 
 function finishForging() {
     $('weapon-view-forge').classList.add('hidden');
     $('weapon-view-result').classList.remove('hidden');
 
-    let eq = G.inventory[F.selectedIdx];
-    let greatSuccess = (F.progress >= F.targetMin && F.progress <= F.targetMax);
-    let profGain = greatSuccess ? 20 : 5;
+    let recipe = G.recipes[F.selectedIdx];  // 使用的配方
+    let mold = G.mold;  // 当前模具（用于对比显示）
+    let greatSuccess = F.greatSuccess;
 
-    // Main stats scaling based on recipe base values
-    let rec = getRecipeDef(eq.lv);
+    // --- Shop Proficiency: always +10, check for level-up ---
+    G.shopProf += 10;
+    tryUpgradeShopProf();
 
-    // Quality selection using getShopProbs (pass correct slot index)
-    const slotIdx = F.selectedIdx;
-    const probs = getShopProbs(slotIdx);
-    const qRoll = Math.random();
-    let finalQ = 0;
-    if (qRoll < probs.epic) finalQ = 3;
-    else if (qRoll < probs.epic + probs.rare) finalQ = 2;
+    // --- Quality upgrade on Great Success ---
+    // 新模具品质 = 配方品质；大成功时 +1（白色配方 → 最多绿色模具）
+    let baseQ = recipe.q;
+    let newQ = greatSuccess ? Math.min(4, baseQ + 1) : baseQ;
 
-    const weaponTypes = ['swordsman', 'archer', 'staff', 'spear'];
-    const typeKey = weaponTypes[slotIdx] + 'Bonus';
-    const typeAtkBonus = G.gridOffsets[typeKey] || 0;
+    // --- Stat scaling (shopProfLv boosts via forgeAffixValue) ---
+    // 使用配方的等级来生成属性
+    let rec = getRecipeDef(recipe.lv);
+    const maxMult = greatSuccess ? 1.8 : 1.5;
 
-    const qualityAtkBonus = (finalQ === 3 ? 0.5 : (finalQ === 2 ? 0.2 : 0));
+    let nAtk = forgeAffixValue(rec.baseAtk, rec.baseAtk * maxMult, 0);
+    let nHp = forgeAffixValue(rec.baseHp, rec.baseHp * maxMult, 0);
 
-    let minMult = 1.0 + qualityAtkBonus + typeAtkBonus;
-    let maxMult = (greatSuccess ? 1.8 : 1.5) + qualityAtkBonus + typeAtkBonus;
-
-    let nAtk = forgeAffixValue(rec.baseAtk * minMult, rec.baseAtk * maxMult, eq.prof);
-    let nHp = forgeAffixValue(rec.baseHp * minMult, rec.baseHp * maxMult, eq.prof);
-
-    // Generate sub affixes based on quality (q = 0 -> 0 subs, q = 4 -> 4 subs)
+    // Sub affixes based on new quality
     let newSubs = [];
     let pool = [...SUB_AFFIX_POOL];
-    for (let i = 0; i < eq.q; i++) {
+    for (let i = 0; i < newQ; i++) {
         if (pool.length === 0) break;
         let pickIdx = Math.floor(Math.random() * pool.length);
         let subDef = pool.splice(pickIdx, 1)[0];
-        // Great Success increases slightly max roll for subs
-        let maxBoost = greatSuccess ? 1.5 : 1.0;
-        let subVal = forgeAffixValue(subDef.min, subDef.max * maxBoost, eq.prof);
+        let subVal = forgeAffixValue(subDef.min, subDef.max * (greatSuccess ? 1.3 : 1.0), 0);
         newSubs.push({ name: subDef.name, val: subVal, isPct: subDef.isPct, type: subDef.type });
     }
 
-    F.newEquip = {
-        name: eq.name,
-        icon: eq.icon,
-        lv: eq.lv,
-        q: finalQ,
-        atk: nAtk,
-        hp: nHp,
+    // 生成新模具（但还未应用到G.mold，等待玩家选择）
+    F.newMold = {
+        name: recipe.name, icon: recipe.icon,
+        lv: recipe.lv, q: newQ,
+        atk: nAtk, hp: nHp,
         subs: newSubs,
-        prof: Math.min(100, eq.prof + profGain),
-        isForged: true // Mark as forged!
+        prof: 0,
+        role: recipe.role || 'warrior'
     };
 
-    renderEqStats(eq, 'weap-old');
-    renderEqStats(F.newEquip, 'weap-new');
-    $('forge-result-title').textContent = greatSuccess ? '🌟 大成功!' : '✨ 打造完成';
+    // 显示对比：左边是当前模具，右边是新模具
+    renderEqStats(mold, 'weap-old');
+    renderEqStats(F.newMold, 'weap-new');
 
-    setDiff('weap-new-atk', F.newEquip.atk, eq.atk, '');
-    setDiff('weap-new-hp', F.newEquip.hp, eq.hp, '');
+    if (greatSuccess) {
+        $('forge-result-title').textContent = '🌟 大成功! 新模具品质提升!';
+        // Visual toast
+        const toast = document.createElement('div');
+        toast.className = 'toast great-success-toast';
+        toast.innerHTML = '🌟 大成功！新模具品质 +1';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    } else {
+        $('forge-result-title').textContent = '✨ 新模具打造完成';
+    }
 
-    $('result-prof-add').textContent = '+' + profGain;
-    $('result-prof-fill').style.width = F.newEquip.prof + '%';
-    $('result-prof-text').textContent = F.newEquip.prof + '/100';
+    setDiff('weap-new-atk', F.newMold.atk, mold.atk, '');
+    setDiff('weap-new-hp', F.newMold.hp, mold.hp, '');
 
-    if (F.newEquip.q >= 3) showSurprise(F.newEquip);
+    // Show shop-level proficiency in result UI
+    const thresholds = [50, 150, 250, 400, 600];
+    const nextThresh = thresholds[G.shopProfLv] ?? 999;
+    $('result-prof-add').textContent = '+10';
+    $('result-prof-fill').style.width = Math.min(100, G.shopProf / nextThresh * 100) + '%';
+    $('result-prof-text').textContent = G.shopProf + '/' + nextThresh + ' (Lv.' + G.shopProfLv + ')';
 
-    let recycleGold = eq.lv * 20 * (eq.q + 1);
+    // 回收价值基于新模具
+    let recycleGold = F.newMold.lv * 20 * (F.newMold.q + 1);
     $('recycle-gold-val').textContent = recycleGold;
 }
 
@@ -1845,57 +1969,61 @@ function setDiff(id, newVal, oldVal, suffix) {
     else if (newVal < oldVal) el.textContent += ' ↓';
 }
 
+function autoSelectBestRecipe() {
+    let bestIdx = 0, bestLv = -1;
+    G.recipes.forEach((r, i) => { if (r.lv > bestLv) { bestLv = r.lv; bestIdx = i; } });
+    F.selectedIdx = bestIdx;
+    G.activeRecipeIdx = bestIdx;
+}
+
 $('weapon-keep-old-btn').onclick = () => {
-    let eq = G.inventory[F.selectedIdx];
-    G.gold += eq.lv * 20 * (eq.q + 1);
-    G.inventory[F.selectedIdx].prof = F.newEquip.prof;
+    // 保留旧模具，新模具被回收获得金币
+    G.gold += F.newMold.lv * 20 * (F.newMold.q + 1);
+    autoSelectBestRecipe();
     renderUI();
     openWeaponShop();
 };
 $('weapon-equip-new-btn').onclick = () => {
-    let eq = G.inventory[F.selectedIdx];
-    G.gold += eq.lv * 20 * (eq.q + 1);
-    G.inventory[F.selectedIdx] = F.newEquip;
+    // 计算模具战斗力变化
+    const oldPwr = G.mold ? calcEquipPower(G.mold) : 0;
+    const newPwr = calcEquipPower(F.newMold);
+    const diff = newPwr - oldPwr;
+    // 替换模具
+    G.mold = F.newMold;
+    autoSelectBestRecipe();
     renderUI();
-    openWeaponShop();
+    $('modal-weapon').classList.add('hidden');
+    // 在界面中央显示战斗力变化大提示
+    if (diff !== 0) showPowerBanner(F.newMold.icon, diff);
 };
 
-function showSurprise(item) {
-    const toast = document.createElement('div');
-    toast.className = 'toast q' + item.q;
-    toast.style.padding = '15px 30px';
-    toast.style.fontSize = '1.1rem';
-    toast.style.background = 'rgba(0,0,0,0.95)';
-    toast.style.border = '2px solid currentColor';
-    toast.style.boxShadow = '0 0 30px currentColor';
-    toast.innerHTML = `🎉 恭喜获得高品质装备！<br><span style="font-size:1.4rem">${item.icon} ${item.name}</span>`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
-}
+$('weapon-close-btn').onclick = () => $('modal-weapon').classList.add('hidden');
 
-// Redesign uses mode-weapon-close-btn instead
+// ---- CRYSTAL MINE LOGIC ----
+function updateCrystalMine(dt) {
+    // 产出周期随等级缩短，每级加快30%
+    const cycleTime = 3000 / (1 + (G.crystalMineLv - 1) * 0.3);
+    G.crystalMineTimer += dt;
+    if (G.crystalMineTimer >= cycleTime) {
+        G.crystalMineTimer -= cycleTime;
+        G.crystals += G.crystalMineLv; // 等级即产量
+        renderUI();
+    }
+    if (!$('modal-crystalmine').classList.contains('hidden')) renderCrystalMine();
+}
 
 // ---- STEEL MILL LOGIC ----
 function updateEconomy(dt) {
-    // Automatic Refining
-    let hasMat = false;
-    let targetLv = -1;
-    const mKeys = Object.keys(G.materials).map(Number).sort((a, b) => a - b);
-    for (let lv of mKeys) {
-        if (G.materials[lv] > 0) { targetLv = lv; hasMat = true; break; }
-    }
-    if (hasMat) {
-        const refineTime = 2000 / (1 + (G.steelMillLv - 1) * 0.2);
-        G.refineTimer += dt;
-        if (G.refineTimer >= refineTime) {
-            G.refineTimer = 0;
-            G.materials[targetLv]--;
-            G.ori += targetLv * 5;
-            renderUI();
-            if (!$('modal-steelmill').classList.contains('hidden')) renderSteelMill();
-        }
-    } else {
+    // Automated Steel Production (Steel Mill)
+    const refineTime = 2000 / (1 + (G.steelMillLv - 1) * 0.2);
+    G.refineTimer += dt;
+    if (G.refineTimer >= refineTime) {
         G.refineTimer = 0;
+        // Production rate scales with level
+        const production = 5 + Math.floor(G.steelMillLv * 2);
+        G.ori += production;
+        renderUI();
+        if (!$('modal-steelmill').classList.contains('hidden')) renderSteelMill();
     }
 }
 
@@ -1906,26 +2034,16 @@ function renderSteelMill() {
     const upgradeCost = Math.floor(500 * Math.pow(1.5, G.steelMillLv - 1));
     $('mill-upgrade-cost').textContent = upgradeCost;
 
-    let hasMat = false;
-    let targetLv = -1;
-    const mKeys = Object.keys(G.materials).map(Number).sort((a, b) => a - b);
-    for (let lv of mKeys) {
-        if (G.materials[lv] > 0) { targetLv = lv; hasMat = true; break; }
-    }
     const fill = $('refine-progress-fill');
-    if (fill) fill.style.width = (hasMat ? (G.refineTimer / refineTime * 100) : 0) + '%';
+    if (fill) fill.style.width = (G.refineTimer / refineTime * 100) + '%';
 
     const list = $('refine-list');
-    list.innerHTML = '';
-    Object.keys(G.materials).forEach(lv => {
-        const amt = G.materials[lv];
-        if (amt <= 0) return;
-        const div = document.createElement('div');
-        div.className = 'refine-item';
-        div.innerHTML = `<span>Lv.${lv} 材料</span><div style="display:flex; gap:10px; align-items:center;"><span style="opacity:0.7">x ${amt}</span><span style="color:var(--gold)">💠 +${lv * 5}</span></div>`;
-        list.appendChild(div);
-    });
-    if (list.innerHTML === '') list.innerHTML = '<div style="text-align:center; opacity:0.5; padding:20px;">暂无可精炼材料</div>';
+    list.innerHTML = `
+        <div style="text-align:center; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px;">
+            <div style="color:var(--gold); font-size:1.1rem; font-weight:bold;">🚀 自动化生产中</div>
+            <div style="font-size:0.8rem; opacity:0.8; margin-top:5px;">当前预计产出: <span style="color:#fff;">${5 + Math.floor(G.steelMillLv * 2)}</span> 钢材/周期</div>
+        </div>
+    `;
 }
 
 function openSteelMill() {
@@ -1944,89 +2062,191 @@ $('mill-upgrade-btn').onclick = () => {
 
 $('steelmill-close-btn').onclick = () => $('modal-steelmill').classList.add('hidden');
 
-// ---- BLUEPRINT SELECTION UI ----
-function openBlueprintSelector(typeIdx) {
-    const listEl = $('blueprint-list');
-    listEl.innerHTML = '';
-
-    // The player's current deepest floor reached
-    const currentMaxLevel = G.chCount;
-
-    // Build the list of available blueprints for this strict instrument
-    BLUEPRINTS[typeIdx].forEach(bp => {
-        const isUnlocked = currentMaxLevel >= bp.unlockLevel;
-        const isActive = G.activeBlueprints[typeIdx] === bp.tier;
-
-        const itemEl = document.createElement('div');
-        itemEl.className = 'blueprint-item';
-        if (!isUnlocked) itemEl.classList.add('bp-locked');
-        if (isActive) itemEl.style.borderColor = '#fbbf24'; // Highlight active
-
-        itemEl.innerHTML = `
-            <div class="bp-icon-box">${bp.icon}</div>
-            <div class="bp-info">
-                <div class="bp-header">
-                    <div class="bp-name">${bp.name} ${isActive ? '<span style="color:#fbbf24;font-size:0.75rem;margin-left:5px;">(已装备)</span>' : ''}</div>
-                    ${!isUnlocked ? `<div class="bp-unlock-text">深渊${bp.unlockLevel}关掉落</div>` : ''}
-                </div>
-                <div class="bp-stats">
-                    <span style="color:#f87171;">攻: ${bp.baseAtk}</span>
-                    <span style="color:#4ade80;">命: ${bp.baseHp}</span>
-                    <span class="bp-cost">💎 ${bp.cost}</span>
-                </div>
-            </div>
-        `;
-
-        if (isUnlocked) {
-            itemEl.onclick = () => selectBlueprint(typeIdx, bp.tier);
-        }
-
-        listEl.appendChild(itemEl);
-    });
-
-    $('modal-blueprint').classList.remove('hidden');
-}
-
-function selectBlueprint(typeIdx, tierIdx) {
-    G.activeBlueprints[typeIdx] = tierIdx;
-    $('modal-blueprint').classList.add('hidden');
-    renderWeaponShop(); // refresh the shop slots to show the newly selected blueprint
-}
-
-function openShopLevelSelector() {
-    renderShopLevels();
-    $('modal-shop-levels').classList.remove('hidden');
-}
-
-function renderShopLevels() {
-    const listEl = $('shop-level-list');
-    listEl.innerHTML = '';
-
-    const fields = [
-        { key: 'swordsmanBonus', name: '长剑加成' },
-        { key: 'archerBonus', name: '长弓加成' },
-        { key: 'staffBonus', name: '法杖加成' },
-        { key: 'spearBonus', name: '长枪加成' },
-        { key: 'rareProb', name: '精良概率' },
-        { key: 'epicProb', name: '史诗概率' }
-    ];
-
-    let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
-    fields.forEach(f => {
-        const val = G.gridOffsets[f.key] || 0;
-        const color = val > 0 ? '#4ade80' : '#94a3b8';
-        const valStr = val > 0 ? '+' + (val * 100).toFixed(0) + '%' : '0%';
-        html += `
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; font-size: 0.9rem;">
-                <span style="color: #cbd5e1;">${f.name}</span>
-                <span style="color: ${color}; font-weight: bold;">${valStr}</span>
-            </div>
-        `;
-    });
-    html += '</div>';
-    listEl.innerHTML = html;
-}
+// Hook into building click (needs finding bridge between BLDS and open functions)
+// Actually, earlier in main.js onmousedown handles building clicks. 
+// Let's find where hospital/weapon/etc are opened and add steelmill.
 
 updateSummonBar();
 renderUI();
 requestAnimationFrame(loop);
+
+// ============================================================
+// 晶石矿场 弹窗
+// ============================================================
+function crystalMineUpgradeCost() {
+    return Math.floor(200 * Math.pow(1.5, G.crystalMineLv - 1));
+}
+
+function renderCrystalMine() {
+    $('cmine-lv').textContent = G.crystalMineLv;
+    const cycleTime = 3000 / (1 + (G.crystalMineLv - 1) * 0.3);
+    $('cmine-rate').textContent = G.crystalMineLv;
+    $('cmine-cycle').textContent = (1000 / cycleTime).toFixed(2);
+    $('cmine-cost').textContent = crystalMineUpgradeCost();
+    if ($('cmine-crystals')) $('cmine-crystals').textContent = Math.floor(G.crystals);
+    const fill = $('cmine-progress-fill');
+    if (fill) fill.style.width = Math.min(100, G.crystalMineTimer / cycleTime * 100) + '%';
+}
+
+function openCrystalMine() {
+    renderCrystalMine();
+    $('modal-crystalmine').classList.remove('hidden');
+}
+
+$('cmine-upgrade-btn').onclick = () => {
+    const cost = crystalMineUpgradeCost();
+    if (G.gold < cost) { alert('金币不足！需要 ' + cost + ' 💰'); return; }
+    G.gold -= cost;
+    G.crystalMineLv++;
+    renderCrystalMine();
+    renderUI();
+};
+
+$('cmine-close-btn').onclick = () => $('modal-crystalmine').classList.add('hidden');
+
+// ============================================================
+// 增益铺老虎机 弹窗
+// ============================================================
+function getSlotCost() {
+    return 1 + Math.floor(G.slotUses / 10);
+}
+
+function renderSlotMachine(results, atkGain, hpGain) {
+    $('sm-crystals').textContent = Math.floor(G.crystals);
+    $('sm-cost').textContent = getSlotCost();
+    $('sm-acc-atk').textContent = G.buffAccAtk;
+    $('sm-acc-hp').textContent = G.buffAccHp;
+    $('sm-spin-cost').textContent = getSlotCost();
+    if (results) {
+        const icons = { atk: '⚔️', hp: '❤️' };
+        // 计算哪种类型触发了倍率
+        const nAtk = results.filter(r => r === 'atk').length;
+        const nHp  = results.filter(r => r === 'hp').length;
+        const winType = nAtk >= 2 ? 'atk' : (nHp >= 2 ? 'hp' : null);
+        const winMult = winType ? (results.filter(r => r === winType).length) : 0;
+
+        for (let i = 0; i < 3; i++) {
+            const reel = $('sm-reel-' + i);
+            reel.textContent = icons[results[i]];
+            // 清除旧特效
+            reel.classList.remove('spinning', 'reel-win2', 'reel-win3');
+            void reel.offsetWidth;
+            // 是否为中奖槽位
+            if (winMult === 3) {
+                reel.classList.add('reel-win3');
+            } else if (winMult === 2 && results[i] === winType) {
+                reel.classList.add('reel-win2');
+            } else {
+                reel.classList.add('spinning');
+            }
+        }
+        const parts = [];
+        if (atkGain > 0) parts.push('⚔️ +' + atkGain);
+        if (hpGain > 0) parts.push('❤️ +' + hpGain);
+        $('sm-result').textContent = parts.length ? '本次获得: ' + parts.join('  ') : '本次无获益';
+        $('sm-result').style.color = parts.length ? '#a78bfa' : '#6b7280';
+
+        // 中奖特效
+        if (winMult === 3) {
+            showSlotWin(3, winType, winType === 'atk' ? atkGain : hpGain);
+        } else if (winMult === 2) {
+            showSlotWin(2, winType, winType === 'atk' ? atkGain : hpGain);
+        }
+    } else {
+        // 重置槽位外观
+        for (let i = 0; i < 3; i++) {
+            const reel = $('sm-reel-' + i);
+            reel.classList.remove('spinning', 'reel-win2', 'reel-win3');
+        }
+        $('sm-result').textContent = '旋转老虎机获得增益加成！';
+        $('sm-result').style.color = '#9ca3af';
+    }
+}
+
+// 老虎机中奖特效：在弹窗内显示大横幅
+let _slotWinTimer = null;
+function showSlotWin(mult, type, gain) {
+    const banner = $('sm-win-banner');
+    if (!banner) return;
+    // 清除上一次定时器
+    if (_slotWinTimer) { clearTimeout(_slotWinTimer); _slotWinTimer = null; }
+
+    const typeLabel = type === 'atk' ? '⚔️ 攻击' : '❤️ 生命';
+    const multLabel = mult === 3 ? '× 3  三连！' : '× 2  二连！';
+    const sign      = type === 'atk' ? '+' + gain : '+' + gain;
+
+    banner.innerHTML = `
+        <div class="sm-win-mult sm-win-mult--${mult}">${mult === 3 ? '🎆' : '✨'} ${multLabel}</div>
+        <div class="sm-win-sep"></div>
+        <div class="sm-win-gain">${typeLabel} <strong>${sign}</strong></div>`;
+    banner.className = 'sm-win-banner sm-win-banner--' + mult;
+    banner.classList.remove('hidden');
+
+    // X3时：让槽位区震动（不震整个弹窗，避免闪关）
+    if (mult === 3) {
+        const wrap = $('sm-reels-wrap');
+        if (wrap) {
+            wrap.classList.remove('shake3');
+            void wrap.offsetWidth;
+            wrap.classList.add('shake3');
+            setTimeout(() => wrap.classList.remove('shake3'), 500);
+        }
+    }
+
+    // 自动淡出
+    _slotWinTimer = setTimeout(() => {
+        banner.classList.add('sm-win-banner--fade');
+        setTimeout(() => { banner.classList.add('hidden'); banner.classList.remove('sm-win-banner--fade'); }, 500);
+    }, mult === 3 ? 2200 : 1600);
+}
+
+function openSlotMachine() {
+    renderSlotMachine(null, 0, 0);
+    $('modal-slotmachine').classList.remove('hidden');
+}
+
+$('sm-spin-btn').onclick = () => {
+    const cost = getSlotCost();
+    if (G.crystals < cost) {
+        $('sm-result').textContent = '增益晶石不足！需要 ' + cost + ' 🔮';
+        $('sm-result').style.color = '#f87171';
+        return;
+    }
+    G.crystals -= cost;
+    G.slotUses++;
+
+    // 三个槽位随机：攻击 or 生命
+    const types = ['atk', 'hp'];
+    const results = [
+        types[Math.floor(Math.random() * 2)],
+        types[Math.floor(Math.random() * 2)],
+        types[Math.floor(Math.random() * 2)],
+    ];
+
+    const nAtk = results.filter(r => r === 'atk').length;
+    const nHp  = results.filter(r => r === 'hp').length;
+
+    // 公式：count个同类型 → count × 基础值 × (count === 1 ? 1 : count)
+    function slotContrib(count, base) {
+        if (count === 0) return 0;
+        return count * base * (count === 1 ? 1 : count);
+    }
+    const atkGain = slotContrib(nAtk, 2);
+    const hpGain  = slotContrib(nHp, 10);
+
+    G.buffAccAtk += atkGain;
+    G.buffAccHp  += hpGain;
+
+    renderSlotMachine(results, atkGain, hpGain);
+    renderUI();
+
+    // 显示大的战斗力增量提示（老虎机获得属性的战力等价）
+    const powerEq = atkGain * 10 + hpGain;
+    if (powerEq > 0) {
+        const typeLabel = atkGain > 0 && hpGain > 0 ? '✨'
+            : atkGain > 0 ? '⚔️' : '❤️';
+        showPowerBanner(typeLabel, powerEq, '增益铺强化');
+    }
+};
+
+$('sm-close-btn').onclick = () => $('modal-slotmachine').classList.add('hidden');
