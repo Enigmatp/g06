@@ -314,7 +314,7 @@ function updateHeroes(dt) {
                             name: rec.name, icon: rec.icon, lv: rec.unlockLevel, q: finalQ,
                             atk: nAtk, hp: nHp, subs: [], prof: 50, isForged: true
                         };
-                        if (finalQ >= 3) showSurprise(newEq);
+                        // if (finalQ >= 3) showSurprise(newEq); - Removed purple equipment popup
 
                         // Apply stats directly to the hero (Base stats + Weapon stats)
                         h.atk = HTYPES[h.type].atk + newEq.atk;
@@ -1626,6 +1626,23 @@ function flipSmithCard(idx) {
             void infoIcon.offsetWidth; // Force reflow
             infoIcon.classList.add('icon-refresh-pulse');
             setTimeout(() => infoIcon.classList.remove('icon-refresh-pulse'), 800);
+        }
+
+        const typeToSlot = {
+            'swordsmanBonus': 'weap-slot-0',
+            'archerBonus': 'weap-slot-1',
+            'staffBonus': 'weap-slot-2',
+            'spearBonus': 'weap-slot-3'
+        };
+        const slotId = typeToSlot[card.type];
+        if (slotId) {
+            const slotEl = document.getElementById(slotId);
+            if (slotEl) {
+                slotEl.classList.remove('slot-refresh-pulse');
+                void slotEl.offsetWidth;
+                slotEl.classList.add('slot-refresh-pulse');
+                setTimeout(() => slotEl.classList.remove('slot-refresh-pulse'), 800);
+            }
         }
     }
 

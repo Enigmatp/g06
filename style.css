@@ -2278,3 +2278,30 @@ body {
 .grid-refresh-animate {
     animation: gridRefreshAnimate 0.8s forwards;
 }
+
+@keyframes slotRefreshPulse {
+    0% {
+        box-shadow: 0 0 0 rgba(74, 222, 128, 0);
+        transform: scale(1);
+        background: rgba(15, 23, 42, 0.6);
+        border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(74, 222, 128, 0.6);
+        transform: scale(1.03);
+        background: rgba(74, 222, 128, 0.3);
+        border-color: #4ade80;
+    }
+
+    100% {
+        box-shadow: 0 0 0 rgba(74, 222, 128, 0);
+        transform: scale(1);
+        background: rgba(15, 23, 42, 0.6);
+        border-color: rgba(255, 255, 255, 0.05);
+    }
+}
+
+.slot-refresh-pulse {
+    animation: slotRefreshPulse 0.8s ease-out;
+}
