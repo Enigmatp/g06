@@ -191,7 +191,16 @@ const G = {
     buffAccAtk: 0,        // 增益铺累计攻击加成
     buffAccHp: 0,         // 增益铺累计生命加成
     slotUses: 0,          // 老虎机已使用次数
+    killCount: 0,         // 当前地图击杀数
+    killTarget: 10,       // 当前地图需要击杀的怪物数量才能解锁新关卡
+    challengeListMode: 'challenge', // 打开关卡列表时的模式：'challenge' | 'expedition'
 };
+
+// 击杀需求：初始 10，每提升 1 级 +10，最多 100
+function getKillTargetForLevel(level) {
+    const base = 10 + (level - 1) * 10;
+    return Math.min(base, 100);
+}
 
 // ---- 统一战斗力公式 ----
 // 装备战斗力：atk×10 + hp（副词条以加成形式附加）
@@ -536,6 +545,9 @@ function updateBattle(dt) {
         let dropLv = Math.max(...G.recipesUnlocked);
         if (!G.materials[dropLv]) G.materials[dropLv] = 0;
         G.materials[dropLv] += k.length; // 100% drop rate per enemy killed
+        // 击杀进度：只在主城战斗中累计
+        G.killCount = Math.min(G.killCount + k.length, G.killTarget);
+        renderUI();
     }
     G.enemies = G.enemies.filter(e => e.hp > 0);
     // Economy tick (refining)
@@ -643,6 +655,9 @@ function endChallenge(win) {
                 document.body.appendChild(toast); setTimeout(() => toast.remove(), 4000);
             }
             G.chCount++; // Increment for next time
+            // 新解锁的关卡需要重新累计击杀数
+            G.killCount = 0;
+            G.killTarget = getKillTargetForLevel(G.level);
         }
         $('modal-victory').classList.remove('hidden');
     } else {
@@ -1222,8 +1237,26 @@ function renderUI() {
     $('gold-display').textContent = G.gold; $('gem-display').textContent = G.gems;
     $('level-display').textContent = G.level;
     $('hero-count').textContent = G.heroes.filter(h => h.state === 'fighting').length;
-    $('challenge-btn').classList.toggle('hidden', G.mode !== 'city');
-    $('challenge-btn').textContent = `⚔️ 挑战 第${G.level}关`;
+    // 右下角按钮改为“远征”入口：只有通关过第一关（level>1）并且在主城时才显示
+    $('challenge-btn').classList.toggle('hidden', !(G.mode === 'city' && G.level > 1));
+    // 文案固定为远征
+    $('challenge-btn').textContent = '🚩 远征';
+
+    // 顶部进度条 UI（外观与 V2 一致，数值沿用 V1 的击杀规则）
+    if ($('top-progress-container')) {
+        const pct = G.killTarget > 0 ? Math.floor(G.killCount / G.killTarget * 100) : 0;
+        $('top-progress-container').classList.toggle('hidden', G.mode !== 'city');
+        $('top-progress-fill').style.width = Math.max(0, Math.min(100, pct)) + '%';
+        $('top-progress-text').textContent = `第 ${G.level} 关 - 进度: ${pct}%`;
+
+        const topBtn = $('top-challenge-btn');
+        if (G.killCount >= G.killTarget) {
+            topBtn.classList.remove('hidden');
+            topBtn.textContent = `⚔️ 挑战 Boss`;
+        } else {
+            topBtn.classList.add('hidden');
+        }
+    }
 
     // Mana UI
     $('mana-display').textContent = Math.floor(G.mana);
@@ -1451,9 +1484,16 @@ function openChallengeList() {
 function renderChallengeList() {
     const body = $('challenge-list-body');
     body.innerHTML = '';
-    // 当前可挑战关卡 + 已通关（降序）
-    const levels = [{ level: G.chCount, cleared: false }];
-    for (let i = G.chCount - 1; i >= 1; i--) levels.push({ level: i, cleared: true });
+    const mode = G.challengeListMode || 'challenge';
+    let levels = [];
+    if (mode === 'challenge') {
+        // 当前可挑战关卡 + 已通关（降序）
+        levels.push({ level: G.chCount, cleared: false });
+        for (let i = G.chCount - 1; i >= 1; i--) levels.push({ level: i, cleared: true });
+    } else {
+        // 远征模式：只显示已通关（降序）
+        for (let i = G.chCount - 1; i >= 1; i--) levels.push({ level: i, cleared: true });
+    }
 
     levels.forEach(({ level, cleared }) => {
         const reward = 100 + level * 50;
@@ -1483,14 +1523,39 @@ function renderChallengeList() {
         `;
         const challengeBtn = row.querySelector('.challenge-row-primary');
         const expeditionBtn = row.querySelector('.challenge-row-expedition');
+        // 远征模式：无论是否在远征中，完全隐藏“挑战”按钮
+        if (G.challengeListMode === 'expedition' && challengeBtn) {
+            challengeBtn.style.display = 'none';
+        }
         if (!activeExp) {
-            // 挑战按钮：所有关卡都可以挑战
-            challengeBtn.onclick = () => {
-                $('modal-challenge-list').classList.add('hidden');
-                startChallenge(level);
-            };
+            const mode = G.challengeListMode || 'challenge';
+            const isLatest = level === G.chCount && !cleared;
+            const lockedByKills = isLatest && G.killCount < G.killTarget;
+
+            if (mode === 'challenge') {
+                // 顶部进度条入口：正常挑战逻辑（受击杀进度限制）
+                if (lockedByKills) {
+                    challengeBtn.textContent = `击杀 ${G.killCount}/${G.killTarget}`;
+                    challengeBtn.disabled = true;
+                    challengeBtn.style.opacity = '0.5';
+                    challengeBtn.onclick = null;
+                } else {
+                    challengeBtn.disabled = false;
+                    challengeBtn.style.opacity = '1';
+                    challengeBtn.onclick = () => {
+                        $('modal-challenge-list').classList.add('hidden');
+                        startChallenge(level);
+                    };
+                }
+            } else {
+                // 右下角“远征”入口：列表中不再提供任何挑战相关按钮
+                challengeBtn.style.display = 'none';
+            }
+
             // 远征按钮：只有已完成的关卡才有
             if (expeditionBtn) {
+                expeditionBtn.disabled = false;
+                expeditionBtn.style.opacity = activeExp ? '0.5' : '1';
                 expeditionBtn.onclick = () => openExpedition(level);
             }
         }
@@ -1594,7 +1659,15 @@ function updateExpeditions() {
     });
 }
 
-$('challenge-btn').onclick = openChallengeList;
+$('challenge-btn').onclick = () => {
+    // 右下角：远征模式，只能做远征，不能挑战
+    G.challengeListMode = 'expedition';
+    openChallengeList();
+};
+$('top-challenge-btn') && ($('top-challenge-btn').onclick = () => {
+    // 顶部按钮：直接挑战当前最高关卡（不再弹出列表）
+    startChallenge(G.chCount);
+});
 
 
 
