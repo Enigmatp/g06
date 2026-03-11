@@ -16,104 +16,10 @@ const HTYPES = {
     titan: { icon: '🗿', hp: 500, atk: 50, spd: 0.6, range: 35 },
 };
 
-// ---- S-ROAD CURVE ----
-const CURVE_PTS = [
-    { x: 0.78, y: 0.33 },
-    { x: 0.82, y: 0.38 }, { x: 0.82, y: 0.42 },
-    { x: 0.72, y: 0.47 }, { x: 0.50, y: 0.49 }, { x: 0.28, y: 0.47 }, { x: 0.18, y: 0.50 },
-    { x: 0.15, y: 0.55 }, { x: 0.18, y: 0.60 },
-    { x: 0.28, y: 0.63 }, { x: 0.50, y: 0.65 }, { x: 0.72, y: 0.63 }, { x: 0.82, y: 0.66 },
-    { x: 0.85, y: 0.71 }, { x: 0.82, y: 0.76 },
-    { x: 0.72, y: 0.80 }, { x: 0.50, y: 0.84 }, { x: 0.28, y: 0.80 }, { x: 0.15, y: 0.82 },
-    { x: 0.06, y: 0.75 }, { x: 0.06, y: 0.60 }, { x: 0.06, y: 0.45 }, { x: 0.06, y: 0.38 },
-    { x: 0.12, y: 0.33 }, { x: 0.22, y: 0.33 },
-];
-
-let smoothPath = [];
-function buildSmoothPath() {
-    let pts = CURVE_PTS.map(p => ({ x: p.x, y: p.y }));
-    for (let iter = 0; iter < 3; iter++) {
-        const next = [pts[0]];
-        for (let i = 0; i < pts.length - 1; i++) {
-            const a = pts[i], b = pts[i + 1];
-            next.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25 });
-            next.push({ x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75 });
-        }
-        next.push(pts[pts.length - 1]);
-        pts = next;
-    }
-    smoothPath = pts;
-    let total = 0; smoothPath[0].d = 0;
-    for (let i = 1; i < smoothPath.length; i++) {
-        total += Math.hypot(smoothPath[i].x - smoothPath[i - 1].x, smoothPath[i].y - smoothPath[i - 1].y);
-        smoothPath[i].d = total;
-    }
-    smoothPath.totalLen = total;
-}
-buildSmoothPath();
-
-function posAtT(t) {
-    const targetD = t * smoothPath.totalLen;
-    for (let i = 1; i < smoothPath.length; i++) {
-        if (smoothPath[i].d >= targetD) {
-            const a = smoothPath[i - 1], b = smoothPath[i], seg = b.d - a.d;
-            const l = seg > 0 ? (targetD - a.d) / seg : 0;
-            return { x: a.x + (b.x - a.x) * l, y: a.y + (b.y - a.y) * l };
-        }
-    }
-    return { x: smoothPath.at(-1).x, y: smoothPath.at(-1).y };
-}
-
-// ---- BUILDINGS ----
-// Path: Gate B → [0]制药所 → [1]兵营 → [2]武器铺 → [3]护甲铺 → [4]增益铺 → Gate A
-// Evenly distributed along path, sides alternating to fit inside curves
-const BLDS = [
-    { t: 0.12, icon: '💊', label: '制药所', id: 'hospital', side: 1 },
-    { t: 0.28, icon: '🏰', label: '兵营', id: 'barracks_bld', side: -1 },
-    { t: 0.46, icon: '⚔️', label: '武器铺', id: 'weapon', side: 1, equip: { icon: '⚔️', stat: 'atk', bonus: 0.2 } },
-    { t: 0.64, icon: '🛡️', label: '护甲铺', id: 'armor', side: -1, equip: { icon: '🛡️', stat: 'def', bonus: 0.3 } },
-    { t: 0.82, icon: '✨', label: '增益铺', id: 'buff', side: 1 },
-];
-const BARRACKS_BLD_IDX = 1; // [1]=兵营: new heroes spawn here, skip hospital
-
-BLDS.forEach(b => {
-    const p = posAtT(b.t), p2 = posAtT(b.t + 0.005);
-    const dx = p2.x - p.x, dy = p2.y - p.y, len = Math.hypot(dx, dy) || 1;
-    const nx = -dy / len, ny = dx / len, off = 0.04 * b.side;
-    b.rx = p.x + nx * off; b.ry = p.y + ny * off;
-    b.entryT = b.t - 0.006; b.exitT = b.t + 0.006;
-    const pe = posAtT(b.entryT), px = posAtT(b.exitT);
-    b.entryRx = pe.x; b.entryRy = pe.y; b.exitRx = px.x; b.exitRy = px.y;
-    b.cpInX = (b.entryRx + b.rx) / 2 + nx * off * 0.5;
-    b.cpInY = (b.entryRy + b.ry) / 2 + ny * off * 0.5;
-    b.cpOutX = (b.rx + b.exitRx) / 2 + nx * off * 0.5;
-    b.cpOutY = (b.ry + b.exitRy) / 2 + ny * off * 0.5;
-});
-
-const GATE_B = { rx: 0.78, ry: 0.33 }; // entry from battle (low HP heroes)
-const GATE_A = { rx: 0.22, ry: 0.33 }; // exit to battle
-// 大本营: visual only, bottom-center, connects to main road but heroes don't enter
-const BARRACKS = { rx: 0.50, ry: 0.75, icon: '⛺', label: '大本营' };
-
-// Resource side-buildings (each sends particles to its parent path building)
-const BRANCHES = [];
-(function initBranches() {
-    [
-        { parentIdx: 0, icon: '🌿', label: '药田', ox: 0.12, oy: 0.00 },  // 药田 → 制药所
-        { parentIdx: 2, icon: '🏭', label: '炼钢厂', ox: 0.12, oy: 0.00 },  // 炼钢厂 → 武器铺
-        { parentIdx: 3, icon: '🐄', label: '皮革厂', ox: -0.10, oy: 0.05 },  // 皮革厂 → 护甲铺
-        { parentIdx: 4, icon: '🔮', label: '晶石矿场', ox: 0.10, oy: -0.05 }, // 晶石矿场 → 增益铺
-        { parentIdx: 0, icon: '🐾', label: '百兽园', ox: -0.12, oy: 0.01 }, // 百兽园
-    ].forEach(d => {
-        const par = BLDS[d.parentIdx];
-        // Place branch at direct (ox, oy) offset from the main building
-        BRANCHES.push({
-            rx: par.rx + d.ox,
-            ry: par.ry + d.oy,
-            icon: d.icon, label: d.label, parentIdx: d.parentIdx,
-        });
-    });
-})();
+// ---- S-ROAD CURVE & BUILDINGS (from modules) ----
+// 路径与建筑数据从独立模块注入，方便后续复用与重构
+const { CURVE_PTS, smoothPath, buildSmoothPath, posAtT } = GamePath;
+const { BLDS, BRANCHES, BARRACKS, BARRACKS_BLD_IDX, GATE_A, GATE_B } = Buildings;
 
 // ---- CONSTANTS ----
 const MAX_H = 10, SPAWN_CD = 500, HEAL_DUR = 5000, LOW_HP = 0.1;
@@ -194,6 +100,49 @@ const G = {
     killCount: 0,         // 当前地图击杀数
     killTarget: 10,       // 当前地图需要击杀的怪物数量才能解锁新关卡
     challengeListMode: 'challenge', // 打开关卡列表时的模式：'challenge' | 'expedition'
+    // 护甲系统
+    armors: {
+        warrior: { name: '锁甲', icon: '🔗', lv: 1, enhanceLv: 0, tier: 0, def: 10, hp: 50 }, // 战士-锁甲
+        archer: { name: '皮甲', icon: '🧥', lv: 1, enhanceLv: 0, tier: 0, def: 8, hp: 40 },   // 弓手-皮甲
+        mage: { name: '布甲', icon: '👕', lv: 1, enhanceLv: 0, tier: 0, def: 5, hp: 30 },    // 法师-布甲
+        knight: { name: '重甲', icon: '🛡️', lv: 1, enhanceLv: 0, tier: 0, def: 15, hp: 80 }, // 骑士-重甲
+    },
+    essence: 1000,        // 精华数量（由精炼厂产出）- 初始给 1000 方便测试
+    refineLv: 1,         // 精炼厂等级
+    essenceTimer: 0,     // 精炼厂生产计时（独立于炼钢厂的refineTimer）
+    armorCores: 0,       // 护甲核心（远征获得）
+    // 护甲图纸数量（按职业区分）
+    armorBlueprints: {
+        warrior: 0,
+        archer: 0,
+        mage: 0,
+        knight: 0,
+    },
+    // 武器铺（V2 模块）状态
+    inventory: [
+        // 初始一把基础武器，允许作为模具
+        { name: '新手木棍', lv: 1, atk: 5, hp: 10, subs: [], prof: 0, icon: '🦯', q: 0, isForged: true }
+    ],
+    activeWeaponIdx: 0,
+    weaponShopLv: 3,      // 初始给高一点等级，方便看到效果
+    shopMaterials: 1000,
+    blueprints: [1], // Lv.1 解锁
+    gridCards: [],
+    waveProgress: 0,
+    challengeAutoTimer: 0,
+    gridOffsets: {
+        epicProb: 0,
+        rareProb: 0,
+        swordsmanAtkBonus: 0, swordsmanCrit: 0, swordsmanCritDmg: 0, swordsmanLifesteal: 0,
+        archerAtkBonus: 0, archerCrit: 0, archerCritDmg: 0, archerLifesteal: 0,
+        staffAtkBonus: 0, staffCrit: 0, staffCritDmg: 0, staffLifesteal: 0,
+        spearAtkBonus: 0, spearCrit: 0, spearCritDmg: 0, spearLifesteal: 0
+    },
+    // 初始给每条武器线一个略高的品阶，方便体验 V2 武器铺效果
+    weaponQualities: [2, 2, 2, 2],
+    gridRefreshing: false,
+    shopExp: 0,
+    isHighlight: false,
 };
 
 // 击杀需求：初始 10，每提升 1 级 +10，最多 100
@@ -344,6 +293,10 @@ function updateHeroes(dt) {
                         // 有新增益可获取，停留3秒
                         h.state = 'atBuilding'; h.healTimer = 0;
                     }
+                    else if (b.id === 'armor') {
+                        // 护甲铺：所有英雄都需要停留3秒获得护甲
+                        h.state = 'atBuilding'; h.healTimer = 0;
+                    }
                     else { h.state = 'sideOut'; h.sideProgress = 0; }
                 }
                 break;
@@ -414,6 +367,44 @@ function updateHeroes(dt) {
                                 color: '#a78bfa',
                                 t: 0, dur: 2400
                             });
+                        }
+                        h.state = 'sideOut'; h.sideProgress = 0;
+                    }
+                } else if (b.id === 'armor') {
+                    // 护甲铺：停留3秒，获得对应职业的护甲属性
+                    h.healTimer += dt;
+                    h.rx = b.rx + jx; h.ry = b.ry + jy;
+                    if (h.healTimer >= 3000) {
+                        const armor = G.armors[h.role];
+                        if (armor) {
+                            // 计算护甲属性（基础属性 + 强化加成）
+                            const enhanceMult = 1 + armor.enhanceLv * 0.1; // 每级强化+10%
+                            const tierMult = 1 + armor.tier * 0.5; // 每阶+50%
+                            const finalDef = Math.floor(armor.def * enhanceMult * tierMult);
+                            const finalHp = Math.floor(armor.hp * enhanceMult * tierMult);
+                            
+                            const oldPower = calcHeroPower(h);
+                            // 应用护甲属性（防御和生命值）
+                            h.maxHp = (h.maxHp || HTYPES[h.type].hp) + finalHp;
+                            h.hp = Math.min(h.hp + finalHp, h.maxHp);
+                            // 防御值可以存储在英雄对象中，用于战斗计算
+                            if (!h.armorDef) h.armorDef = 0;
+                            h.armorDef = finalDef;
+                            
+                            // 添加护甲图标到装备列表
+                            if (!h.equips.find(e => e.icon === armor.icon)) {
+                                h.equips.push({ icon: armor.icon });
+                            }
+                            
+                            const diff = calcHeroPower(h) - oldPower;
+                            if (diff > 0) {
+                                G.floatTexts.push({
+                                    rx: h.rx, ry: h.ry - 0.03,
+                                    text: '🛡️ +' + diff,
+                                    color: '#60a5fa',
+                                    t: 0, dur: 2400
+                                });
+                            }
                         }
                         h.state = 'sideOut'; h.sideProgress = 0;
                     }
@@ -1061,8 +1052,8 @@ function draw(ctx, W, H) {
     BLDS.forEach((b, i) => {
         const x = b.rx * W, y = b.ry * H;
         const pulse = 1 + 0.04 * Math.sin(now / 800 + i * 1.2), r = 30 * pulse;
-        // 外描边高亮圈，提示可点击（护甲铺不高亮）
-        const isMainClickable = ['weapon', 'buff'].includes(b.id);
+        // 外描边高亮圈，提示可点击（护甲铺也高亮）
+        const isMainClickable = ['weapon', 'buff', 'armor'].includes(b.id);
         if (isMainClickable) {
             ctx.beginPath();
             ctx.arc(x, y, r + 6, 0, Math.PI * 2);
@@ -1119,6 +1110,15 @@ function draw(ctx, W, H) {
                 ctx.textAlign = 'center';
                 ctx.fillText(`+${G.buffAccAtk}⚔️ +${G.buffAccHp}❤️`, x, y + r + 20);
             }
+        }
+        // Armor Shop: draw circular armor progress ring for heroes inside
+        if (b.id === 'armor') {
+            G.heroes.filter(h => h.state === 'atBuilding' && h.currentBld && h.currentBld.id === 'armor').forEach(h => {
+                const pct = Math.min(1, h.healTimer / 3000);
+                ctx.beginPath();
+                ctx.arc(x, y, r + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+                ctx.strokeStyle = 'rgba(96,165,250,0.9)'; ctx.lineWidth = 3; ctx.stroke();
+            });
         }
     });
 
@@ -1266,6 +1266,9 @@ function renderUI() {
     $('ori-display').textContent = Math.floor(G.ori);
     // Crystal UI
     $('crystal-display').textContent = Math.floor(G.crystals);
+    // Essence UI (if element exists)
+    const essenceEl = $('armor-essence-display');
+    if (essenceEl) essenceEl.textContent = Math.floor(G.essence);
 
     // Summon Bar slots
     const activeS = (G.mode === 'challenge') ? G.activeSummonChallenge : G.activeSummonCity;
@@ -1429,6 +1432,14 @@ $('game-canvas').onmousedown = (e) => {
     // Click on 晶石矿场 (crystal mine)
     const crystalMineBld = BRANCHES.find(b => b.label === '晶石矿场');
     if (crystalMineBld && Math.hypot(rx - crystalMineBld.rx, ry - crystalMineBld.ry) < 0.08) openCrystalMine();
+
+    // Click on 护甲铺 (armor shop)
+    const armorBld = BLDS.find(b => b.id === 'armor');
+    if (armorBld && Math.hypot(rx - armorBld.rx, ry - armorBld.ry) < 0.08) openArmorShop();
+
+    // Click on 精炼厂 (refinery)
+    const refineryBld = BRANCHES.find(b => b.label === '精炼厂');
+    if (refineryBld && Math.hypot(rx - refineryBld.rx, ry - refineryBld.ry) < 0.08) openRefinery();
 };
 
 // ---- TAB SWITCHING ----
@@ -1649,10 +1660,16 @@ function updateExpeditions() {
             G.heroes.push(h);
         });
         G.gold += exp.reward.gold;
+        // 远征奖励：5个核心 + 1张随机护甲图纸（如果还没有）
+        G.armorCores += 5;
+        const roles = ['warrior', 'archer', 'mage', 'knight'];
+        const randomRole = roles[Math.floor(Math.random() * roles.length)];
+        G.armorBlueprints[randomRole] = (G.armorBlueprints[randomRole] || 0) + 1;
         renderUI();
+        const rewardText = `💰 ${exp.reward.gold} + 💎 5核心 + 📜 1图纸`;
         const toast = document.createElement('div');
         toast.className = 'toast';
-        toast.textContent = `🎉 远征完成！${exp.heroes.map(h => h.icon).join(' ')} 归队，获得 💰 ${exp.reward.gold}`;
+        toast.textContent = `🎉 远征完成！${exp.heroes.map(h => h.icon).join(' ')} 归队，获得 ${rewardText}`;
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 4000);
         return false;
@@ -1684,29 +1701,21 @@ $('def-back-to-city-btn').onclick = () => {
 // ---- FORGING SYSTEM ----
 let F = {
     state: 'idle',
-    clicks: 1,
+    clicks: 10,
     progress: 0,
-    forgeValue: 0,      // raw random 1-100
-    displayValue: 0,    // adjusted for bar display
-    greatSuccess: false,
+    targetMin: 60,
+    targetMax: 80,
+    decayRate: 40,
+    strikeBoost: 25,
     newEquip: null,
-    selectedIdx: 0,
-    roleFilter: 'warrior'   // 当前在武器铺中浏览的职业
+    selectedIdx: 0
 };
 
+// 打开武器铺（V2 UI）
 function openWeaponShop() {
-    $('weapon-view-main').classList.remove('hidden');
-    $('weapon-view-forge').classList.add('hidden');
-    $('weapon-view-result').classList.add('hidden');
-    $('modal-weapon').classList.remove('hidden');
-
-    // 默认展示战士武器
-    F.roleFilter = F.roleFilter || 'warrior';
-    // 更新职业按钮高亮
-    document.querySelectorAll('.ws-role-btn').forEach(btn => {
-        btn.classList.toggle('ws-role-btn-active', btn.dataset.role === F.roleFilter);
-    });
-    renderInventory();
+    const modal = $('modal-weapon');
+    if (modal) modal.classList.remove('hidden');
+    renderWeaponShop();
 }
 
 function switchWeaponTab(tab) {
@@ -1854,8 +1863,9 @@ function renderWeaponShop() {
         }
     }
 
-    // --- Auto Forge Toggle ---
-    $('af-toggle').checked = G.autoForge.enabled;
+    // --- Auto Forge Toggle ---（V2 UI 中可能不存在该开关，做空保护）
+    const afToggle = $('af-toggle');
+    if (afToggle) afToggle.checked = G.autoForge.enabled;
 
     renderAutoForgeStatus();
 }
@@ -1878,17 +1888,24 @@ function renderAutoForgeStatus() {
     if (list.innerHTML === '') list.innerHTML = '<div style="text-align:center; opacity:0.4; font-size:0.8rem; padding:10px;">暂无英雄正在铸造</div>';
 }
 
-$('af-toggle').onchange = (e) => {
-    G.autoForge.enabled = e.target.checked;
-};
+const afToggleGlobal = $('af-toggle');
+if (afToggleGlobal) {
+    afToggleGlobal.onchange = (e) => {
+        G.autoForge.enabled = e.target.checked;
+    };
+}
 
 
-$('weapon-set-active-btn').onclick = () => {
-    G.activeRecipeIdx = F.selectedIdx;
-    renderInventory();
-};
+const weaponSetActiveBtn = $('weapon-set-active-btn');
+if (weaponSetActiveBtn) {
+    weaponSetActiveBtn.onclick = () => {
+        G.activeRecipeIdx = F.selectedIdx;
+        renderInventory();
+    };
+}
 
-$('weapon-forge-start-btn').onclick = () => {
+const weaponForgeStartBtn = $('weapon-forge-start-btn');
+if (weaponForgeStartBtn) weaponForgeStartBtn.onclick = () => {
     const recipe = G.recipes[F.selectedIdx];
     let costGold = recipe.lv * 10;
     let costMat = 10;
@@ -2049,28 +2066,35 @@ function autoSelectBestRecipe() {
     G.activeRecipeIdx = bestIdx;
 }
 
-$('weapon-keep-old-btn').onclick = () => {
-    // 保留旧模具，新模具被回收获得金币
-    G.gold += F.newMold.lv * 20 * (F.newMold.q + 1);
-    autoSelectBestRecipe();
-    renderUI();
-    openWeaponShop();
-};
-$('weapon-equip-new-btn').onclick = () => {
-    // 计算模具战斗力变化
-    const oldPwr = G.mold ? calcEquipPower(G.mold) : 0;
-    const newPwr = calcEquipPower(F.newMold);
-    const diff = newPwr - oldPwr;
-    // 替换模具
-    G.mold = F.newMold;
-    autoSelectBestRecipe();
-    renderUI();
-    $('modal-weapon').classList.add('hidden');
-    // 在界面中央显示战斗力变化大提示
-    if (diff !== 0) showPowerBanner(F.newMold.icon, diff);
-};
+const weaponKeepOldBtn = $('weapon-keep-old-btn');
+if (weaponKeepOldBtn) {
+    weaponKeepOldBtn.onclick = () => {
+        // 保留旧模具，新模具被回收获得金币
+        G.gold += F.newMold.lv * 20 * (F.newMold.q + 1);
+        autoSelectBestRecipe();
+        renderUI();
+        openWeaponShop();
+    };
+}
+const weaponEquipNewBtn = $('weapon-equip-new-btn');
+if (weaponEquipNewBtn) {
+    weaponEquipNewBtn.onclick = () => {
+        // 计算模具战斗力变化
+        const oldPwr = G.mold ? calcEquipPower(G.mold) : 0;
+        const newPwr = calcEquipPower(F.newMold);
+        const diff = newPwr - oldPwr;
+        // 替换模具
+        G.mold = F.newMold;
+        autoSelectBestRecipe();
+        renderUI();
+        $('modal-weapon').classList.add('hidden');
+        // 在界面中央显示战斗力变化大提示
+        if (diff !== 0) showPowerBanner(F.newMold.icon, diff);
+    };
+}
 
-$('weapon-close-btn').onclick = () => $('modal-weapon').classList.add('hidden');
+const weaponCloseBtn = $('weapon-close-btn');
+if (weaponCloseBtn) weaponCloseBtn.onclick = () => $('modal-weapon').classList.add('hidden');
 
 // ---- CRYSTAL MINE LOGIC ----
 function updateCrystalMine(dt) {
@@ -2097,6 +2121,16 @@ function updateEconomy(dt) {
         G.ori += production;
         renderUI();
         if (!$('modal-steelmill').classList.contains('hidden')) renderSteelMill();
+    }
+    
+    // 精炼厂：产出精华
+    const essenceCycleTime = 3000 / (1 + (G.refineLv - 1) * 0.25); // 每级加快25%
+    G.essenceTimer += dt;
+    if (G.essenceTimer >= essenceCycleTime) {
+        G.essenceTimer -= essenceCycleTime;
+        G.essence += G.refineLv; // 等级即产量
+        renderUI();
+        if (!$('modal-refinery').classList.contains('hidden')) renderRefinery();
     }
 }
 
@@ -2192,11 +2226,11 @@ function renderSlotMachine(results, atkGain, hpGain) {
     $('sm-spin-cost').textContent = getSlotCost();
     if (results) {
         const icons = { atk: '⚔️', hp: '❤️' };
-        // 计算哪种类型触发了倍率
+        // 计算哪种类型触发了倍率（只有3连才触发倍率和特效）
         const nAtk = results.filter(r => r === 'atk').length;
         const nHp  = results.filter(r => r === 'hp').length;
-        const winType = nAtk >= 2 ? 'atk' : (nHp >= 2 ? 'hp' : null);
-        const winMult = winType ? (results.filter(r => r === winType).length) : 0;
+        const winType = nAtk === 3 ? 'atk' : (nHp === 3 ? 'hp' : null);
+        const winMult = winType ? 3 : 0;  // 只有3连才算中奖
 
         for (let i = 0; i < 3; i++) {
             const reel = $('sm-reel-' + i);
@@ -2204,11 +2238,9 @@ function renderSlotMachine(results, atkGain, hpGain) {
             // 清除旧特效
             reel.classList.remove('spinning', 'reel-win2', 'reel-win3');
             void reel.offsetWidth;
-            // 是否为中奖槽位
-            if (winMult === 3) {
+            // 是否为中奖槽位（只有3连才高亮）
+            if (winMult === 3 && results[i] === winType) {
                 reel.classList.add('reel-win3');
-            } else if (winMult === 2 && results[i] === winType) {
-                reel.classList.add('reel-win2');
             } else {
                 reel.classList.add('spinning');
             }
@@ -2219,11 +2251,9 @@ function renderSlotMachine(results, atkGain, hpGain) {
         $('sm-result').textContent = parts.length ? '本次获得: ' + parts.join('  ') : '本次无获益';
         $('sm-result').style.color = parts.length ? '#a78bfa' : '#6b7280';
 
-        // 中奖特效
+        // 中奖特效（只有3连才显示，倍率为X2）
         if (winMult === 3) {
-            showSlotWin(3, winType, winType === 'atk' ? atkGain : hpGain);
-        } else if (winMult === 2) {
-            showSlotWin(2, winType, winType === 'atk' ? atkGain : hpGain);
+            showSlotWin(2, 3, winType, winType === 'atk' ? atkGain : hpGain);  // 倍率X2，3连
         }
     } else {
         // 重置槽位外观
@@ -2237,26 +2267,27 @@ function renderSlotMachine(results, atkGain, hpGain) {
 }
 
 // 老虎机中奖特效：在弹窗内显示大横幅
+// mult: 倍率（2表示X2），combo: 连击数（3表示三连）
 let _slotWinTimer = null;
-function showSlotWin(mult, type, gain) {
+function showSlotWin(mult, combo, type, gain) {
     const banner = $('sm-win-banner');
     if (!banner) return;
     // 清除上一次定时器
     if (_slotWinTimer) { clearTimeout(_slotWinTimer); _slotWinTimer = null; }
 
     const typeLabel = type === 'atk' ? '⚔️ 攻击' : '❤️ 生命';
-    const multLabel = mult === 3 ? '× 3  三连！' : '× 2  二连！';
+    const multLabel = combo === 3 ? '× 2  三连！' : '× 2  二连！';  // V1: 3连X2，2连无倍率（不会触发特效）
     const sign      = type === 'atk' ? '+' + gain : '+' + gain;
 
     banner.innerHTML = `
-        <div class="sm-win-mult sm-win-mult--${mult}">${mult === 3 ? '🎆' : '✨'} ${multLabel}</div>
+        <div class="sm-win-mult sm-win-mult--${mult}">${combo === 3 ? '🎆' : '✨'} ${multLabel}</div>
         <div class="sm-win-sep"></div>
         <div class="sm-win-gain">${typeLabel} <strong>${sign}</strong></div>`;
     banner.className = 'sm-win-banner sm-win-banner--' + mult;
     banner.classList.remove('hidden');
 
-    // X3时：让槽位区震动（不震整个弹窗，避免闪关）
-    if (mult === 3) {
+    // 3连时：让槽位区震动（不震整个弹窗，避免闪关）
+    if (combo === 3) {
         const wrap = $('sm-reels-wrap');
         if (wrap) {
             wrap.classList.remove('shake3');
@@ -2270,7 +2301,7 @@ function showSlotWin(mult, type, gain) {
     _slotWinTimer = setTimeout(() => {
         banner.classList.add('sm-win-banner--fade');
         setTimeout(() => { banner.classList.add('hidden'); banner.classList.remove('sm-win-banner--fade'); }, 500);
-    }, mult === 3 ? 2200 : 1600);
+    }, combo === 3 ? 2200 : 1600);
 }
 
 function openSlotMachine() {
@@ -2299,10 +2330,16 @@ $('sm-spin-btn').onclick = () => {
     const nAtk = results.filter(r => r === 'atk').length;
     const nHp  = results.filter(r => r === 'hp').length;
 
-    // 公式：count个同类型 → count × 基础值 × (count === 1 ? 1 : count)
+    // 公式：count个同类型
+    // 1个：base
+    // 2个：2 * base（无倍率）
+    // 3个：3 * base * 2（X2倍率）
     function slotContrib(count, base) {
         if (count === 0) return 0;
-        return count * base * (count === 1 ? 1 : count);
+        if (count === 1) return base;
+        if (count === 2) return 2 * base;  // 2连无倍率
+        if (count === 3) return 3 * base * 2;  // 3连X2倍率
+        return 0;
     }
     const atkGain = slotContrib(nAtk, 2);
     const hpGain  = slotContrib(nHp, 10);
@@ -2323,3 +2360,259 @@ $('sm-spin-btn').onclick = () => {
 };
 
 $('sm-close-btn').onclick = () => $('modal-slotmachine').classList.add('hidden');
+
+// ---- ARMOR SHOP LOGIC ----
+let currentArmorRole = 'warrior';
+
+function openArmorShop() {
+    currentArmorRole = 'warrior';
+    bindArmorRoleButtons();
+    renderArmorShop();
+    const modal = $('modal-armor');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function renderArmorShop() {
+    const armor = G.armors[currentArmorRole];
+    if (!armor) return;
+
+    // 更新资源显示
+    const essenceEl = $('armor-essence-display');
+    if (essenceEl) essenceEl.textContent = Math.floor(G.essence);
+    const coresEl = $('armor-cores-display');
+    if (coresEl) coresEl.textContent = G.armorCores;
+    // 更新四种职业图纸数量
+    const bp = G.armorBlueprints;
+    const bpW = $('armor-bp-warrior'); if (bpW) bpW.textContent = bp.warrior || 0;
+    const bpA = $('armor-bp-archer'); if (bpA) bpA.textContent = bp.archer || 0;
+    const bpM = $('armor-bp-mage');   if (bpM) bpM.textContent = bp.mage || 0;
+    const bpK = $('armor-bp-knight'); if (bpK) bpK.textContent = bp.knight || 0;
+
+    // 计算当前属性
+    const enhanceMult = 1 + armor.enhanceLv * 0.1;
+    const tierMult = 1 + armor.tier * 0.5;
+    const finalDef = Math.floor(armor.def * enhanceMult * tierMult);
+    const finalHp = Math.floor(armor.hp * enhanceMult * tierMult);
+
+    // 更新等级显示（Lv = 强化等级 + 1）
+    const lvEl = $('armor-lv-display');
+    if (lvEl) lvEl.textContent = armor.enhanceLv + 1;
+
+    // 更新护甲图标和名称（图标外框根据品阶变化）
+    const iconEl = $('armor-icon-display');
+    if (iconEl) {
+        iconEl.textContent = armor.icon;
+        iconEl.className = 'armor-icon-display armor-tier-' + Math.min(armor.tier, 4);
+    }
+    const nameEl = $('armor-name-display');
+    if (nameEl) nameEl.textContent = armor.name;
+
+    // 更新属性显示
+    const defStatEl = $('armor-stat-def');
+    if (defStatEl) {
+        const span = defStatEl.querySelector('.stat-value span');
+        if (span) span.textContent = finalDef.toLocaleString();
+    }
+    const hpStatEl = $('armor-stat-hp');
+    if (hpStatEl) {
+        const span = hpStatEl.querySelector('.stat-value span');
+        if (span) span.textContent = finalHp.toLocaleString();
+    }
+    const enhanceStatEl = $('armor-stat-enhance');
+    if (enhanceStatEl) {
+        const span = enhanceStatEl.querySelector('.stat-value span');
+        if (span) span.textContent = armor.enhanceLv;
+    }
+
+    // 更新效果文本
+    const effectEl = $('armor-effect-text');
+    if (effectEl) {
+        let effectText = '为英雄提供防御和生命值加成';
+        if (armor.tier > 0) {
+            effectText = `为英雄提供防御和生命值加成\n进阶等级 T${armor.tier}`;
+        }
+        effectEl.innerHTML = effectText.replace(/\n/g, '<br>');
+    }
+
+    // 更新进度条（基于强化等级）
+    const progressFill = $('armor-progress-fill');
+    if (progressFill) {
+        const progress = (armor.enhanceLv / 10) * 100;
+        progressFill.style.width = Math.min(100, progress) + '%';
+    }
+
+    // 更新主按钮（强化 / 进阶 互斥）
+    const enhanceCost = 1 + armor.enhanceLv * 5; // 初始 1 点精华
+    const enhanceCostEl = $('armor-enhance-cost');
+    if (enhanceCostEl) enhanceCostEl.textContent = enhanceCost;
+
+    const mainBtn = $('armor-main-btn');
+    const mainTextEl = $('armor-main-text');
+
+    const advanceCoreCost = 10 + armor.tier * 5;
+    const advanceCoreCostEl = $('armor-advance-core-cost');
+    if (advanceCoreCostEl) advanceCoreCostEl.textContent = advanceCoreCost;
+
+    const bpCount = G.armorBlueprints[currentArmorRole] || 0;
+    const canAdvance = armor.enhanceLv >= 10 && bpCount > 0 && G.armorCores >= advanceCoreCost;
+
+    if (mainBtn && mainTextEl) {
+        if (armor.enhanceLv < 10) {
+            mainBtn.disabled = G.essence < enhanceCost;
+            mainTextEl.textContent = `强化 (${enhanceCost} 💎)`;
+        } else {
+            mainBtn.disabled = !canAdvance;
+            if (bpCount <= 0) {
+                mainTextEl.textContent = '进阶 (需要图纸)';
+            } else if (G.armorCores < advanceCoreCost) {
+                mainTextEl.textContent = '进阶 (核心不足)';
+            } else {
+                mainTextEl.textContent = `进阶 (${advanceCoreCost} 💎核心 + 图纸)`;
+            }
+        }
+    }
+
+    // 更新职业按钮状态
+    document.querySelectorAll('.tab-button[data-role]').forEach(btn => {
+        if (btn.dataset.role === currentArmorRole) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+// 职业切换（使用事件委托，在弹窗打开时绑定）
+let armorRoleBtnsBound = false;
+function bindArmorRoleButtons() {
+    if (armorRoleBtnsBound) return;
+    document.querySelectorAll('#modal-armor .tab-button[data-role]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentArmorRole = btn.dataset.role;
+            renderArmorShop();
+        });
+    });
+    armorRoleBtnsBound = true;
+}
+
+// 主按钮：强化 / 进阶
+const mainBtnEl = $('armor-main-btn');
+if (mainBtnEl) mainBtnEl.onclick = () => {
+    const armor = G.armors[currentArmorRole];
+    if (!armor) return;
+
+    // 强化阶段
+    if (armor.enhanceLv < 10) {
+        const batchCheckbox = $('armor-batch-enhance');
+        const isBatch = batchCheckbox && batchCheckbox.checked;
+        const maxTimes = isBatch ? 1000 : 1;
+
+        let times = 0;
+        let totalCost = 0;
+
+        for (let i = 0; i < maxTimes && armor.enhanceLv < 10; i++) {
+            const cost = 1 + armor.enhanceLv * 5;
+            if (G.essence < cost) break;
+            G.essence -= cost;
+            armor.enhanceLv++;
+            totalCost += cost;
+            times++;
+        }
+
+        if (times === 0) {
+            alert('精华不足！');
+            return;
+        }
+
+        renderArmorShop();
+        renderUI();
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        if (times === 1) {
+            toast.textContent = `✨ ${armor.name} 强化至 +${armor.enhanceLv} 级！`;
+        } else {
+            toast.textContent = `✨ ${armor.name} 批量强化 ${times} 次，消耗 ${totalCost} 💎！`;
+        }
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+        return;
+    }
+
+    // 进阶阶段
+    const cost = 10 + armor.tier * 5;
+    const bpCount = G.armorBlueprints[currentArmorRole] || 0;
+    if (bpCount <= 0) {
+        alert('没有对应图纸！');
+        return;
+    }
+    if (G.armorCores < cost) {
+        alert('核心不足！');
+        return;
+    }
+
+    G.armorCores -= cost;
+    G.armorBlueprints[currentArmorRole] = bpCount - 1;
+    armor.tier++;
+    armor.enhanceLv = 0; // 进阶后重置强化等级
+    // 每次进阶：品阶+1，当前属性 *1.1（向下取整）
+    armor.def = Math.floor(armor.def * 1.1);
+    armor.hp = Math.floor(armor.hp * 1.1);
+    renderArmorShop();
+    renderUI();
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = `🎉 ${armor.name} 进阶至 T${armor.tier}！`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+};
+
+const armorCloseBtn = $('armor-close-btn');
+if (armorCloseBtn) armorCloseBtn.onclick = () => {
+    const modal = $('modal-armor');
+    if (modal) modal.classList.add('hidden');
+};
+
+// ---- REFINERY LOGIC ----
+function openRefinery() {
+    renderRefinery();
+    const modal = $('modal-refinery');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function renderRefinery() {
+    const lvEl = $('refinery-lv-val');
+    if (lvEl) lvEl.textContent = G.refineLv;
+    const cycleTime = 3000 / (1 + (G.refineLv - 1) * 0.25);
+    const speedEl = $('refinery-speed-val');
+    if (speedEl) speedEl.textContent = (G.refineLv / (cycleTime / 1000)).toFixed(2);
+    const upgradeCost = Math.floor(300 * Math.pow(1.5, G.refineLv - 1));
+    const costEl = $('refinery-upgrade-cost');
+    if (costEl) costEl.textContent = upgradeCost;
+
+    const fill = $('refinery-progress-fill');
+    if (fill) fill.style.width = (G.essenceTimer / cycleTime * 100) + '%';
+}
+
+const refineryUpgradeBtn = $('refinery-upgrade-btn');
+if (refineryUpgradeBtn) refineryUpgradeBtn.onclick = () => {
+    const cost = Math.floor(300 * Math.pow(1.5, G.refineLv - 1));
+    if (G.gold < cost) {
+        alert('金币不足！');
+        return;
+    }
+    G.gold -= cost;
+    G.refineLv++;
+    renderRefinery();
+    renderUI();
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = `⚗️ 精炼厂升级至 Lv.${G.refineLv}！`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+};
+
+const refineryCloseBtn = $('refinery-close-btn');
+if (refineryCloseBtn) refineryCloseBtn.onclick = () => {
+    const modal = $('modal-refinery');
+    if (modal) modal.classList.add('hidden');
+};
