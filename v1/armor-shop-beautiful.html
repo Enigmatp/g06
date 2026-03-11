@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Equipment Enhancement - RPG UI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            rpg: {
+              bg: '#0a0d14',
+              card: '#161b22',
+              border: '#30363d',
+              accent: '#d4af37', // Gold
+              glow: 'rgba(212, 175, 55, 0.4)',
+              text: '#e6edf3',
+              secondary: '#8b949e',
+              highlight: '#f0883e',
+              dark: '#0d1117'
+            }
+          },
+          backgroundImage: {
+            'metallic-gradient': 'linear-gradient(180deg, #21262d 0%, #0d1117 100%)',
+            'button-glow': 'radial-gradient(circle, rgba(212,175,55,0.3) 0%, rgba(0,0,0,0) 70%)',
+            'gold-gradient': 'linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #d4af37 100%)',
+            'card-gradient': 'linear-gradient(180deg, rgba(22,27,34,0.95) 0%, rgba(13,17,23,0.95) 100%)',
+            'noise-texture': 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 400 400\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\' opacity=\'0.05\'/%3E%3C/svg%3E")'
+          },
+          boxShadow: {
+            'gold-glow': '0 0 20px rgba(212, 175, 55, 0.5), 0 0 40px rgba(212, 175, 55, 0.3)',
+            'gold-glow-sm': '0 0 10px rgba(212, 175, 55, 0.4)',
+            'inner-gold': 'inset 0 0 20px rgba(212, 175, 55, 0.2)',
+            'card': '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+    
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .rpg-title {
+      font-family: 'Cinzel', serif;
+    }
+    
+    @keyframes pulse-gold {
+      0%, 100% { 
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.5), 0 0 20px rgba(212, 175, 55, 0.3);
+        transform: scale(1);
+      }
+      50% { 
+        box-shadow: 0 0 25px rgba(212, 175, 55, 0.8), 0 0 50px rgba(212, 175, 55, 0.5);
+        transform: scale(1.02);
+      }
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    
+    @keyframes glow-pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+    
+    .animate-pulse-gold {
+      animation: pulse-gold 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    .animate-float {
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    .animate-shimmer {
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      background-size: 200% 100%;
+      animation: shimmer 2s infinite;
+    }
+    
+    .animate-glow-pulse {
+      animation: glow-pulse 2s ease-in-out infinite;
+    }
+    
+    .rpg-border {
+      border: 1px solid #30363d;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    
+    .rpg-border::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent);
+    }
+    
+    .text-shadow-gold {
+      text-shadow: 0 0 10px rgba(212, 175, 55, 0.8), 0 0 20px rgba(212, 175, 55, 0.4);
+    }
+    
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(8px);
+      position: relative;
+    }
+    
+    .glass-effect::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    
+    .weapon-container {
+      position: relative;
+      filter: drop-shadow(0 0 20px rgba(212,175,55,0.3));
+      transition: all 0.3s ease;
+    }
+    
+    .weapon-container:hover {
+      filter: drop-shadow(0 0 30px rgba(212,175,55,0.6));
+      transform: scale(1.05);
+    }
+    
+    .stat-item {
+      position: relative;
+      padding-left: 1rem;
+      transition: all 0.2s ease;
+    }
+    
+    .stat-item::before {
+      content: '▶';
+      position: absolute;
+      left: 0;
+      color: rgba(212,175,55,0.5);
+      font-size: 0.6rem;
+    }
+    
+    .stat-item:hover {
+      transform: translateX(4px);
+    }
+    
+    .stat-item:hover::before {
+      color: rgba(212,175,55,1);
+    }
+    
+    .tab-button {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .tab-button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(212,175,55,0.2);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+    
+    .tab-button:hover::before {
+      width: 200%;
+      height: 200%;
+    }
+    
+    .tab-button.active {
+      background: linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0.1) 100%);
+      border-color: #d4af37;
+      box-shadow: 0 0 15px rgba(212,175,55,0.4), inset 0 0 10px rgba(212,175,55,0.1);
+    }
+    
+    .tab-button.active .tab-icon {
+      filter: none;
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    
+    .enhance-button {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #d4af37 0%, #f4d03f 50%, #d4af37 100%);
+      background-size: 200% 100%;
+      transition: all 0.3s ease;
+    }
+    
+    .enhance-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+    
+    .enhance-button:hover::before {
+      left: 100%;
+    }
+    
+    .enhance-button:hover {
+      background-position: 100% 0;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(212,175,55,0.6), 0 0 30px rgba(212,175,55,0.4);
+    }
+    
+    .enhance-button:active {
+      transform: translateY(0);
+    }
+    
+    .progress-bar {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      animation: shimmer 2s infinite;
+    }
+    
+    .back-button {
+      transition: all 0.2s ease;
+    }
+    
+    .back-button:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(212,175,55,0.5);
+      transform: translateX(-4px);
+    }
+    
+    .cost-badge {
+      background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 100%);
+      border: 1px solid rgba(212,175,55,0.3);
+      box-shadow: 0 0 10px rgba(212,175,55,0.2);
+      transition: all 0.3s ease;
+    }
+    
+    .cost-badge:hover {
+      border-color: rgba(212,175,55,0.6);
+      box-shadow: 0 0 15px rgba(212,175,55,0.4);
+      transform: scale(1.05);
+    }
+    
+    .level-badge {
+      background: linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 100%);
+      border: 2px solid #d4af37;
+      box-shadow: 0 0 15px rgba(212,175,55,0.5), inset 0 0 10px rgba(212,175,55,0.1);
+      position: relative;
+    }
+    
+    .level-badge::after {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg, transparent, rgba(212,175,55,0.3), transparent);
+      border-radius: inherit;
+      z-index: -1;
+      animation: glow-pulse 2s ease-in-out infinite;
+    }
+    
+    .skill-box {
+      position: relative;
+      border-left: 3px solid #d4af37;
+      background: linear-gradient(90deg, rgba(212,175,55,0.05) 0%, transparent 100%);
+    }
+    
+    .skill-box::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: linear-gradient(180deg, transparent, #d4af37, transparent);
+      animation: glow-pulse 2s ease-in-out infinite;
+    }
+    
+    .bg-pattern {
+      background-image: 
+        radial-gradient(circle at 20% 50%, rgba(212,175,55,0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(212,175,55,0.02) 0%, transparent 50%),
+        linear-gradient(180deg, rgba(10,13,20,0.95) 0%, rgba(13,17,23,0.98) 100%);
+      background-size: 100% 100%;
+    }
+    
+    .particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: rgba(212,175,55,0.6);
+      border-radius: 50%;
+      animation: float 4s ease-in-out infinite;
+    }
+    
+    @media (max-width: 640px) {
+      .weapon-container img {
+        width: 180px;
+        height: 180px;
+      }
+    }
+  </style>
+</head>
+<body class="bg-rpg-bg text-rpg-text overflow-hidden select-none">
+<!-- Background Particles -->
+<div class="fixed inset-0 pointer-events-none overflow-hidden">
+  <div class="particle" style="left: 10%; top: 20%; animation-delay: 0s;"></div>
+  <div class="particle" style="left: 80%; top: 60%; animation-delay: 1s;"></div>
+  <div class="particle" style="left: 50%; top: 80%; animation-delay: 2s;"></div>
+  <div class="particle" style="left: 30%; top: 40%; animation-delay: 1.5s;"></div>
+</div>
+
+<!-- BEGIN: Main Container -->
+<main class="relative h-screen w-full flex flex-col p-6 max-w-md mx-auto overflow-hidden bg-pattern">
+  
+  <!-- BEGIN: Top Section - Weapon Preview -->
+  <section class="relative flex-1 flex flex-col items-center justify-center py-8" data-purpose="weapon-preview">
+    
+    <!-- Weapon Level Badge -->
+    <div class="absolute top-6 left-6 z-10">
+      <div class="level-badge px-4 py-2 rounded-md">
+        <span class="text-sm text-rpg-accent font-bold rpg-title tracking-wider">Lv 1</span>
+      </div>
+    </div>
+    
+    <!-- Main Weapon Visual -->
+    <div class="weapon-container animate-float">
+      <div class="absolute inset-0 bg-button-glow blur-3xl opacity-40 animate-glow-pulse"></div>
+      <img 
+        alt="Rusted Sword" 
+        class="w-56 h-56 object-contain relative z-10" 
+        src="https://lh3.googleusercontent.com/aida-public/AB6AXuDT1HenWKwqRltazhuMM65LQcX0G7LQKFmRe2AlMTcpbJMqapnlebvpC1XdC4a4SLPQ9NvsADcqS21jJnItGz1sYUtKLMd99osDdL-l-MbDp8cs7J4DaNH6axBxi_TmxenP_6PG-ktyC8nsXrJC3I5AFMWN1BXc3y_EwG6MRI-NV2MBgpcM2ib1tVfDXpmntFAyjQOzRZbrQeYT_JYN2JCpMQ0RpwZqpd91dBmroZ5Bd2079xJrtFJb4WV8jDXkTIAi_n3xBntho1ln"
+      />
+    </div>
+    
+    <!-- Weapon Name -->
+    <div class="mt-6 text-center">
+      <h1 class="text-3xl font-bold tracking-widest text-shadow-gold rpg-title">生锈的剑</h1>
+      <div class="h-1 w-32 bg-gradient-to-r from-transparent via-rpg-accent to-transparent mx-auto mt-2 animate-shimmer"></div>
+    </div>
+    
+  </section>
+  <!-- END: Top Section -->
+  
+  <!-- BEGIN: Middle Section - Attributes -->
+  <section class="mb-8 space-y-5" data-purpose="attribute-panel">
+    
+    <!-- Stats Container -->
+    <div class="rpg-border rounded-xl bg-card-gradient p-6 space-y-4 relative overflow-hidden">
+      <!-- Decorative Corner -->
+      <div class="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-rpg-accent/10 to-transparent"></div>
+      <div class="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tl from-rpg-accent/10 to-transparent"></div>
+      
+      <!-- Connecting Line Visual -->
+      <div class="absolute -left-3 top-0 bottom-0 w-1 bg-gradient-to-b from-transparent via-rpg-accent/40 to-transparent hidden md:block"></div>
+      
+      <div class="stat-item flex justify-between items-center relative z-10">
+        <span class="text-rpg-secondary text-base font-medium">攻击力</span>
+        <span class="text-rpg-highlight font-bold text-xl tracking-wider">+ 100,000</span>
+      </div>
+      
+      <div class="h-px bg-gradient-to-r from-transparent via-rpg-border to-transparent"></div>
+      
+      <div class="stat-item flex justify-between items-center relative z-10">
+        <span class="text-rpg-secondary text-base font-medium">暴击率</span>
+        <span class="text-rpg-accent font-bold text-lg tracking-wider">+ 10%</span>
+      </div>
+      
+      <div class="h-px bg-gradient-to-r from-transparent via-rpg-border to-transparent"></div>
+      
+      <div class="stat-item flex justify-between items-center relative z-10">
+        <span class="text-rpg-secondary text-base font-medium">致命率</span>
+        <span class="text-rpg-accent font-bold text-lg tracking-wider">+ 10%</span>
+      </div>
+    </div>
+    
+    <!-- Skill Description Box -->
+    <div class="rpg-border rounded-xl glass-effect p-5 skill-box">
+      <p class="text-sm leading-relaxed text-rpg-secondary relative z-10">
+        攻击敌人，有概率造成<span class="text-red-400 font-semibold">流血</span>效果，持续造成伤害。
+      </p>
+    </div>
+    
+  </section>
+  <!-- END: Middle Section -->
+  
+  <!-- BEGIN: Progress Bar -->
+  <div class="w-full h-2 bg-gray-900/60 rounded-full mb-8 overflow-hidden rpg-border">
+    <div class="h-full bg-gold-gradient progress-bar w-2/3 shadow-gold-glow-sm relative">
+      <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+    </div>
+  </div>
+  <!-- END: Progress Bar -->
+  
+  <!-- BEGIN: Bottom Section - Interaction -->
+  <footer class="space-y-6" data-purpose="footer-controls">
+    
+    <!-- Character Tabs -->
+    <div class="grid grid-cols-4 gap-3">
+      <button class="tab-button active flex flex-col items-center p-3 rounded-lg bg-rpg-card border-2 border-rpg-accent relative z-10">
+        <div class="tab-icon w-12 h-12 flex items-center justify-center text-2xl mb-1">🛡️</div>
+        <span class="text-xs font-semibold text-rpg-accent">战士</span>
+      </button>
+      
+      <button class="tab-button flex flex-col items-center p-3 rounded-lg bg-rpg-card/60 border border-rpg-border relative z-10">
+        <div class="tab-icon w-12 h-12 flex items-center justify-center text-2xl mb-1 grayscale opacity-50">🏹</div>
+        <span class="text-xs text-rpg-secondary">弓手</span>
+      </button>
+      
+      <button class="tab-button flex flex-col items-center p-3 rounded-lg bg-rpg-card/60 border border-rpg-border relative z-10">
+        <div class="tab-icon w-12 h-12 flex items-center justify-center text-2xl mb-1 grayscale opacity-50">🧙</div>
+        <span class="text-xs text-rpg-secondary">法师</span>
+      </button>
+      
+      <button class="tab-button flex flex-col items-center p-3 rounded-lg bg-rpg-card/60 border border-rpg-border relative z-10">
+        <div class="tab-icon w-12 h-12 flex items-center justify-center text-2xl mb-1 grayscale opacity-50">🐎</div>
+        <span class="text-xs text-rpg-secondary">骑士</span>
+      </button>
+    </div>
+    
+    <!-- Enhancement Cost and Button -->
+    <div class="flex flex-col items-center gap-5">
+      <!-- Cost display -->
+      <div class="cost-badge flex items-center gap-3 px-6 py-2.5 rounded-full">
+        <span class="text-2xl animate-pulse-gold">💎</span>
+        <span class="text-base font-mono tracking-wider font-bold text-rpg-accent">x1000</span>
+      </div>
+      
+      <!-- Main Button -->
+      <button class="enhance-button w-full max-w-[280px] py-5 text-rpg-dark font-black text-2xl rounded-lg shadow-xl uppercase tracking-widest border-2 border-white/30 relative z-10">
+        强 化
+      </button>
+    </div>
+    
+    <!-- Back Button -->
+    <div class="flex justify-start pt-2">
+      <button class="back-button w-14 h-12 flex items-center justify-center bg-rpg-card rounded-lg border border-rpg-border text-rpg-secondary hover:text-rpg-accent">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </button>
+    </div>
+    
+  </footer>
+  <!-- END: Bottom Section -->
+  
+</main>
+<!-- END: Main Container -->
+</body>
+</html>

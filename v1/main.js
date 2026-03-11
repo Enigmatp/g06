@@ -2616,3 +2616,53 @@ if (refineryCloseBtn) refineryCloseBtn.onclick = () => {
     const modal = $('modal-refinery');
     if (modal) modal.classList.add('hidden');
 };
+
+// ---- WEAPON SHOP LEVEL OVERVIEW (V2 移植) ----
+function openShopLevelSelector() {
+    renderShopLevels();
+    const modal = $('modal-shop-levels');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function renderShopLevels() {
+    const listEl = $('shop-level-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    const fields = [
+        { key: 'swordsmanAtkBonus', name: '长剑攻击' },
+        { key: 'swordsmanCrit', name: '长剑暴击', isPct: true },
+        { key: 'swordsmanCritDmg', name: '长剑暴伤', isPct: true },
+        { key: 'swordsmanLifesteal', name: '长剑吸血', isPct: true },
+
+        { key: 'archerAtkBonus', name: '长弓攻击' },
+        { key: 'archerCrit', name: '长弓暴击', isPct: true },
+        { key: 'archerCritDmg', name: '长弓暴伤', isPct: true },
+        { key: 'archerLifesteal', name: '长弓吸血', isPct: true },
+
+        { key: 'staffAtkBonus', name: '法杖攻击' },
+        { key: 'staffCrit', name: '法杖暴击', isPct: true },
+        { key: 'staffCritDmg', name: '法杖暴伤', isPct: true },
+        { key: 'staffLifesteal', name: '法杖吸血', isPct: true },
+
+        { key: 'spearAtkBonus', name: '长枪攻击' },
+        { key: 'spearCrit', name: '长枪暴击', isPct: true },
+        { key: 'spearCritDmg', name: '长枪暴伤', isPct: true },
+        { key: 'spearLifesteal', name: '长枪吸血', isPct: true }
+    ];
+
+    let html = '<div style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto; padding-right: 10px;">';
+    fields.forEach(f => {
+        const val = G.gridOffsets[f.key] || 0;
+        const color = val > 0 ? '#4ade80' : '#94a3b8';
+        const valStr = val > 0 ? '+' + val + (f.isPct ? '%' : '') : '0' + (f.isPct ? '%' : '');
+        html += `
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; font-size: 0.9rem;">
+                <span style="color: #cbd5e1;">${f.name}</span>
+                <span style="color: ${color}; font-weight: bold;">${valStr}</span>
+            </div>
+        `;
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+}
