@@ -1413,9 +1413,9 @@ $('game-canvas').onmousedown = (e) => {
     const barracksBld = BLDS[BARRACKS_BLD_IDX];
     if (Math.hypot(rx - barracksBld.rx, ry - barracksBld.ry) < 0.08) openDeployModal();
 
-    // Click on 武器铺 (weapon shop)
-    const weaponBld = BLDS.find(b => b.id === 'weapon');
-    if (weaponBld && Math.hypot(rx - weaponBld.rx, ry - weaponBld.ry) < 0.08) openWeaponShop();
+    // Click on 武器铺 (weapon shop) - 交互已关闭，不再打开武器铺界面
+    // const weaponBld = BLDS.find(b => b.id === 'weapon');
+    // if (weaponBld && Math.hypot(rx - weaponBld.rx, ry - weaponBld.ry) < 0.08) openWeaponShop();
 
     // Click on 炼钢厂 (steel mill)
     const steelMillBld = BRANCHES.find(b => b.label === '炼钢厂');
