@@ -1561,24 +1561,27 @@ function generateGridTier() {
         { name: '长枪生命', icon: '🛡️', type: 'spearHpBonus', val: 50 * lv, unit: '', q: 1 },
     ];
 
-    G.gridCards = [];
+    const starCard = { name: '幸运星', icon: '⭐', type: 'star', val: 3, unit: '次', q: 4 };
 
-    if (G.isHighlight) {
-        // Highlight Moment: Only Ascension cards
-        for (let i = 0; i < 16; i++) {
+    G.gridCards = new Array(16).fill(null);
+
+    // Force four corners to be Star Cards
+    G.gridCards[0] = { ...starCard, flipped: true };
+    G.gridCards[4] = { ...starCard, flipped: true };
+    G.gridCards[8] = { ...starCard, flipped: true };
+    G.gridCards[12] = { ...starCard, flipped: true };
+
+    for (let i = 0; i < 16; i++) {
+        if (G.gridCards[i]) continue; // Skip already populated corners
+
+        if (G.isHighlight) {
+            // Highlight Moment: remaining 12 slots are Ascension cards
             const base = qualityPool[Math.floor(Math.random() * qualityPool.length)];
-            G.gridCards.push({ ...base, flipped: true });
-        }
-    } else {
-        // Normal State: Attribute and some Ascension cards
-        for (let i = 0; i < 16; i++) {
-            let base;
-            if (Math.random() < 0.2) {
-                base = qualityPool[Math.floor(Math.random() * qualityPool.length)];
-            } else {
-                base = attrPool[Math.floor(Math.random() * attrPool.length)];
-            }
-            G.gridCards.push({ ...base, flipped: true });
+            G.gridCards[i] = { ...base, flipped: true };
+        } else {
+            // Normal State: remaining 12 slots are Attribute cards explicitly, no Ascension cards
+            const base = attrPool[Math.floor(Math.random() * attrPool.length)];
+            G.gridCards[i] = { ...base, flipped: true };
         }
     }
 }
