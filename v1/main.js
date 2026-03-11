@@ -103,9 +103,9 @@ const G = {
     // 护甲系统
     armors: {
         warrior: { name: '锁甲', icon: '🔗', lv: 1, enhanceLv: 0, tier: 0, def: 10, hp: 50 }, // 战士-锁甲
-        archer: { name: '皮甲', icon: '🧥', lv: 1, enhanceLv: 0, tier: 0, def: 8, hp: 40 },   // 弓手-皮甲
-        mage: { name: '布甲', icon: '👕', lv: 1, enhanceLv: 0, tier: 0, def: 5, hp: 30 },    // 法师-布甲
-        knight: { name: '重甲', icon: '🛡️', lv: 1, enhanceLv: 0, tier: 0, def: 15, hp: 80 }, // 骑士-重甲
+        archer:  { name: '皮甲', icon: '🧥', lv: 1, enhanceLv: 0, tier: 0, def: 8,  hp: 40 }, // 弓手-皮甲
+        mage:    { name: '布甲', icon: '👕', lv: 1, enhanceLv: 0, tier: 0, def: 5,  hp: 30 }, // 法师-布甲
+        knight:  { name: '重甲', icon: '🛡️', lv: 1, enhanceLv: 0, tier: 0, def: 15, hp: 80 }, // 骑士-重甲
     },
     essence: 1000,        // 精华数量（由精炼厂产出）- 初始给 1000 方便测试
     refineLv: 1,         // 精炼厂等级
@@ -214,6 +214,14 @@ const SUB_AFFIX_POOL = [
 // Weapon shop proficiency level system
 // Thresholds: level 1=50, level 2=150, level 3=250, level 4=400, level 5=600 (cumulative)
 const SHOP_PROF_THRESHOLDS = [50, 150, 250, 400, 600];
+
+// 护甲打造名称表（每次打造名称变得更厉害）
+const ARMOR_TIER_NAMES = {
+    warrior: ['锁甲', '精制锁甲', '龙鳞锁甲', '圣骑锁甲', '不朽锁甲'],
+    archer:  ['皮甲', '强化皮甲', '猎隼皮甲', '影袭皮甲', '幻影猎手甲'],
+    mage:    ['布甲', '秘纹法袍', '星辉法袍', '天启长袍', '起源长袍'],
+    knight:  ['重甲', '精钢重甲', '王者重甲', '龙骑重甲', '永恒重甲'],
+};
 
 function tryUpgradeShopProf() {
     while (G.shopProfLv < SHOP_PROF_THRESHOLDS.length && G.shopProf >= SHOP_PROF_THRESHOLDS[G.shopProfLv]) {
@@ -2449,25 +2457,20 @@ function renderArmorShop() {
     const mainBtn = $('armor-main-btn');
     const mainTextEl = $('armor-main-text');
 
-    const advanceCoreCost = 10 + armor.tier * 5;
-    const advanceCoreCostEl = $('armor-advance-core-cost');
-    if (advanceCoreCostEl) advanceCoreCostEl.textContent = advanceCoreCost;
-
     const bpCount = G.armorBlueprints[currentArmorRole] || 0;
-    const canAdvance = armor.enhanceLv >= 10 && bpCount > 0 && G.armorCores >= advanceCoreCost;
+    const canAdvance = armor.enhanceLv >= 10 && bpCount > 0;
 
     if (mainBtn && mainTextEl) {
         if (armor.enhanceLv < 10) {
             mainBtn.disabled = G.essence < enhanceCost;
             mainTextEl.textContent = `强化 (${enhanceCost} 💎)`;
         } else {
+            // 打造阶段（进阶）：只需要图纸，不再消耗核心
             mainBtn.disabled = !canAdvance;
             if (bpCount <= 0) {
-                mainTextEl.textContent = '进阶 (需要图纸)';
-            } else if (G.armorCores < advanceCoreCost) {
-                mainTextEl.textContent = '进阶 (核心不足)';
+                mainTextEl.textContent = '打造 (需要图纸)';
             } else {
-                mainTextEl.textContent = `进阶 (${advanceCoreCost} 💎核心 + 图纸)`;
+                mainTextEl.textContent = '打造';
             }
         }
     }
@@ -2538,25 +2541,26 @@ if (mainBtnEl) mainBtnEl.onclick = () => {
         return;
     }
 
-    // 进阶阶段
-    const cost = 10 + armor.tier * 5;
+    // 打造阶段（原进阶）：不再需要核心，只消耗图纸
     const bpCount = G.armorBlueprints[currentArmorRole] || 0;
     if (bpCount <= 0) {
         alert('没有对应图纸！');
         return;
     }
-    if (G.armorCores < cost) {
-        alert('核心不足！');
-        return;
-    }
-
-    G.armorCores -= cost;
     G.armorBlueprints[currentArmorRole] = bpCount - 1;
     armor.tier++;
     armor.enhanceLv = 0; // 进阶后重置强化等级
     // 每次进阶：品阶+1，当前属性 *1.1（向下取整）
     armor.def = Math.floor(armor.def * 1.1);
     armor.hp = Math.floor(armor.hp * 1.1);
+
+    // 更新护甲名称：按照角色和品阶从表中取更酷的名字
+    const names = ARMOR_TIER_NAMES[currentArmorRole];
+    if (names && names[armor.tier]) {
+        armor.name = names[armor.tier];
+    } else if (names && names[0]) {
+        armor.name = names[0] + `·T${armor.tier}`;
+    }
     renderArmorShop();
     renderUI();
     const toast = document.createElement('div');
