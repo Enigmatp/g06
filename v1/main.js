@@ -118,6 +118,13 @@ const G = {
         mage: 0,
         knight: 0,
     },
+    // 护甲高热槽进度（按职业）
+    armorHeat: {
+        warrior: 0,
+        archer: 0,
+        mage: 0,
+        knight: 0,
+    },
     // 武器铺（V2 模块）状态
     inventory: [
         // 初始一把基础武器，允许作为模具
@@ -221,6 +228,14 @@ const ARMOR_TIER_NAMES = {
     archer:  ['皮甲', '强化皮甲', '猎隼皮甲', '影袭皮甲', '幻影猎手甲'],
     mage:    ['布甲', '秘纹法袍', '星辉法袍', '天启长袍', '起源长袍'],
     knight:  ['重甲', '精钢重甲', '王者重甲', '龙骑重甲', '永恒重甲'],
+};
+
+// 护甲高热 / 超热模式状态（按职业记录一次性加成）
+const ARMOR_HEAT_MODE = {
+    warrior: 'none', // 'none' | 'high' | 'super'
+    archer: 'none',
+    mage: 'none',
+    knight: 'none',
 };
 
 function tryUpgradeShopProf() {
@@ -2432,17 +2447,16 @@ function renderArmorShop() {
         if (span) span.textContent = armor.enhanceLv;
     }
 
-    // 更新效果文本
-    const effectEl = $('armor-effect-text');
-    if (effectEl) {
-        let effectText = '为英雄提供防御和生命值加成';
-        if (armor.tier > 0) {
-            effectText = `为英雄提供防御和生命值加成\n进阶等级 T${armor.tier}`;
-        }
-        effectEl.innerHTML = effectText.replace(/\n/g, '<br>');
+    // 更新高热槽进度条（基于 G.armorHeat）
+    const heatVal = (G.armorHeat && G.armorHeat[currentArmorRole]) || 0;
+    const heatFill = $('armor-heat-fill');
+    if (heatFill) heatFill.style.height = Math.min(100, heatVal) + '%';
+    const heatTextEl = $('armor-heat-text');
+    if (heatTextEl) {
+        heatTextEl.textContent = `${Math.round(heatVal)}/100`;
     }
 
-    // 更新进度条（基于强化等级）
+    // 更新强化进度条（基于强化等级）
     const progressFill = $('armor-progress-fill');
     if (progressFill) {
         const progress = (armor.enhanceLv / 10) * 100;
@@ -2510,10 +2524,27 @@ if (mainBtnEl) mainBtnEl.onclick = () => {
         const isBatch = batchCheckbox && batchCheckbox.checked;
         const maxTimes = isBatch ? 1000 : 1;
 
+        // 每次强化先累积高热槽：1~40 随机值
+        let heatVal = (G.armorHeat && G.armorHeat[currentArmorRole]) || 0;
+        const heatGain = 1 + Math.floor(Math.random() * 40); // 1~40
+        heatVal += heatGain;
+
+        // 默认无模式
+        let heatMode = 'none';
+        if (heatVal >= 100) {
+            // 到达或超过 100：进入高热 / 超热模式，并清空进度
+            heatMode = (heatVal === 100) ? 'high' : 'super';
+            heatVal = 0;
+        }
+        if (!G.armorHeat) G.armorHeat = { warrior: 0, archer: 0, mage: 0, knight: 0 };
+        G.armorHeat[currentArmorRole] = heatVal;
+        ARMOR_HEAT_MODE[currentArmorRole] = heatMode;
+
         let times = 0;
         let totalCost = 0;
+        let levelsToDo = maxTimes;
 
-        for (let i = 0; i < maxTimes && armor.enhanceLv < 10; i++) {
+        for (let i = 0; i < levelsToDo && armor.enhanceLv < 10; i++) {
             const cost = 1 + armor.enhanceLv * 5;
             if (G.essence < cost) break;
             G.essence -= cost;
@@ -2527,17 +2558,44 @@ if (mainBtnEl) mainBtnEl.onclick = () => {
             return;
         }
 
+        // 如果本次触发高热 / 超热，额外提升属性并播放特效提示（本次强化立即生效）
+        if (heatMode !== 'none') {
+            // 额外属性提升：高热 ~15% ，超热 ~30%
+            const attrMult = heatMode === 'super' ? 1.3 : 1.15;
+            armor.def = Math.floor(armor.def * attrMult);
+            armor.hp  = Math.floor(armor.hp  * attrMult);
+
+            const color = heatMode === 'super'
+                ? 'rgba(248, 113, 113, 0.35)'
+                : 'rgba(249, 115, 22, 0.28)';
+            G.fx.push({ type: 'global', color, dur: 700, t: 0 });
+
+            // 中央大弹窗提示
+            const popup = document.createElement('div');
+            popup.className = 'heat-popup';
+            const inner = document.createElement('div');
+            inner.className = 'heat-popup-inner' + (heatMode === 'super' ? ' super' : '');
+            inner.textContent = heatMode === 'super' ? '超热强化！' : '高热强化！';
+            popup.appendChild(inner);
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 900);
+        }
+
+        // 统一刷新 UI，展示等级 + 额外属性的结果
         renderArmorShop();
         renderUI();
+
+        // 提示本次强化结果
         const toast = document.createElement('div');
         toast.className = 'toast';
         if (times === 1) {
             toast.textContent = `✨ ${armor.name} 强化至 +${armor.enhanceLv} 级！`;
         } else {
-            toast.textContent = `✨ ${armor.name} 批量强化 ${times} 次，消耗 ${totalCost} 💎！`;
+            toast.textContent = `✨ ${armor.name} 强化提升 ${times} 级，消耗 ${totalCost} 精华！`;
         }
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
+
         return;
     }
 

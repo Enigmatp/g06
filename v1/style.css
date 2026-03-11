@@ -2551,6 +2551,44 @@ input:checked+.slider:before {
     animation: glow-pulse 2s ease-in-out infinite;
 }
 
+/* 护甲铺高热槽进度条 */
+.armor-heat-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #e5e7eb;
+    margin-bottom: 4px;
+}
+
+.armor-heat-bar {
+    width: 100%;
+    height: 40px;
+    background: rgba(15, 23, 42, 0.9);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+.armor-heat-fill {
+    width: 100%;
+    height: 0%;
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, #f97316, #ef4444);
+    box-shadow: 0 0 12px rgba(248, 113, 22, 0.9);
+    transition: height 0.25s ease-out;
+}
+
+.armor-heat-text {
+    margin-top: 4px;
+    text-align: right;
+    font-size: 0.8rem;
+    color: #e5e7eb;
+    opacity: 0.9;
+}
+
 /* 进度条 */
 .armor-progress-container {
     margin: 20px 0;
@@ -2839,4 +2877,33 @@ input:checked+.slider:before {
     bottom: 0;
     height: 100%;
     backdrop-filter: blur(8px);
+}
+
+/* 护甲高热模式中央弹窗 */
+.heat-popup {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+.heat-popup-inner {
+    min-width: 220px;
+    padding: 18px 28px;
+    border-radius: 999px;
+    background: radial-gradient(circle at 50% 0%, rgba(254, 249, 195, 0.9), rgba(248, 113, 22, 0.95));
+    box-shadow: 0 0 40px rgba(248, 113, 22, 0.9);
+    color: #111827;
+    font-size: 1.8rem;
+    font-weight: 900;
+    text-align: center;
+    letter-spacing: 4px;
+}
+
+.heat-popup-inner.super {
+    background: radial-gradient(circle at 50% 0%, rgba(254, 226, 226, 0.95), rgba(248, 113, 113, 0.98));
+    box-shadow: 0 0 50px rgba(248, 113, 113, 1);
 }
