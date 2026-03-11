@@ -807,6 +807,38 @@ body {
     border-color: rgba(250, 204, 21, 0.4) !important;
 }
 
+.fruits-machine-wrapper.highlight {
+    box-shadow: 0 0 30px #facc15, inset 0 0 50px rgba(250, 204, 21, 0.4);
+    border-color: #facc15;
+}
+
+@keyframes slotPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(74, 222, 128, 0);
+        border-color: rgba(255, 255, 255, 0.1);
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(74, 222, 128, 0.8);
+        border-color: rgba(74, 222, 128, 1);
+        background: rgba(74, 222, 128, 0.2);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 rgba(74, 222, 128, 0);
+        border-color: rgba(255, 255, 255, 0.1);
+        background: rgba(0, 0, 0, 0.5);
+    }
+}
+
+.weapon-slot.slot-upgrade-pulse {
+    animation: slotPulse 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
 /* Equipment Inventory List */
 .inventory-list {
     width: 140px;
@@ -2050,9 +2082,9 @@ body {
 
 .slot-progress {
     width: 100%;
-    height: 18px;
+    height: 8px;
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 9px;
+    border-radius: 4px;
     position: relative;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -2488,9 +2520,9 @@ body {
 
 .shop-exp-bar {
     width: 60px;
-    height: 6px;
+    height: 8px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
 }
 
@@ -2534,4 +2566,15 @@ body {
     50% {
         transform: scale(1.05);
     }
+}
+
+.card-icon {
+    font-size: 1.1rem !important;
+    font-weight: 900;
+    color: #fca5a5;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2px;
 }

@@ -166,10 +166,10 @@ const G = {
     gridOffsets: {
         epicProb: 0,
         rareProb: 0,
-        swordsmanAtkBonus: 0, swordsmanHpBonus: 0,
-        archerAtkBonus: 0, archerHpBonus: 0,
-        staffAtkBonus: 0, staffHpBonus: 0,
-        spearAtkBonus: 0, spearHpBonus: 0
+        swordsmanAtkBonus: 0, swordsmanCrit: 0, swordsmanCritDmg: 0, swordsmanLifesteal: 0,
+        archerAtkBonus: 0, archerCrit: 0, archerCritDmg: 0, archerLifesteal: 0,
+        staffAtkBonus: 0, staffCrit: 0, staffCritDmg: 0, staffLifesteal: 0,
+        spearAtkBonus: 0, spearCrit: 0, spearCritDmg: 0, spearLifesteal: 0
     },
     weaponQualities: [0, 0, 0, 0], // Store 0-6 tier for Swordsman, Archer, Staff, Spear
     gridRefreshing: false,
@@ -341,12 +341,23 @@ function updateHeroes(dt) {
 
                         // Apply stats directly to the hero (Base stats + Weapon stats + Absolute Bonuses)
                         const typeToAtkBonusMap = ['swordsmanAtkBonus', 'archerAtkBonus', 'staffAtkBonus', 'spearAtkBonus'];
-                        const typeToHpBonusMap = ['swordsmanHpBonus', 'archerHpBonus', 'staffHpBonus', 'spearHpBonus'];
                         const atkBonusAbs = G.gridOffsets[typeToAtkBonusMap[slotIdx]] || 0;
-                        const hpBonusAbs = G.gridOffsets[typeToHpBonusMap[slotIdx]] || 0;
+
+                        const typeToCritMap = ['swordsmanCrit', 'archerCrit', 'staffCrit', 'spearCrit'];
+                        const critAbs = G.gridOffsets[typeToCritMap[slotIdx]] || 0;
+
+                        const typeToCritDmgMap = ['swordsmanCritDmg', 'archerCritDmg', 'staffCritDmg', 'spearCritDmg'];
+                        const critDmgAbs = G.gridOffsets[typeToCritDmgMap[slotIdx]] || 0;
+
+                        const typeToLifestealMap = ['swordsmanLifesteal', 'archerLifesteal', 'staffLifesteal', 'spearLifesteal'];
+                        const lifestealAbs = G.gridOffsets[typeToLifestealMap[slotIdx]] || 0;
 
                         h.atk = (HTYPES[h.type].atk || 10) + newEq.atk + atkBonusAbs;
-                        h.maxHp = (HTYPES[h.type].hp || 100) + newEq.hp + hpBonusAbs;
+                        h.crit = (newEq.crit || 0) + critAbs;
+                        h.critDmg = 1.5 + ((newEq.critDmg || 0) + critDmgAbs) / 100;
+                        h.lifesteal = ((newEq.lifesteal || 0) + lifestealAbs) / 100;
+
+                        h.maxHp = (HTYPES[h.type].hp || 100) + newEq.hp;
                         h.hp = h.maxHp; // Full heal on getting new gear
 
                         // Update inventory visual overhead icons
@@ -457,7 +468,37 @@ function updateBattle(dt) {
             h.ry += (cl.ry - h.ry) / d * h.spd * 0.08 * dt / 1000;
         } else {
             h.atkTimer += dt;
-            if (h.atkTimer >= 1000 / h.spd) { h.atkTimer = 0; cl.hp -= h.atk; h.hp -= cl.atk * 0.3; }
+            if (h.atkTimer >= 1000 / h.spd) {
+                h.atkTimer = 0;
+                let dmg = h.atk;
+                let isCrit = false;
+                if (h.crit && Math.random() * 100 < h.crit) {
+                    dmg *= h.critDmg;
+                    isCrit = true;
+                }
+                cl.hp -= dmg;
+                if (h.lifesteal) {
+                    h.hp = Math.min(h.maxHp, h.hp + dmg * h.lifesteal);
+                }
+
+                if (isCrit) {
+                    const toast = document.createElement('div');
+                    toast.className = 'crit-toast';
+                    toast.style.position = 'absolute';
+                    toast.style.left = (cl.rx * window.innerWidth) + 'px';
+                    toast.style.top = (cl.ry * window.innerHeight) + 'px';
+                    toast.style.color = '#f87171';
+                    toast.style.fontWeight = 'bold';
+                    toast.style.textShadow = '0 0 5px black';
+                    toast.style.fontSize = '1.2rem';
+                    toast.style.pointerEvents = 'none';
+                    toast.textContent = Math.floor(dmg);
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 500);
+                }
+
+                h.hp -= cl.atk * 0.3;
+            }
         }
         if (h.hp <= h.maxHp * LOW_HP) { h.hp = h.maxHp * LOW_HP; h.state = 'retreating'; G.queue.push(h.type); }
     });
@@ -498,6 +539,7 @@ function startChallenge() {
     for (let i = 0; i < 15; i++) {
         const type = pool[Math.floor(Math.random() * pool.length)], t = HTYPES[type];
         let heroAtk = t.atk * aMult, heroMaxHp = t.hp * hMult, heroSpd = t.spd;
+        let heroCrit = 0, heroCritDmg = 1.5, heroLifesteal = 0;
         let pEquips = [{ icon: '⚔️' }, { icon: '🛡️' }, { icon: '✨' }];
 
         // Apply weapon shop buff
@@ -510,14 +552,34 @@ function startChallenge() {
                 if (sub.type === 'spdPct') wSpdMult += sub.val / 100;
                 if (sub.type === 'crit') wCrit += sub.val;
             });
-            heroAtk = (heroAtk + w.atk) * wAtkMult;
+
+            // Need to map hero types to grid offsets
+            const typeMap = {
+                'swordsman': 0, 'cavalry': 0, 'angel': 0,
+                'archer': 1, 'griffin': 1, 'dragon': 1,
+                'mage': 2, 'monk': 2,
+                'pikeman': 3, 'titan': 3
+            };
+            const slotIdx = typeMap[type] || 0;
+            const atkBonusAbs = G.gridOffsets[['swordsmanAtkBonus', 'archerAtkBonus', 'staffAtkBonus', 'spearAtkBonus'][slotIdx]] || 0;
+            const critAbs = G.gridOffsets[['swordsmanCrit', 'archerCrit', 'staffCrit', 'spearCrit'][slotIdx]] || 0;
+            const critDmgAbs = G.gridOffsets[['swordsmanCritDmg', 'archerCritDmg', 'staffCritDmg', 'spearCritDmg'][slotIdx]] || 0;
+            const lifestealAbs = G.gridOffsets[['swordsmanLifesteal', 'archerLifesteal', 'staffLifesteal', 'spearLifesteal'][slotIdx]] || 0;
+
+
+            heroAtk = (heroAtk + w.atk + atkBonusAbs) * wAtkMult;
             heroMaxHp = (heroMaxHp + w.hp) * wHpMult;
             heroSpd = heroSpd * wSpdMult;
+            heroCrit = wCrit + critAbs;
+            heroCritDmg = 1.5 + critDmgAbs / 100;
+            heroLifesteal = lifestealAbs / 100;
+
             if (!pEquips.find(e => e.icon === w.icon)) pEquips.push({ icon: w.icon });
         }
 
         G.chHeroes.push({
             icon: t.icon, hp: heroMaxHp, maxHp: heroMaxHp, atk: heroAtk,
+            crit: heroCrit, critDmg: heroCritDmg, lifesteal: heroLifesteal,
             spd: heroSpd, range: t.range, baseAtk: heroAtk, baseSpd: heroSpd,
             rx: 0.1 + Math.random() * 0.8, ry: 0.8 + Math.random() * 0.15, atkTimer: 0,
             equips: pEquips
@@ -550,7 +612,37 @@ function updateChallenge(dt) {
         let cl = eAlive[0], md = Math.hypot(h.rx - cl.rx, h.ry - cl.ry);
         eAlive.forEach(e => { const d = Math.hypot(h.rx - e.rx, h.ry - e.ry); if (d < md) { cl = e; md = d; } });
         if (md > h.range / 800) { const d = Math.hypot(cl.rx - h.rx, cl.ry - h.ry); h.rx += (cl.rx - h.rx) / d * h.spd * 0.15 * dt / 1000; h.ry += (cl.ry - h.ry) / d * h.spd * 0.15 * dt / 1000; }
-        else { h.atkTimer += dt; if (h.atkTimer >= 1000 / h.spd) { h.atkTimer = 0; cl.hp -= h.atk; } }
+        else {
+            h.atkTimer += dt;
+            if (h.atkTimer >= 1000 / h.spd) {
+                h.atkTimer = 0;
+                let dmg = h.atk;
+                let isCrit = false;
+                if (h.crit && Math.random() * 100 < h.crit) {
+                    dmg *= h.critDmg;
+                    isCrit = true;
+                }
+                cl.hp -= dmg;
+                if (h.lifesteal) {
+                    h.hp = Math.min(h.maxHp, h.hp + dmg * h.lifesteal);
+                }
+                if (isCrit) {
+                    const toast = document.createElement('div');
+                    toast.className = 'crit-toast';
+                    toast.style.position = 'absolute';
+                    toast.style.left = (cl.rx * window.innerWidth) + 'px';
+                    toast.style.top = (cl.ry * window.innerHeight) + 'px';
+                    toast.style.color = '#f87171';
+                    toast.style.fontWeight = 'bold';
+                    toast.style.textShadow = '0 0 5px black';
+                    toast.style.fontSize = '1.2rem';
+                    toast.style.pointerEvents = 'none';
+                    toast.textContent = Math.floor(dmg);
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 500);
+                }
+            }
+        }
     });
     eAlive.forEach(e => {
         let cl = hAlive[0], md = Math.hypot(e.rx - cl.rx, e.ry - cl.ry);
@@ -1469,17 +1561,25 @@ function renderWeaponShop() {
             slotEl.querySelector('.slot-icon').textContent = wIcon;
 
             // Stats Update
-            const typeToAtkBonusMap = ['swordsmanAtkBonus', 'archerAtkBonus', 'staffAtkBonus', 'spearAtkBonus'];
-            const typeToHpBonusMap = ['swordsmanHpBonus', 'archerHpBonus', 'staffHpBonus', 'spearHpBonus'];
-
-            const atkBonusAbs = G.gridOffsets[typeToAtkBonusMap[i]] || 0;
-            const hpBonusAbs = G.gridOffsets[typeToHpBonusMap[i]] || 0;
+            const atkBonusAbs = G.gridOffsets[['swordsmanAtkBonus', 'archerAtkBonus', 'staffAtkBonus', 'spearAtkBonus'][i]] || 0;
+            const critAbs = G.gridOffsets[['swordsmanCrit', 'archerCrit', 'staffCrit', 'spearCrit'][i]] || 0;
+            const critDmgAbs = G.gridOffsets[['swordsmanCritDmg', 'archerCritDmg', 'staffCritDmg', 'spearCritDmg'][i]] || 0;
+            const lifestealAbs = G.gridOffsets[['swordsmanLifesteal', 'archerLifesteal', 'staffLifesteal', 'spearLifesteal'][i]] || 0;
 
             let atkBonusHtml = atkBonusAbs > 0 ? ` <span style="color:#4ade80; font-size:0.65rem;">(+${atkBonusAbs})</span>` : '';
-            let hpBonusHtml = hpBonusAbs > 0 ? ` <span style="color:#4ade80; font-size:0.65rem;">(+${hpBonusAbs})</span>` : '';
+            let critHtml = critAbs > 0 ? ` <span style="color:#4ade80; font-size:0.65rem;">(+${critAbs}%)</span>` : '';
+            let critDmgHtml = critDmgAbs > 0 ? ` <span style="color:#4ade80; font-size:0.65rem;">(+${critDmgAbs}%)</span>` : '';
+            let lifestealHtml = lifestealAbs > 0 ? ` <span style="color:#4ade80; font-size:0.65rem;">(+${lifestealAbs}%)</span>` : '';
 
-            slotEl.querySelector('.slot-atk').innerHTML = `${currentAtk}${atkBonusHtml}`;
-            slotEl.querySelector('.slot-hp').innerHTML = `${currentHp}${hpBonusHtml}`;
+            let atkSpan = slotEl.querySelector('.slot-atk');
+            let critSpan = slotEl.querySelector('.slot-crit');
+            let critDmgSpan = slotEl.querySelector('.slot-critdmg');
+            let lifestealSpan = slotEl.querySelector('.slot-lifesteal');
+
+            if (atkSpan) atkSpan.innerHTML = `${currentAtk}${atkBonusHtml}`;
+            if (critSpan) critSpan.innerHTML = `${critAbs}%${critHtml}`;
+            if (critDmgSpan) critDmgSpan.innerHTML = `${150 + critDmgAbs}%${critDmgHtml}`;
+            if (lifestealSpan) lifestealSpan.innerHTML = `${lifestealAbs}%${lifestealHtml}`;
 
 
             // Make slot NOT clickable for blueprint anymore
@@ -1489,6 +1589,11 @@ function renderWeaponShop() {
             if (h) {
                 slotEl.style.opacity = '1';
                 slotEl.querySelector('.slot-cost-val').textContent = "1";
+                const fillEl = slotEl.querySelector('.slot-progress-fill');
+                const pct = Math.min(100, Math.max(0, (h.forgeTimer / 3000) * 100));
+                fillEl.style.width = pct + '%';
+                fillEl.style.background = ''; // Revert to CSS default
+                fillEl.style.boxShadow = '';  // Revert to CSS default
             } else {
                 slotEl.style.opacity = '0.6';
                 slotEl.querySelector('.slot-cost-val').textContent = "1";
@@ -1541,43 +1646,67 @@ function generateGridTier() {
     console.log("[FruitsMachine] Generating 16 rewards...");
     const lv = Number(G.weaponShopLv) || 1;
 
-    // Quality/Ascension cards
+    // Determine the next quality level for names
+    const sNextQ = Math.min(6, G.weaponQualities[0] + 1);
+    const aNextQ = Math.min(6, G.weaponQualities[1] + 1);
+    const stNextQ = Math.min(6, G.weaponQualities[2] + 1);
+    const spNextQ = Math.min(6, G.weaponQualities[3] + 1);
+
+    // Quality/Ascension cards (Highlight Moment only)
     const qualityPool = [
-        { name: '长剑升阶', icon: '⚔️', type: 'swordsmanQualBonus', val: 1, unit: '阶', q: 3 },
-        { name: '长弓升阶', icon: '🏹', type: 'archerQualBonus', val: 1, unit: '阶', q: 3 },
-        { name: '法杖升阶', icon: '🪄', type: 'staffQualBonus', val: 1, unit: '阶', q: 3 },
-        { name: '长枪升阶', icon: '🔱', type: 'spearQualBonus', val: 1, unit: '阶', q: 3 },
+        { name: WEAPON_NAMES[0][sNextQ] || WEAPON_NAMES[0][6], icon: '🗡️', type: 'swordsmanQualBonus', val: '', unit: '', q: sNextQ },
+        { name: WEAPON_NAMES[1][aNextQ] || WEAPON_NAMES[1][6], icon: '🏹', type: 'archerQualBonus', val: '', unit: '', q: aNextQ },
+        { name: WEAPON_NAMES[2][stNextQ] || WEAPON_NAMES[2][6], icon: '🪄', type: 'staffQualBonus', val: '', unit: '', q: stNextQ },
+        { name: WEAPON_NAMES[3][spNextQ] || WEAPON_NAMES[3][6], icon: '🔱', type: 'spearQualBonus', val: '', unit: '', q: spNextQ },
     ];
+
+    const sCurrQ = Math.min(6, G.weaponQualities[0]);
+    const aCurrQ = Math.min(6, G.weaponQualities[1]);
+    const stCurrQ = Math.min(6, G.weaponQualities[2]);
+    const spCurrQ = Math.min(6, G.weaponQualities[3]);
 
     // Normal attribute cards (scaling with level)
     const attrPool = [
-        { name: '长剑攻击', icon: '⚔️', type: 'swordsmanAtkBonus', val: 5 * lv, unit: '', q: 1 },
-        { name: '长剑生命', icon: '🛡️', type: 'swordsmanHpBonus', val: 50 * lv, unit: '', q: 1 },
-        { name: '长弓攻击', icon: '🏹', type: 'archerAtkBonus', val: 5 * lv, unit: '', q: 1 },
-        { name: '长弓生命', icon: '🛡️', type: 'archerHpBonus', val: 50 * lv, unit: '', q: 1 },
-        { name: '法杖攻击', icon: '🪄', type: 'staffAtkBonus', val: 5 * lv, unit: '', q: 1 },
-        { name: '法杖生命', icon: '🛡️', type: 'staffHpBonus', val: 50 * lv, unit: '', q: 1 },
-        { name: '长枪攻击', icon: '🔱', type: 'spearAtkBonus', val: 5 * lv, unit: '', q: 1 },
-        { name: '长枪生命', icon: '🛡️', type: 'spearHpBonus', val: 50 * lv, unit: '', q: 1 },
+        { name: WEAPON_NAMES[0][sCurrQ] || '长剑', icon: '🗡️', textPrefix: '攻', type: 'swordsmanAtkBonus', val: 5 * lv, unit: '', q: 1 },
+        { name: WEAPON_NAMES[0][sCurrQ] || '长剑', icon: '🗡️', textPrefix: '暴', type: 'swordsmanCrit', val: 1, unit: '%', q: 1 },
+        { name: WEAPON_NAMES[0][sCurrQ] || '长剑', icon: '🗡️', textPrefix: '伤', type: 'swordsmanCritDmg', val: 5, unit: '%', q: 1 },
+        { name: WEAPON_NAMES[0][sCurrQ] || '长剑', icon: '🗡️', textPrefix: '吸', type: 'swordsmanLifesteal', val: 1, unit: '%', q: 1 },
+
+        { name: WEAPON_NAMES[1][aCurrQ] || '长弓', icon: '🏹', textPrefix: '攻', type: 'archerAtkBonus', val: 5 * lv, unit: '', q: 1 },
+        { name: WEAPON_NAMES[1][aCurrQ] || '长弓', icon: '🏹', textPrefix: '暴', type: 'archerCrit', val: 1, unit: '%', q: 1 },
+        { name: WEAPON_NAMES[1][aCurrQ] || '长弓', icon: '🏹', textPrefix: '伤', type: 'archerCritDmg', val: 5, unit: '%', q: 1 },
+        { name: WEAPON_NAMES[1][aCurrQ] || '长弓', icon: '🏹', textPrefix: '吸', type: 'archerLifesteal', val: 1, unit: '%', q: 1 },
+
+        { name: WEAPON_NAMES[2][stCurrQ] || '法杖', icon: '🪄', textPrefix: '攻', type: 'staffAtkBonus', val: 5 * lv, unit: '', q: 1 },
+        { name: WEAPON_NAMES[2][stCurrQ] || '法杖', icon: '🪄', textPrefix: '暴', type: 'staffCrit', val: 1, unit: '%', q: 1 },
+        { name: WEAPON_NAMES[2][stCurrQ] || '法杖', icon: '🪄', textPrefix: '伤', type: 'staffCritDmg', val: 5, unit: '%', q: 1 },
+        { name: WEAPON_NAMES[2][stCurrQ] || '法杖', icon: '🪄', textPrefix: '吸', type: 'staffLifesteal', val: 1, unit: '%', q: 1 },
+
+        { name: WEAPON_NAMES[3][spCurrQ] || '长矛', icon: '🔱', textPrefix: '攻', type: 'spearAtkBonus', val: 5 * lv, unit: '', q: 1 },
+        { name: WEAPON_NAMES[3][spCurrQ] || '长矛', icon: '🔱', textPrefix: '暴', type: 'spearCrit', val: 1, unit: '%', q: 1 },
+        { name: WEAPON_NAMES[3][spCurrQ] || '长矛', icon: '🔱', textPrefix: '伤', type: 'spearCritDmg', val: 5, unit: '%', q: 1 },
+        { name: WEAPON_NAMES[3][spCurrQ] || '长矛', icon: '🔱', textPrefix: '吸', type: 'spearLifesteal', val: 1, unit: '%', q: 1 },
     ];
 
     const starCard = { name: '幸运星', icon: '⭐', type: 'star', val: 3, unit: '次', q: 4 };
 
     G.gridCards = new Array(16).fill(null);
 
-    // Force four corners to be Star Cards
-    G.gridCards[0] = { ...starCard, flipped: true };
-    G.gridCards[4] = { ...starCard, flipped: true };
-    G.gridCards[8] = { ...starCard, flipped: true };
-    G.gridCards[12] = { ...starCard, flipped: true };
+    // Force four corners to be Star Cards only if NOT in highlight moment
+    if (!G.isHighlight) {
+        G.gridCards[0] = { ...starCard, flipped: true };
+        G.gridCards[4] = { ...starCard, flipped: true };
+        G.gridCards[8] = { ...starCard, flipped: true };
+        G.gridCards[12] = { ...starCard, flipped: true };
+    }
 
     for (let i = 0; i < 16; i++) {
         if (G.gridCards[i]) continue; // Skip already populated corners
 
         if (G.isHighlight) {
-            // Highlight Moment: remaining 12 slots are Ascension cards
+            // Highlight Moment: ALL slots are Ascension cards
             const base = qualityPool[Math.floor(Math.random() * qualityPool.length)];
-            G.gridCards[i] = { ...base, flipped: true };
+            G.gridCards[i] = { ...base, flipped: true, color: WEAPON_TIERS[base.q].color };
         } else {
             // Normal State: remaining 12 slots are Attribute cards explicitly, no Ascension cards
             const base = attrPool[Math.floor(Math.random() * attrPool.length)];
@@ -1613,10 +1742,15 @@ function renderSmithCards() {
         div.className = 'slot-item' + (i === fruitActiveIdx ? ' active' : '');
         div.style.gridRow = borderCoords[i][0];
         div.style.gridColumn = borderCoords[i][1];
+        if (c.color) {
+            div.style.backgroundColor = c.color + '40'; // 25% opacity
+            div.style.borderColor = c.color;
+            div.style.boxShadow = `inset 0 0 10px ${c.color}80`;
+        }
         div.innerHTML = `
             <div class="card-icon">${c.icon}</div>
-            <div class="card-name">${c.name}</div>
-            <div class="card-val">${c.val > 0 ? '+' : ''}${c.val}${c.unit}</div>
+            <div class="card-name" ${c.color ? `style="color:${c.color}"` : ''}>${c.name}</div>
+            <div class="card-val">${c.val ? (c.textPrefix || '') + (c.val > 0 ? '+' : '') + c.val + c.unit : ''}</div>
         `;
         container.appendChild(div);
     });
@@ -1675,6 +1809,13 @@ function startForgeSpin() {
 }
 
 function applyForgeReward(card) {
+    let affectedSlotId = null;
+
+    if (card.type.startsWith('swordsman')) affectedSlotId = 'weap-slot-0';
+    else if (card.type.startsWith('archer')) affectedSlotId = 'weap-slot-1';
+    else if (card.type.startsWith('staff')) affectedSlotId = 'weap-slot-2';
+    else if (card.type.startsWith('spear')) affectedSlotId = 'weap-slot-3';
+
     if (G.gridOffsets.hasOwnProperty(card.type)) {
         G.gridOffsets[card.type] += card.val;
     } else if (card.type.endsWith('QualBonus')) {
@@ -1684,6 +1825,15 @@ function applyForgeReward(card) {
         const idx = typeIndexMap[card.type];
         if (idx !== undefined) {
             G.weaponQualities[idx] = Math.min(6, G.weaponQualities[idx] + 1);
+        }
+    }
+
+    if (affectedSlotId) {
+        const slotEl = $(affectedSlotId);
+        if (slotEl) {
+            slotEl.classList.remove('slot-upgrade-pulse');
+            void slotEl.offsetWidth; // Force reflow to restart animation reliably
+            slotEl.classList.add('slot-upgrade-pulse');
         }
     }
 
@@ -1697,15 +1847,31 @@ function applyForgeReward(card) {
         if (card.type === 'star') {
             // Star Card Logic: Grant 3 extra random attributes
             const lv = Number(G.weaponShopLv) || 1;
+            const sCurrQ = Math.min(6, G.weaponQualities[0] || 0);
+            const aCurrQ = Math.min(6, G.weaponQualities[1] || 0);
+            const stCurrQ = Math.min(6, G.weaponQualities[2] || 0);
+            const spCurrQ = Math.min(6, G.weaponQualities[3] || 0);
+
             const attrPool = [
-                { name: '长剑攻击', icon: '⚔️', type: 'swordsmanAtkBonus', val: 5 * lv, unit: '', q: 1 },
-                { name: '长剑生命', icon: '🛡️', type: 'swordsmanHpBonus', val: 50 * lv, unit: '', q: 1 },
-                { name: '长弓攻击', icon: '🏹', type: 'archerAtkBonus', val: 5 * lv, unit: '', q: 1 },
-                { name: '长弓生命', icon: '🛡️', type: 'archerHpBonus', val: 50 * lv, unit: '', q: 1 },
-                { name: '法杖攻击', icon: '🪄', type: 'staffAtkBonus', val: 5 * lv, unit: '', q: 1 },
-                { name: '法杖生命', icon: '🛡️', type: 'staffHpBonus', val: 50 * lv, unit: '', q: 1 },
-                { name: '长枪攻击', icon: '🔱', type: 'spearAtkBonus', val: 5 * lv, unit: '', q: 1 },
-                { name: '长枪生命', icon: '🛡️', type: 'spearHpBonus', val: 50 * lv, unit: '', q: 1 },
+                { name: WEAPON_NAMES[0][sCurrQ] || '长剑', icon: '🗡️', textPrefix: '攻', type: 'swordsmanAtkBonus', val: 5 * lv, unit: '', q: 1 },
+                { name: WEAPON_NAMES[0][sCurrQ] || '长剑', icon: '🗡️', textPrefix: '暴', type: 'swordsmanCrit', val: 1, unit: '%', q: 1 },
+                { name: WEAPON_NAMES[0][sCurrQ] || '长剑', icon: '🗡️', textPrefix: '伤', type: 'swordsmanCritDmg', val: 5, unit: '%', q: 1 },
+                { name: WEAPON_NAMES[0][sCurrQ] || '长剑', icon: '🗡️', textPrefix: '吸', type: 'swordsmanLifesteal', val: 1, unit: '%', q: 1 },
+
+                { name: WEAPON_NAMES[1][aCurrQ] || '长弓', icon: '🏹', textPrefix: '攻', type: 'archerAtkBonus', val: 5 * lv, unit: '', q: 1 },
+                { name: WEAPON_NAMES[1][aCurrQ] || '长弓', icon: '🏹', textPrefix: '暴', type: 'archerCrit', val: 1, unit: '%', q: 1 },
+                { name: WEAPON_NAMES[1][aCurrQ] || '长弓', icon: '🏹', textPrefix: '伤', type: 'archerCritDmg', val: 5, unit: '%', q: 1 },
+                { name: WEAPON_NAMES[1][aCurrQ] || '长弓', icon: '🏹', textPrefix: '吸', type: 'archerLifesteal', val: 1, unit: '%', q: 1 },
+
+                { name: WEAPON_NAMES[2][stCurrQ] || '法杖', icon: '🪄', textPrefix: '攻', type: 'staffAtkBonus', val: 5 * lv, unit: '', q: 1 },
+                { name: WEAPON_NAMES[2][stCurrQ] || '法杖', icon: '🪄', textPrefix: '暴', type: 'staffCrit', val: 1, unit: '%', q: 1 },
+                { name: WEAPON_NAMES[2][stCurrQ] || '法杖', icon: '🪄', textPrefix: '伤', type: 'staffCritDmg', val: 5, unit: '%', q: 1 },
+                { name: WEAPON_NAMES[2][stCurrQ] || '法杖', icon: '🪄', textPrefix: '吸', type: 'staffLifesteal', val: 1, unit: '%', q: 1 },
+
+                { name: WEAPON_NAMES[3][spCurrQ] || '长矛', icon: '🔱', textPrefix: '攻', type: 'spearAtkBonus', val: 5 * lv, unit: '', q: 1 },
+                { name: WEAPON_NAMES[3][spCurrQ] || '长矛', icon: '🔱', textPrefix: '暴', type: 'spearCrit', val: 1, unit: '%', q: 1 },
+                { name: WEAPON_NAMES[3][spCurrQ] || '长矛', icon: '🔱', textPrefix: '伤', type: 'spearCritDmg', val: 5, unit: '%', q: 1 },
+                { name: WEAPON_NAMES[3][spCurrQ] || '长矛', icon: '🔱', textPrefix: '吸', type: 'spearLifesteal', val: 1, unit: '%', q: 1 }
             ];
 
             for (let i = 0; i < 3; i++) {
@@ -2025,20 +2191,31 @@ function renderShopLevels() {
 
     const fields = [
         { key: 'swordsmanAtkBonus', name: '长剑攻击' },
-        { key: 'swordsmanHpBonus', name: '长剑生命' },
+        { key: 'swordsmanCrit', name: '长剑暴击', isPct: true },
+        { key: 'swordsmanCritDmg', name: '长剑暴伤', isPct: true },
+        { key: 'swordsmanLifesteal', name: '长剑吸血', isPct: true },
+
         { key: 'archerAtkBonus', name: '长弓攻击' },
-        { key: 'archerHpBonus', name: '长弓生命' },
+        { key: 'archerCrit', name: '长弓暴击', isPct: true },
+        { key: 'archerCritDmg', name: '长弓暴伤', isPct: true },
+        { key: 'archerLifesteal', name: '长弓吸血', isPct: true },
+
         { key: 'staffAtkBonus', name: '法杖攻击' },
-        { key: 'staffHpBonus', name: '法杖生命' },
+        { key: 'staffCrit', name: '法杖暴击', isPct: true },
+        { key: 'staffCritDmg', name: '法杖暴伤', isPct: true },
+        { key: 'staffLifesteal', name: '法杖吸血', isPct: true },
+
         { key: 'spearAtkBonus', name: '长枪攻击' },
-        { key: 'spearHpBonus', name: '长枪生命' }
+        { key: 'spearCrit', name: '长枪暴击', isPct: true },
+        { key: 'spearCritDmg', name: '长枪暴伤', isPct: true },
+        { key: 'spearLifesteal', name: '长枪吸血', isPct: true }
     ];
 
-    let html = '<div style="display: flex; flex-direction: column; gap: 12px;">';
+    let html = '<div style="display: flex; flex-direction: column; gap: 12px; height: 100%; overflow-y: auto; padding-right: 10px;">';
     fields.forEach(f => {
         const val = G.gridOffsets[f.key] || 0;
         const color = val > 0 ? '#4ade80' : '#94a3b8';
-        const valStr = val > 0 ? '+' + val : '0';
+        const valStr = val > 0 ? '+' + val + (f.isPct ? '%' : '') : '0' + (f.isPct ? '%' : '');
         html += `
             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; font-size: 0.9rem;">
                 <span style="color: #cbd5e1;">${f.name}</span>
