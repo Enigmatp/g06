@@ -13,6 +13,7 @@
         <div class="top-bar">
             <div class="res-item"><span class="res-icon">💰</span><span id="gold-display" class="res-val">0</span></div>
             <div class="res-item"><span class="res-icon">💎</span><span id="gem-display" class="res-val">10</span></div>
+            <div class="res-item"><span class="res-icon">🧪</span><span id="tech-display" class="res-val">0</span></div>
             <div class="res-item level-item">⚔️ Lv.<span id="level-display" class="res-val">1</span></div>
             <div class="res-item hero-item">🦸 <span id="hero-count" class="res-val">0</span>/10</div>
             <div class="mana-bar-container">
@@ -121,6 +122,148 @@
                 <div class="modal-actions">
                     <button id="deploy-confirm-btn" class="modal-btn primary">确定</button>
                     <button id="deploy-cancel-btn" class="modal-btn secondary">取消</button>
+                </div>
+            </div>
+        </div>
+        <!-- Tech Tree Modal -->
+        <div id="modal-tech" class="modal-overlay hidden">
+            <div class="modal-content tech-tree">
+                <div class="tech-header">
+                    <div class="tech-title">🏰 大本营科技</div>
+                    <div class="tech-points">科技点：<span id="tech-points-display">0</span></div>
+                </div>
+                <div class="tech-panels">
+                    <!-- Weapon Shop Techs -->
+                    <div class="tech-panel" data-tab="weapon">
+                        <div class="tech-tree-column">
+                            <!-- 顶层：武器专精 III -->
+                            <div class="tech-card tech-node" id="tech-weapon-node3">
+                                <div class="tech-card-header">
+                                    <div class="tech-card-title">武器专精 III</div>
+                                    <div class="tech-card-level" id="tech-weapon-node3-state">未解锁</div>
+                                </div>
+                                <div class="tech-card-body">
+                                    <div class="tech-card-desc">武器基础攻击再提升，适合后期极限锻造。</div>
+                                    <div class="tech-card-cost">消耗：<span id="tech-weapon-node3-cost">-</span> 科技点</div>
+                                </div>
+                                <button id="tech-weapon-node3-btn" class="modal-btn primary small">锁定</button>
+                            </div>
+                            <!-- 中层：武器专精 II -->
+                            <div class="tech-card tech-node" id="tech-weapon-node2">
+                                <div class="tech-card-header">
+                                    <div class="tech-card-title">武器专精 II</div>
+                                    <div class="tech-card-level" id="tech-weapon-node2-state">未解锁</div>
+                                </div>
+                                <div class="tech-card-body">
+                                    <div class="tech-card-desc">进一步提升武器基础攻击，配合高品质模具。</div>
+                                    <div class="tech-card-cost">消耗：<span id="tech-weapon-node2-cost">-</span> 科技点</div>
+                                </div>
+                                <button id="tech-weapon-node2-btn" class="modal-btn primary small">锁定</button>
+                            </div>
+                            <!-- 底层：锋利锻炉 I -->
+                            <div class="tech-card tech-node" id="tech-weapon-node1">
+                                <div class="tech-card-header">
+                                    <div class="tech-card-title">锋利锻炉 I</div>
+                                    <div class="tech-card-level" id="tech-weapon-node1-state">未解锁</div>
+                                </div>
+                                <div class="tech-card-body">
+                                    <div class="tech-card-desc">武器铺打造出的武器基础攻击 +5% / 级。</div>
+                                    <div class="tech-card-cost">消耗：<span id="tech-weapon-node1-cost">1</span> 科技点</div>
+                                </div>
+                                <button id="tech-weapon-node1-btn" class="modal-btn primary small">解锁</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Armor Shop Techs -->
+                    <div class="tech-panel hidden" data-tab="armor">
+                        <div class="tech-tree-column">
+                            <!-- 顶层：精炼大师 III -->
+                            <div class="tech-card tech-node" id="tech-armor-node3">
+                                <div class="tech-card-header">
+                                    <div class="tech-card-title">精炼大师 III</div>
+                                    <div class="tech-card-level" id="tech-armor-node3-state">未解锁</div>
+                                </div>
+                                <div class="tech-card-body">
+                                    <div class="tech-card-desc">进一步降低护甲强化消耗，冲击高强化更轻松。</div>
+                                    <div class="tech-card-cost">消耗：<span id="tech-armor-node3-cost">-</span> 科技点</div>
+                                </div>
+                                <button id="tech-armor-node3-btn" class="modal-btn primary small">锁定</button>
+                            </div>
+                            <!-- 中层：节约精炼术 II -->
+                            <div class="tech-card tech-node" id="tech-armor-node2">
+                                <div class="tech-card-header">
+                                    <div class="tech-card-title">节约精炼术 II</div>
+                                    <div class="tech-card-level" id="tech-armor-node2-state">未解锁</div>
+                                </div>
+                                <div class="tech-card-body">
+                                    <div class="tech-card-desc">护甲强化消耗的精华进一步降低。</div>
+                                    <div class="tech-card-cost">消耗：<span id="tech-armor-node2-cost">-</span> 科技点</div>
+                                </div>
+                                <button id="tech-armor-node2-btn" class="modal-btn primary small">锁定</button>
+                            </div>
+                            <!-- 底层：节约精炼术 I -->
+                            <div class="tech-card tech-node" id="tech-armor-node1">
+                                <div class="tech-card-header">
+                                    <div class="tech-card-title">节约精炼术 I</div>
+                                    <div class="tech-card-level" id="tech-armor-node1-state">未解锁</div>
+                                </div>
+                                <div class="tech-card-body">
+                                    <div class="tech-card-desc">护甲强化消耗的精华降低 5% / 级（最低降至 40%）。</div>
+                                    <div class="tech-card-cost">消耗：<span id="tech-armor-node1-cost">1</span> 科技点</div>
+                                </div>
+                                <button id="tech-armor-node1-btn" class="modal-btn primary small">解锁</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Buff Shop Techs -->
+                    <div class="tech-panel hidden" data-tab="buff">
+                        <div class="tech-tree-column">
+                            <!-- 顶层：战歌回响 III -->
+                            <div class="tech-card tech-node" id="tech-buff-node3">
+                                <div class="tech-card-header">
+                                    <div class="tech-card-title">战歌回响 III</div>
+                                    <div class="tech-card-level" id="tech-buff-node3-state">未解锁</div>
+                                </div>
+                                <div class="tech-card-body">
+                                    <div class="tech-card-desc">增益铺获得的总属性显著提升。</div>
+                                    <div class="tech-card-cost">消耗：<span id="tech-buff-node3-cost">-</span> 科技点</div>
+                                </div>
+                                <button id="tech-buff-node3-btn" class="modal-btn primary small">锁定</button>
+                            </div>
+                            <!-- 中层：战斗号角 II -->
+                            <div class="tech-card tech-node" id="tech-buff-node2">
+                                <div class="tech-card-header">
+                                    <div class="tech-card-title">战斗号角 II</div>
+                                    <div class="tech-card-level" id="tech-buff-node2-state">未解锁</div>
+                                </div>
+                                <div class="tech-card-body">
+                                    <div class="tech-card-desc">增益铺提供的攻击 & 生命效果进一步提升。</div>
+                                    <div class="tech-card-cost">消耗：<span id="tech-buff-node2-cost">-</span> 科技点</div>
+                                </div>
+                                <button id="tech-buff-node2-btn" class="modal-btn primary small">锁定</button>
+                            </div>
+                            <!-- 底层：战斗号角 I -->
+                            <div class="tech-card tech-node" id="tech-buff-node1">
+                                <div class="tech-card-header">
+                                    <div class="tech-card-title">战斗号角 I</div>
+                                    <div class="tech-card-level" id="tech-buff-node1-state">未解锁</div>
+                                </div>
+                                <div class="tech-card-body">
+                                    <div class="tech-card-desc">增益铺提供的攻击 & 生命效果 +5% / 级。</div>
+                                    <div class="tech-card-cost">消耗：<span id="tech-buff-node1-cost">1</span> 科技点</div>
+                                </div>
+                                <button id="tech-buff-node1-btn" class="modal-btn primary small">解锁</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tech-footer">
+                    <div class="tech-tabs">
+                        <button class="tech-tab-button active" data-tab="weapon">⚔️ 武器铺</button>
+                        <button class="tech-tab-button" data-tab="armor">🛡️ 护甲铺</button>
+                        <button class="tech-tab-button" data-tab="buff">✨ 增益铺</button>
+                    </div>
+                    <button id="tech-close-btn" class="modal-btn secondary small tech-close-bottom">返回主城</button>
                 </div>
             </div>
         </div>
@@ -648,6 +791,13 @@
                 <div class="sm-accumulated">
                     <div class="sm-acc-item atk">⚔️ 攻击 +<span id="sm-acc-atk">0</span></div>
                     <div class="sm-acc-item hp">❤️ 生命 +<span id="sm-acc-hp">0</span></div>
+                </div>
+                <!-- Buff 栏 -->
+                <div class="sm-buff-bar">
+                    <div class="sm-buff-title">🎁 当前全局 Buff：</div>
+                    <div class="sm-buff-tags" id="sm-buff-tags">
+                        <span class="sm-buff-tag sm-buff-empty">暂无 Buff，加油抽取！</span>
+                    </div>
                 </div>
                 <!-- 三个老虎机槽位 -->
                 <div class="sm-reels-wrap" id="sm-reels-wrap">
