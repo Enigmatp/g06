@@ -96,6 +96,13 @@ const G = {
     crystalMineTimer: 0,  // 晶石矿场生产计时
     buffAccAtk: 0,        // 增益铺累计攻击加成
     buffAccHp: 0,         // 增益铺累计生命加成
+    // 增益铺：额外 Buff 效果（通过 Buff 栏获得，作用于所有英雄）
+    buffEffects: {
+        size: 0,      // 体型变大（视觉放大倍数，0=无，1=小幅，2=更大）
+        spd: 0,       // 移动速度加成百分比，例如 0.1=+10%
+        range: 0,     // 攻击距离加成（平直加成）
+        crit: 0,      // 暴击率加成（之后可用于战斗公式）
+    },
     slotUses: 0,          // 老虎机已使用次数
     killCount: 0,         // 当前地图击杀数
     killTarget: 10,       // 当前地图需要击杀的怪物数量才能解锁新关卡
@@ -125,6 +132,18 @@ const G = {
         mage: 0,
         knight: 0,
     },
+    // 护甲高热触发后的“保底倍率强化”次数（按职业记录）
+    armorHeatBuff: {
+        warrior: 0,
+        archer: 0,
+        mage: 0,
+        knight: 0,
+    },
+    // 大本营科技树：简易示例
+    techPoints: 5,              // 初始给一点科技点方便演示
+    techWeaponQualityLv: 0,     // 武器铺：锋利锻炉
+    techArmorCostLv: 0,         // 护甲铺：节约精炼术
+    techBuffPowerLv: 0,         // 增益铺：战斗号角
     // 武器铺（V2 模块）状态
     inventory: [
         // 初始一把基础武器，允许作为模具
@@ -230,12 +249,13 @@ const ARMOR_TIER_NAMES = {
     knight:  ['重甲', '精钢重甲', '王者重甲', '龙骑重甲', '永恒重甲'],
 };
 
-// 护甲高热 / 超热模式状态（按职业记录一次性加成）
-const ARMOR_HEAT_MODE = {
-    warrior: 'none', // 'none' | 'high' | 'super'
-    archer: 'none',
-    mage: 'none',
-    knight: 'none',
+// 护甲高热：触发后，接下来 N 次强化必定触发倍率强化（X2 / X3）
+// 这里按职业记录“剩余保底倍率强化次数”
+const ARMOR_HEAT_BUFF = {
+    warrior: 0,
+    archer: 0,
+    mage: 0,
+    knight: 0,
 };
 
 function tryUpgradeShopProf() {
@@ -373,7 +393,7 @@ function updateHeroes(dt) {
                     }
                     // 资源不足时原地等待，forgeTimer 不增长
                 } else if (b.id === 'buff') {
-                    // 停留3秒，获得增益铺累计属性（增量部分）
+                    // 停留3秒，获得增益铺累计属性（增量部分）以及 Buff 栏效果
                     h.healTimer += dt;
                     h.rx = b.rx + jx; h.ry = b.ry + jy;
                     if (h.healTimer >= 3000) {
@@ -382,6 +402,22 @@ function updateHeroes(dt) {
                         const oldPower = calcHeroPower(h);
                         if (deltaAtk > 0) { h.atk += deltaAtk; h.appliedBuffAtk = G.buffAccAtk; }
                         if (deltaHp  > 0) { h.maxHp += deltaHp; h.hp = Math.min(h.hp + deltaHp, h.maxHp); h.appliedBuffHp = G.buffAccHp; }
+                        // 应用 Buff 栏上的全局 Buff（如果有）
+                        const buffs = G.buffEffects || { size: 0, spd: 0, range: 0, crit: 0 };
+                        if (!h.buffAppliedOnce && (buffs.spd || buffs.range || buffs.crit)) {
+                            // 速度按百分比永久加到当前英雄
+                            if (buffs.spd) {
+                                h.spd += h.baseSpd * buffs.spd;
+                            }
+                            if (buffs.range) {
+                                h.range += buffs.range;
+                            }
+                            // crit 目前只先记录在英雄身上，后续可接入战斗公式
+                            if (buffs.crit) {
+                                h.crit = (h.crit || 0) + buffs.crit;
+                            }
+                            h.buffAppliedOnce = true;
+                        }
                         const diff = calcHeroPower(h) - oldPower;
                         if (diff > 0) {
                             G.floatTexts.push({
@@ -1164,6 +1200,8 @@ function draw(ctx, W, H) {
 
     // Heroes
     G.heroes.forEach(h => {
+        const buffs = G.buffEffects || { size: 0 };
+        const sizeMult = 1 + (buffs.size || 0) * 0.2; // 每级体型 +20%
         const x = h.rx * W, y = h.ry * H, pct = Math.max(0, h.hp / h.maxHp);
         if (h.equips.length) {
             const ew = h.equips.length * 14;
@@ -1176,11 +1214,11 @@ function draw(ctx, W, H) {
                 ctx.fillText(eq.icon, ex, ey);
             });
         }
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x - 14, y - 22, 28, 4);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x - 14 * sizeMult, y - 22 * sizeMult, 28 * sizeMult, 4 * sizeMult);
         ctx.fillStyle = pct > 0.5 ? '#4ade80' : pct > 0.2 ? '#facc15' : '#f87171';
-        ctx.fillRect(x - 14, y - 22, 28 * pct, 4);
-        ctx.font = '20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(h.icon, x, y - 4);
+        ctx.fillRect(x - 14 * sizeMult, y - 22 * sizeMult, 28 * pct * sizeMult, 4 * sizeMult);
+        ctx.font = `${20 * sizeMult}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(h.icon, x, y - 4 * sizeMult);
     });
 
     // Enemies
@@ -1257,7 +1295,10 @@ function drawChallenge(ctx, W, H) {
 }
 
 function renderUI() {
-    $('gold-display').textContent = G.gold; $('gem-display').textContent = G.gems;
+    $('gold-display').textContent = G.gold;
+    $('gem-display').textContent = G.gems;
+    const techEl = $('tech-display');
+    if (techEl) techEl.textContent = G.techPoints || 0;
     $('level-display').textContent = G.level;
     $('hero-count').textContent = G.heroes.filter(h => h.state === 'fighting').length;
     // 右下角按钮改为“远征”入口：只有通关过第一关（level>1）并且在主城时才显示
@@ -1346,6 +1387,8 @@ function loop(ts) {
     if (ts % 500 < dt) {
         renderUI();
         if (!$('modal-weapon').classList.contains('hidden')) renderAutoForgeStatus();
+        // 科技树弹窗打开时，顺带刷新一次科技显示
+        if (!$('modal-tech').classList.contains('hidden')) renderTechTree();
     }
     requestAnimationFrame(loop);
 }
@@ -1432,6 +1475,15 @@ $('game-canvas').onmousedown = (e) => {
     if (G.mode !== 'city') return;
     const c = $('game-canvas'), r = c.getBoundingClientRect();
     const rx = (e.clientX - r.left) / r.width, ry = (e.clientY - r.top) / r.height;
+
+    // Click on 大本营 (Army Camp) 打开科技树
+    if (typeof BARRACKS !== 'undefined') {
+        const bx = BARRACKS.rx, by = BARRACKS.ry;
+        if (Math.hypot(rx - bx, ry - by) < 0.08) {
+            openTechTree();
+            return;
+        }
+    }
     // Click on 兵营 (barracks_bld) opens deploy
     const barracksBld = BLDS[BARRACKS_BLD_IDX];
     if (Math.hypot(rx - barracksBld.rx, ry - barracksBld.ry) < 0.08) openDeployModal();
@@ -1990,7 +2042,8 @@ function updateForgeLogic(dt) {
 
 function forgeAffixValue(min, max, prof) {
     // 武器铺熟练等级同时提升属性上下限，每级 +5%
-    const boost = 1 + (G.shopProfLv * 0.05);
+    const techBoost = 1 + (G.techWeaponQualityLv || 0) * 0.05; // 科技：锋利锻炉
+    const boost = (1 + (G.shopProfLv * 0.05)) * techBoost;
     const boostedMin = min * boost;
     const boostedMax = max * boost;
     // 在提升后的区间内纯随机
@@ -2247,12 +2300,37 @@ function renderSlotMachine(results, atkGain, hpGain) {
     $('sm-acc-atk').textContent = G.buffAccAtk;
     $('sm-acc-hp').textContent = G.buffAccHp;
     $('sm-spin-cost').textContent = getSlotCost();
+    // 渲染 Buff 栏标签
+    const tagsWrap = $('sm-buff-tags');
+    if (tagsWrap) {
+        tagsWrap.innerHTML = '';
+        const buffs = G.buffEffects || {};
+        const entries = [];
+        if (buffs.size > 0) entries.push({ key: 'size', label: `体型变大 Lv.${buffs.size}`, cls: 'sm-buff-tag--size' });
+        if (buffs.spd > 0) entries.push({ key: 'spd', label: `移动速度 +${Math.round(buffs.spd * 100)}%`, cls: 'sm-buff-tag--spd' });
+        if (buffs.range > 0) entries.push({ key: 'range', label: `攻击距离 +${buffs.range.toFixed(1)}`, cls: 'sm-buff-tag--range' });
+        if (buffs.crit > 0) entries.push({ key: 'crit', label: `暴击率 +${Math.round(buffs.crit * 100)}%`, cls: 'sm-buff-tag--crit' });
+        if (entries.length === 0) {
+            const span = document.createElement('span');
+            span.className = 'sm-buff-tag sm-buff-empty';
+            span.textContent = '暂无 Buff，加油抽取！';
+            tagsWrap.appendChild(span);
+        } else {
+            entries.forEach(e => {
+                const span = document.createElement('span');
+                span.className = 'sm-buff-tag ' + e.cls;
+                span.textContent = e.label;
+                tagsWrap.appendChild(span);
+            });
+        }
+    }
     if (results) {
-        const icons = { atk: '⚔️', hp: '❤️' };
+        const icons = { atk: '⚔️', hp: '❤️', buff: '✨' };
         // 计算哪种类型触发了倍率（只有3连才触发倍率和特效）
-        const nAtk = results.filter(r => r === 'atk').length;
-        const nHp  = results.filter(r => r === 'hp').length;
-        const winType = nAtk === 3 ? 'atk' : (nHp === 3 ? 'hp' : null);
+        const nAtk  = results.filter(r => r === 'atk').length;
+        const nHp   = results.filter(r => r === 'hp').length;
+        const nBuff = results.filter(r => r === 'buff').length;
+        const winType = (nAtk === 3 ? 'atk' : (nHp === 3 ? 'hp' : (nBuff === 3 ? 'buff' : null)));
         const winMult = winType ? 3 : 0;  // 只有3连才算中奖
 
         for (let i = 0; i < 3; i++) {
@@ -2342,16 +2420,17 @@ $('sm-spin-btn').onclick = () => {
     G.crystals -= cost;
     G.slotUses++;
 
-    // 三个槽位随机：攻击 or 生命
-    const types = ['atk', 'hp'];
+    // 三个槽位随机：攻击 / 生命 / Buff
+    const types = ['atk', 'hp', 'buff'];
     const results = [
-        types[Math.floor(Math.random() * 2)],
-        types[Math.floor(Math.random() * 2)],
-        types[Math.floor(Math.random() * 2)],
+        types[Math.floor(Math.random() * types.length)],
+        types[Math.floor(Math.random() * types.length)],
+        types[Math.floor(Math.random() * types.length)],
     ];
 
-    const nAtk = results.filter(r => r === 'atk').length;
-    const nHp  = results.filter(r => r === 'hp').length;
+    const nAtk  = results.filter(r => r === 'atk').length;
+    const nHp   = results.filter(r => r === 'hp').length;
+    const nBuff = results.filter(r => r === 'buff').length;
 
     // 公式：count个同类型
     // 1个：base
@@ -2367,10 +2446,48 @@ $('sm-spin-btn').onclick = () => {
     const atkGain = slotContrib(nAtk, 2);
     const hpGain  = slotContrib(nHp, 10);
 
-    G.buffAccAtk += atkGain;
-    G.buffAccHp  += hpGain;
+    // Buff 栏：根据本次抽到的 buff 槽位数，随机给予一个 Buff
+    if (nBuff > 0) {
+        if (!G.buffEffects) {
+            G.buffEffects = { size: 0, spd: 0, range: 0, crit: 0 };
+        }
+        const buffTypes = ['size', 'spd', 'range', 'crit'];
+        const chosen = buffTypes[Math.floor(Math.random() * buffTypes.length)];
+        const eff = G.buffEffects;
+        // 简单演示：每次命中 buff 槽位就提升一点 / 一段
+        if (chosen === 'size') {
+            eff.size = Math.min(eff.size + nBuff, 3); // 体型最多 Lv.3
+        } else if (chosen === 'spd') {
+            eff.spd = Math.min(eff.spd + 0.05 * nBuff, 0.5); // 每次 +5%~15%，最多 +50%
+        } else if (chosen === 'range') {
+            eff.range = Math.min(eff.range + 0.2 * nBuff, 1.5); // 每次 +0.2~0.6，最多 +1.5
+        } else if (chosen === 'crit') {
+            eff.crit = Math.min(eff.crit + 0.05 * nBuff, 0.5); // 每次 +5%~15%，最多 +50%
+        }
+        // 在结果文字中提示本次获得的 Buff 类型
+        const resEl = $('sm-result');
+        if (resEl) {
+            const labelMap = {
+                size: '体型变大',
+                spd: '移动速度提升',
+                range: '攻击距离增加',
+                crit: '暴击率提升',
+            };
+            resEl.textContent = `本次获得 Buff：${labelMap[chosen]}（共命中 ${nBuff} 个 Buff 槽位）`;
+            resEl.style.color = '#fbbf24';
+        }
+    }
 
-    renderSlotMachine(results, atkGain, hpGain);
+    // 增益铺科技：战斗号角（每级 +5% 效果）
+    const buffLv = G.techBuffPowerLv || 0;
+    const buffMult = 1 + buffLv * 0.05;
+    const finalAtkGain = Math.round(atkGain * buffMult);
+    const finalHpGain  = Math.round(hpGain  * buffMult);
+
+    G.buffAccAtk += finalAtkGain;
+    G.buffAccHp  += finalHpGain;
+
+    renderSlotMachine(results, finalAtkGain, finalHpGain);
     renderUI();
 
     // 显示大的战斗力增量提示（老虎机获得属性的战力等价）
@@ -2383,6 +2500,9 @@ $('sm-spin-btn').onclick = () => {
 };
 
 $('sm-close-btn').onclick = () => $('modal-slotmachine').classList.add('hidden');
+
+// 绑定科技树事件（页面加载后一次）
+bindTechTreeEvents();
 
 // ---- ARMOR SHOP LOGIC ----
 let currentArmorRole = 'warrior';
@@ -2464,7 +2584,13 @@ function renderArmorShop() {
     }
 
     // 更新主按钮（强化 / 进阶 互斥）
-    const enhanceCost = 1 + armor.enhanceLv * 5; // 初始 1 点精华
+    // 护甲强化消耗：受科技“节约精炼术”影响
+    let enhanceCost = 1 + armor.enhanceLv * 5; // 基础：初始 1 点精华
+    const costLv = G.techArmorCostLv || 0;
+    if (costLv > 0) {
+        const mult = Math.max(0.4, 1 - 0.05 * costLv); // 每级 -5%，最低 40%
+        enhanceCost = Math.ceil(enhanceCost * mult);
+    }
     const enhanceCostEl = $('armor-enhance-cost');
     if (enhanceCostEl) enhanceCostEl.textContent = enhanceCost;
 
@@ -2512,11 +2638,19 @@ function bindArmorRoleButtons() {
     armorRoleBtnsBound = true;
 }
 
-// 主按钮：强化 / 进阶
+// 主按钮：强化 / 打造
 const mainBtnEl = $('armor-main-btn');
 if (mainBtnEl) mainBtnEl.onclick = () => {
     const armor = G.armors[currentArmorRole];
     if (!armor) return;
+
+    // 确保高热相关状态存在
+    if (!G.armorHeat) {
+        G.armorHeat = { warrior: 0, archer: 0, mage: 0, knight: 0 };
+    }
+    if (!G.armorHeatBuff) {
+        G.armorHeatBuff = { warrior: 0, archer: 0, mage: 0, knight: 0 };
+    }
 
     // 强化阶段
     if (armor.enhanceLv < 10) {
@@ -2524,28 +2658,63 @@ if (mainBtnEl) mainBtnEl.onclick = () => {
         const isBatch = batchCheckbox && batchCheckbox.checked;
         const maxTimes = isBatch ? 1000 : 1;
 
-        // 每次强化先累积高热槽：1~40 随机值
-        let heatVal = (G.armorHeat && G.armorHeat[currentArmorRole]) || 0;
-        const heatGain = 1 + Math.floor(Math.random() * 40); // 1~40
-        heatVal += heatGain;
+        // ===== 1) 计算本次是否为倍率强化（X2 / X3） =====
+        // - 普通情况下：有一定几率触发 X2 / X3
+        // - 若当前存在高热保底（armorHeatBuff > 0），则本次必定为 X2 或 X3，且不累计高热进度
+        let multi = 1;            // 1=正常, 2=X2强化, 3=X3强化
+        let fromHeatBuff = false; // 是否来自“高热保底”
 
-        // 默认无模式
-        let heatMode = 'none';
-        if (heatVal >= 100) {
-            // 到达或超过 100：进入高热 / 超热模式，并清空进度
-            heatMode = (heatVal === 100) ? 'high' : 'super';
-            heatVal = 0;
+        if (!isBatch) {
+            const buffRemain = G.armorHeatBuff[currentArmorRole] || 0;
+            if (buffRemain > 0) {
+                // 高热状态：本次必定为倍率强化，且不再累计高热进度
+                fromHeatBuff = true;
+                G.armorHeatBuff[currentArmorRole] = buffRemain - 1;
+                // 在 X2 / X3 中等概率选择一个
+                multi = Math.random() < 0.5 ? 2 : 3;
+            } else {
+                // 普通概率触发倍率强化（可微调概率）
+                const r = Math.random();
+                if (r < 0.1) {          // 10% 概率 X3
+                    multi = 3;
+                } else if (r < 0.3) {   // 20% 概率 X2
+                    multi = 2;
+                }
+            }
         }
-        if (!G.armorHeat) G.armorHeat = { warrior: 0, archer: 0, mage: 0, knight: 0 };
-        G.armorHeat[currentArmorRole] = heatVal;
-        ARMOR_HEAT_MODE[currentArmorRole] = heatMode;
 
+        // ===== 2) 高热槽累计：只有“非倍率强化”时才涨条 =====
+        let heatVal = G.armorHeat[currentArmorRole] || 0;
+        let triggeredHeat = false;
+        if (multi === 1) {
+            const heatGain = 1 + Math.floor(Math.random() * 40); // 1~40
+            heatVal += heatGain;
+            if (heatVal >= 100) {
+                // 触发高热：清空进度，并给接下来两次强化保底倍率
+                triggeredHeat = true;
+                heatVal = 0;
+                G.armorHeatBuff[currentArmorRole] = 2; // 下两次必定 X2/X3 强化
+            }
+        }
+        G.armorHeat[currentArmorRole] = heatVal;
+
+        // ===== 3) 记录“强化前”的最终属性，用于计算本次正常增量 =====
+        const tierMult = 1 + armor.tier * 0.5;
+        const finalDefBefore = Math.floor(armor.def * (1 + armor.enhanceLv * 0.1) * tierMult);
+        const finalHpBefore  = Math.floor(armor.hp  * (1 + armor.enhanceLv * 0.1) * tierMult);
+
+        // ===== 4) 正常的等级提升与消耗 =====
         let times = 0;
         let totalCost = 0;
         let levelsToDo = maxTimes;
 
         for (let i = 0; i < levelsToDo && armor.enhanceLv < 10; i++) {
-            const cost = 1 + armor.enhanceLv * 5;
+            let cost = 1 + armor.enhanceLv * 5;
+            const costLv = G.techArmorCostLv || 0;
+            if (costLv > 0) {
+                const mult = Math.max(0.4, 1 - 0.05 * costLv);
+                cost = Math.ceil(cost * mult);
+            }
             if (G.essence < cost) break;
             G.essence -= cost;
             armor.enhanceLv++;
@@ -2558,38 +2727,67 @@ if (mainBtnEl) mainBtnEl.onclick = () => {
             return;
         }
 
-        // 如果本次触发高热 / 超热，额外提升属性并播放特效提示（本次强化立即生效）
-        if (heatMode !== 'none') {
-            // 额外属性提升：高热 ~15% ，超热 ~30%
-            const attrMult = heatMode === 'super' ? 1.3 : 1.15;
-            armor.def = Math.floor(armor.def * attrMult);
-            armor.hp  = Math.floor(armor.hp  * attrMult);
+        // ===== 5) 根据倍率强化，额外放大“本次获得的属性” =====
+        if (!isBatch && multi > 1 && times > 0) {
+            // 计算正常强化后“应有的最终属性”
+            const finalDefAfter = Math.floor(armor.def * (1 + armor.enhanceLv * 0.1) * tierMult);
+            const finalHpAfter  = Math.floor(armor.hp  * (1 + armor.enhanceLv * 0.1) * tierMult);
 
-            const color = heatMode === 'super'
-                ? 'rgba(248, 113, 113, 0.35)'
-                : 'rgba(249, 115, 22, 0.28)';
+            const normalDeltaDef = finalDefAfter - finalDefBefore;
+            const normalDeltaHp  = finalHpAfter - finalHpBefore;
+
+            // 目标：本次总收益 = normalDelta * multi
+            const extraDefGain = normalDeltaDef * (multi - 1);
+            const extraHpGain  = normalDeltaHp  * (multi - 1);
+
+            // 反推出需要增加多少“基础属性”，使最终值接近目标
+            const scale = (1 + armor.enhanceLv * 0.1) * tierMult;
+            const extraBaseDef = Math.round(extraDefGain / scale);
+            const extraBaseHp  = Math.round(extraHpGain  / scale);
+
+            armor.def += extraBaseDef;
+            armor.hp  += extraBaseHp;
+
+            // 中央大弹窗提示倍率强化（只说明属性倍率，不提等级）
+            const popup = document.createElement('div');
+            popup.className = 'heat-popup';
+            const inner = document.createElement('div');
+            inner.className = 'heat-popup-inner' + (multi === 3 ? ' super' : '');
+            inner.textContent = multi === 3 ? 'X3 强化！属性三倍！' : 'X2 强化！属性翻倍！';
+            popup.appendChild(inner);
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 900);
+        }
+
+        // ===== 6) 若本次触发“高热”（进度条满），播放高热提示（但不直接加属性） =====
+        if (triggeredHeat) {
+            const color = 'rgba(249, 115, 22, 0.28)';
             G.fx.push({ type: 'global', color, dur: 700, t: 0 });
 
             // 中央大弹窗提示
             const popup = document.createElement('div');
             popup.className = 'heat-popup';
             const inner = document.createElement('div');
-            inner.className = 'heat-popup-inner' + (heatMode === 'super' ? ' super' : '');
-            inner.textContent = heatMode === 'super' ? '超热强化！' : '高热强化！';
+            inner.className = 'heat-popup-inner';
+            inner.textContent = '高热！接下两次必定倍率强化！';
             popup.appendChild(inner);
             document.body.appendChild(popup);
             setTimeout(() => popup.remove(), 900);
         }
 
-        // 统一刷新 UI，展示等级 + 额外属性的结果
+        // ===== 7) 刷新 UI，展示等级 + 属性结果 =====
         renderArmorShop();
         renderUI();
 
-        // 提示本次强化结果
+        // ===== 8) 提示本次强化结果（附加倍率信息，但不提加几级） =====
         const toast = document.createElement('div');
         toast.className = 'toast';
         if (times === 1) {
-            toast.textContent = `✨ ${armor.name} 强化至 +${armor.enhanceLv} 级！`;
+            if (!isBatch && multi > 1) {
+                toast.textContent = `✨ ${armor.name} 触发 X${multi} 强化！属性收益 X${multi}！`;
+            } else {
+                toast.textContent = `✨ ${armor.name} 强化完成！`; // 不再提示“+几级”，避免和倍率概念冲突
+            }
         } else {
             toast.textContent = `✨ ${armor.name} 强化提升 ${times} 级，消耗 ${totalCost} 精华！`;
         }
@@ -2629,10 +2827,129 @@ if (mainBtnEl) mainBtnEl.onclick = () => {
 };
 
 const armorCloseBtn = $('armor-close-btn');
-if (armorCloseBtn) armorCloseBtn.onclick = () => {
-    const modal = $('modal-armor');
+    if (armorCloseBtn) armorCloseBtn.onclick = () => {
+        const modal = $('modal-armor');
+        if (modal) modal.classList.add('hidden');
+    };
+
+// ---- TECH TREE (大本营科技) ----
+let currentTechTab = 'weapon';
+
+function getTechCost(base, lv) {
+    return base + lv; // 简单线性成本：1,2,3,...
+}
+
+function renderTechTree() {
+    // 更新科技点显示
+    const ptsTop = $('tech-display');
+    const ptsInModal = $('tech-points-display');
+    const pts = G.techPoints || 0;
+    if (ptsTop) ptsTop.textContent = pts;
+    if (ptsInModal) ptsInModal.textContent = pts;
+
+    // Tab 高亮 & 面板切换
+    document.querySelectorAll('.tech-tab-button').forEach(btn => {
+        const tab = btn.dataset.tab;
+        btn.classList.toggle('active', tab === currentTechTab);
+    });
+    document.querySelectorAll('.tech-panel').forEach(p => {
+        const tab = p.getAttribute('data-tab');
+        p.classList.toggle('hidden', tab !== currentTechTab);
+    });
+
+    // 分支节点状态渲染：树状从下到上
+    function renderBranch(prefix, lv) {
+        for (let i = 1; i <= 3; i++) {
+            const nodeEl = $(`tech-${prefix}-node${i}`);
+            const stateEl = $(`tech-${prefix}-node${i}-state`);
+            const costEl = $(`tech-${prefix}-node${i}-cost`);
+            const btnEl = $(`tech-${prefix}-node${i}-btn`);
+            if (!nodeEl) continue;
+
+            nodeEl.classList.remove('unlocked', 'next', 'locked');
+
+            if (i <= lv) {
+                nodeEl.classList.add('unlocked');
+                if (stateEl) stateEl.textContent = '已解锁';
+                if (costEl) costEl.textContent = '-';
+                if (btnEl) { btnEl.disabled = true; btnEl.textContent = '已解锁'; }
+            } else if (i === lv + 1) {
+                nodeEl.classList.add('next');
+                const cost = getTechCost(1, lv);
+                if (stateEl) stateEl.textContent = '可解锁';
+                if (costEl) costEl.textContent = cost;
+                if (btnEl) {
+                    btnEl.disabled = pts < cost;
+                    btnEl.textContent = '解锁';
+                }
+            } else {
+                nodeEl.classList.add('locked');
+                if (stateEl) stateEl.textContent = '未解锁';
+                if (costEl) costEl.textContent = '—';
+                if (btnEl) { btnEl.disabled = true; btnEl.textContent = '锁定'; }
+            }
+        }
+    }
+
+    renderBranch('weapon', G.techWeaponQualityLv || 0);
+    renderBranch('armor', G.techArmorCostLv || 0);
+    renderBranch('buff', G.techBuffPowerLv || 0);
+}
+
+function openTechTree() {
+    currentTechTab = 'weapon';
+    renderTechTree();
+    const modal = $('modal-tech');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeTechTree() {
+    const modal = $('modal-tech');
     if (modal) modal.classList.add('hidden');
-};
+}
+
+function bindTechTreeEvents() {
+    // 标签页切换
+    document.querySelectorAll('.tech-tab-button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentTechTab = btn.dataset.tab;
+            renderTechTree();
+        });
+    });
+
+    // 关闭按钮
+    const closeBtn = $('tech-close-btn');
+    if (closeBtn) closeBtn.onclick = () => closeTechTree();
+
+    // 升级：三条分支的树状节点
+    const branchKeys = {
+        weapon: 'techWeaponQualityLv',
+        armor: 'techArmorCostLv',
+        buff: 'techBuffPowerLv',
+    };
+
+    ['weapon', 'armor', 'buff'].forEach(prefix => {
+        for (let i = 1; i <= 3; i++) {
+            const btnEl = $(`tech-${prefix}-node${i}-btn`);
+            if (!btnEl) continue;
+            btnEl.onclick = () => {
+                const key = branchKeys[prefix];
+                const lv = G[key] || 0;
+                // 只能解锁「下一层」节点
+                if (i !== lv + 1) return;
+                const cost = getTechCost(1, lv);
+                if (G.techPoints < cost) {
+                    alert('科技点不足！');
+                    return;
+                }
+                G.techPoints -= cost;
+                G[key] = lv + 1;
+                renderTechTree();
+                renderUI();
+            };
+        }
+    });
+}
 
 // ---- REFINERY LOGIC ----
 function openRefinery() {
