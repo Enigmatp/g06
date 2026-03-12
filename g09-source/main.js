@@ -98,14 +98,59 @@ const enemies = [];
 const bullets = [];
 const keys = {};
 
+// --- JOYSTICK STATE ---
+const joystickState = {
+    active: false,
+    origin: new THREE.Vector2(),
+    current: new THREE.Vector2(),
+    moveDir: new THREE.Vector3(0, 0, 0)
+};
+
 // --- HUD ELEMENTS ---
 const scoreEl = document.querySelector('#score');
 const fpsEl = document.querySelector('#fps');
 const hpBarEl = document.querySelector('#hp-bar');
+const joystickContainer = document.querySelector('#joystick-container');
+const joystickKnob = document.querySelector('#joystick-knob');
 
 // --- INPUTS ---
 window.addEventListener('keydown', (e) => keys[e.code] = true);
 window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+// --- JOYSTICK EVENTS ---
+joystickContainer.addEventListener('touchstart', (e) => {
+    joystickState.active = true;
+    const touch = e.touches[0];
+    const rect = joystickContainer.getBoundingClientRect();
+    joystickState.origin.set(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    handleJoystickTouch(touch);
+});
+
+window.addEventListener('touchmove', (e) => {
+    if (!joystickState.active) return;
+    handleJoystickTouch(e.touches[0]);
+}, { passive: false });
+
+window.addEventListener('touchend', () => {
+    joystickState.active = false;
+    joystickKnob.style.transform = `translate(-50%, -50%)`;
+    joystickState.moveDir.set(0, 0, 0);
+});
+
+function handleJoystickTouch(touch) {
+    const touchPos = new THREE.Vector2(touch.clientX, touch.clientY);
+    const offset = touchPos.clone().sub(joystickState.origin);
+    const maxRadius = 60; // Max distance for knob
+
+    if (offset.length() > maxRadius) {
+        offset.setLength(maxRadius);
+    }
+
+    joystickKnob.style.transform = `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`;
+
+    // Convert to move direction (X is X, Y in screen is Z in world)
+    joystickState.moveDir.set(offset.x / maxRadius, 0, offset.y / maxRadius);
+}
 
 // --- UTILS ---
 function spawnEnemy() {
@@ -189,8 +234,14 @@ function animate(time) {
     if (keys['KeyA']) moveDir.x -= 1;
     if (keys['KeyD']) moveDir.x += 1;
 
+    // Merge joystick movement
+    if (joystickState.active) {
+        moveDir.copy(joystickState.moveDir);
+    }
+
+    if (moveDir.length() > 1) moveDir.normalize();
+
     if (moveDir.lengthSq() > 0) {
-        moveDir.normalize();
         player.position.add(moveDir.clone().multiplyScalar(CONFIG.PLAYER_SPEED * dt));
         player.rotation.y += 0.05;
         player.rotation.z += 0.02;
