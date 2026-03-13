@@ -214,23 +214,17 @@
                 }
 
                 const cx = 7, cy = 7;
-                // Check each ring (d=1 to 7) for its next eligible target
+                // Check each ring (d=1 to 7) for its eligible targets
                 for (let d = 1; d <= 7; d++) {
                     const seq = this.getRingSequence(d, cx, cy);
-                    let targetFound = false;
                     for (let p of seq) {
                         const cell = this.gridCells[p.y][p.x];
                         if (cell.state !== 'filled') {
-                            // This is the first un-filled cell in the ring sequence.
-                            // It's eligible ONLY if its parent in d-1 is filled.
+                            // Cell is eligible ONLY if its parent in d-1 is filled.
                             if (this.isParentFilled(cell, d)) {
                                 cell.state = 'active';
                                 cell.rect.setAlpha(1.0).setStrokeStyle(3, cell.color, 1);
-                                targetFound = true;
                             }
-                            // Ring sequence is a strict gate: if the first un-filled cell
-                            // is blocked by its parent, the rest of the ring stays locked.
-                            break;
                         }
                     }
                 }
