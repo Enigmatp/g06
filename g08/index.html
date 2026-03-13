@@ -448,16 +448,21 @@
             }
 
             getRingCCWSequence(d, cx, cy) {
+                // Returns coordinates in CCW order in screen space (y-down)
+                // Increasing angle from Math.atan2(y-cy, x-cx)
                 const res = [];
                 if (d === 0) return [{ x: cx, y: cy }];
-                // 1. Bottom side (Left to Right)
-                for (let x = cx - d; x <= cx + d; x++) res.push({ x, y: cy + d });
-                // 2. Right side (Bottom to Top)
-                for (let y = cy + d - 1; y >= cy - d; y--) res.push({ x: cx + d, y });
-                // 3. Top side (Right to Left)
-                for (let x = cx + d - 1; x >= cx - d; x--) res.push({ x, y: cy - d });
-                // 4. Left side (Top to Bottom)
-                for (let y = cy - d + 1; y <= cy + d - 1; y++) res.push({ x: cx - d, y });
+
+                // Correct CCW for screen space (Right -> Down -> Left -> Up)
+                // 1. Right side (Top to Bottom)
+                for (let y = cy - d; y <= cy + d; y++) res.push({ x: cx + d, y });
+                // 2. Bottom side (Right to Left)
+                for (let x = cx + d - 1; x >= cx - d; x--) res.push({ x, y: cy + d });
+                // 3. Left side (Bottom to Top)
+                for (let y = cy + d - 1; y >= cy - d; y--) res.push({ x: cx - d, y });
+                // 4. Top side (Left to Right)
+                for (let x = cx - d + 1; x <= cx + d - 1; x++) res.push({ x, y: cy - d });
+
                 return res;
             }
 
@@ -640,8 +645,6 @@
             const queueEl = document.getElementById('deploy-queue');
             queueEl.innerHTML = '';
 
-            // If empty and game won logic here later...
-
             deployQueueData.forEach((item, index) => {
                 const slot = document.createElement('div');
                 slot.className = 'refresh-slot';
@@ -655,12 +658,24 @@
                     slot.addEventListener('click', () => {
                         const scene = game.scene.getScenes(true)[0];
                         if (scene && typeof scene.spawnShooter === 'function') {
-                            if (scene.shooters.length >= 5) return; // limit to 5 on conveyor
-                            // Remove from queue
-                            deployQueueData.splice(index, 1);
+                            if (scene.shooters.length >= 5) return;
+
+                            // Column-wise Shift logic
+                            const col = index % 3;
+                            let current = index;
+                            const capturedItem = { ...item }; // Capture current item data before shifting
+
+                            while (current + 3 < deployQueueData.length) {
+                                deployQueueData[current] = deployQueueData[current + 3];
+                                current += 3;
+                            }
+                            // Remove the last one in this column's chain
+                            deployQueueData.splice(current, 1);
+
                             renderQueue();
-                            // Spawn shooter
-                            scene.spawnShooter(item.hex, item.value, item.colorId);
+
+                            // Spawn shooter using captured data
+                            scene.spawnShooter(capturedItem.hex, capturedItem.value, capturedItem.colorId);
                         }
                     });
                 }
