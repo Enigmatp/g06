@@ -187,6 +187,12 @@
 
                 this.refreshGridStates();
 
+                // Current targeting highlight
+                this.targetHighlight = this.add.rectangle(0, 0, this.cellSize, this.cellSize);
+                this.targetHighlight.setStrokeStyle(4, 0xffffff, 1);
+                this.targetHighlight.setDepth(20);
+                this.targetHighlight.setVisible(false);
+
                 // Initialize external UI Queue
                 if (window.initDeployQueue) {
                     window.initDeployQueue(this.colorRequirements, this.levelColors);
@@ -196,56 +202,61 @@
             }
 
             refreshGridStates() {
-                const centerX = 7;
-                const centerY = 7;
+                // Inside-out logic: 
+                // 1. Center cell (7,7) is already filled at start.
+                // 2. Next cells are unlocked strictly according to getRingSequence.
 
-                // 1. Find the current "active" ring radius
-                // It's the smallest radius 'd' that has at least one non-filled cell
-                let activeRadius = -1;
-                for (let d = 0; d < this.gridSize; d++) {
-                    let ringComplete = true;
-                    let ringExists = false;
-                    for (let y = 0; y < this.gridSize; y++) {
-                        for (let x = 0; x < this.gridSize; x++) {
-                            const dist = Math.max(Math.abs(x - centerX), Math.abs(y - centerY));
-                            if (dist === d) {
-                                ringExists = true;
-                                if (this.gridCells[y][x].state !== 'filled') {
-                                    ringComplete = false;
-                                    break;
-                                }
-                            }
-                        }
-                        if (!ringComplete) break;
-                    }
-                    if (!ringExists) break;
-                    if (!ringComplete) {
-                        activeRadius = d;
-                        break;
-                    }
-                }
-
-                // 2. Set states based on the activeRadius
+                // Set all unfilled cells to 'locked' initially
                 for (let y = 0; y < this.gridSize; y++) {
                     for (let x = 0; x < this.gridSize; x++) {
                         const cell = this.gridCells[y][x];
-                        if (!cell || cell.state === 'filled') continue;
-
-                        const dist = Math.max(Math.abs(x - centerX), Math.abs(y - centerY));
-
-                        if (dist === activeRadius) {
-                            cell.state = 'active';
-                            cell.rect.setSize(this.cellSize - 4, this.cellSize - 4);
-                            cell.rect.setAlpha(1.0);
-                            cell.rect.setStrokeStyle(2, cell.color, 1);
-                        } else {
+                        if (cell.state !== 'filled') {
                             cell.state = 'locked';
-                            cell.rect.setSize(this.cellSize - 2, this.cellSize - 2);
-                            cell.rect.setAlpha(0.1); // 10% alpha
+                            cell.rect.setAlpha(0.1);
                             cell.rect.setStrokeStyle();
                         }
                     }
                 }
+
+                const nextTarget = this.getNextTarget();
+                if (nextTarget) {
+                    nextTarget.state = 'active';
+                    nextTarget.rect.setAlpha(1.0);
+                    nextTarget.rect.setStrokeStyle(3, nextTarget.color, 1);
+
+                    this.targetHighlight.setVisible(true);
+                    this.targetHighlight.setPosition(nextTarget.rect.x, nextTarget.rect.y);
+
+                    // Add a pulse effect to the highlight
+                    if (!this.targetHighlight.pulseTween) {
+                        this.targetHighlight.pulseTween = this.tweens.add({
+                            targets: this.targetHighlight,
+                            alpha: 0.3,
+                            duration: 500,
+                            yoyo: true,
+                            repeat: -1
+                        });
+                    }
+                } else {
+                    this.targetHighlight.setVisible(false);
+                }
+            }
+
+            getNextTarget() {
+                const centerX = 7;
+                const centerY = 7;
+                // Max radius for 15x15 is 7
+                for (let d = 0; d <= 7; d++) {
+                    const sequence = this.getRingSequence(d, centerX, centerY);
+                    for (let i = 0; i < sequence.length; i++) {
+                        const p = sequence[i];
+                        const cell = this.gridCells[p.y][p.x];
+                        if (cell.state !== 'filled') {
+                            return cell;
+                        }
+                    }
+                }
+                return null;
             }
 
             spawnShooter(colorHexStr, value, colorId) {
@@ -379,70 +390,21 @@
             }
 
             canShoot(shooter, index, lineOfSight) {
-                // Find potential target first (the closest non-locked cell in the line of sight)
-                let potentialTarget = null;
-                if (lineOfSight === 'up') {
-                    for (let y = this.gridSize - 1; y >= 0; y--) {
-                        const cell = this.gridCells[y][index];
-                        if (cell.state === 'locked') continue;
-                        if (cell.state === 'filled' || cell.state === 'targeted') break;
-                        if (cell.state === 'active') {
-                            if (cell.color === shooter.color) potentialTarget = cell;
-                            break; // First active block blocks everything behind it
-                        }
-                    }
-                } else if (lineOfSight === 'down') {
-                    for (let y = 0; y < this.gridSize; y++) {
-                        const cell = this.gridCells[y][index];
-                        if (cell.state === 'locked') continue;
-                        if (cell.state === 'filled' || cell.state === 'targeted') break;
-                        if (cell.state === 'active') {
-                            if (cell.color === shooter.color) potentialTarget = cell;
-                            break;
-                        }
-                    }
-                } else if (lineOfSight === 'left') {
-                    for (let x = this.gridSize - 1; x >= 0; x--) {
-                        const cell = this.gridCells[index][x];
-                        if (cell.state === 'locked') continue;
-                        if (cell.state === 'filled' || cell.state === 'targeted') break;
-                        if (cell.state === 'active') {
-                            if (cell.color === shooter.color) potentialTarget = cell;
-                            break;
-                        }
-                    }
-                } else if (lineOfSight === 'right') {
-                    for (let x = 0; x < this.gridSize; x++) {
-                        const cell = this.gridCells[index][x];
-                        if (cell.state === 'locked') continue;
-                        if (cell.state === 'filled' || cell.state === 'targeted') break;
-                        if (cell.state === 'active') {
-                            if (cell.color === shooter.color) potentialTarget = cell;
-                            break;
-                        }
-                    }
+                // The ONLY shootable target is the global getNextTarget()
+                const nextTarget = this.getNextTarget();
+                if (!nextTarget || nextTarget.state === 'targeted') return false;
+                if (nextTarget.color !== shooter.color) return false;
+
+                // Check if the shooter is aligned with the nextTarget
+                if (lineOfSight === 'up' || lineOfSight === 'down') {
+                    if (nextTarget.x !== index) return false;
+                } else if (lineOfSight === 'left' || lineOfSight === 'right') {
+                    if (nextTarget.y !== index) return false;
                 }
 
-                if (!potentialTarget) return false;
-
-                // GLOBAL TARGETING ORDER (CCW starting from Bottom-Left)
-                const centerX = 7;
-                const centerY = 7;
-                const dist = Math.max(Math.abs(potentialTarget.gridX - centerX), Math.abs(potentialTarget.gridY - centerY));
-
-                // Get the sequence for this ring
-                const sequence = this.getRingSequence(dist, centerX, centerY);
-
-                // The target is shootable ONLY if it is the EARLIEST non-filled cell in the ring sequence
-                // We check both 'active' and 'targeted' to ensure strict sequence clearing.
-                for (let i = 0; i < sequence.length; i++) {
-                    const p = sequence[i];
-                    const cell = this.gridCells[p.y][p.x];
-                    if (cell.state === 'active' || cell.state === 'targeted') {
-                        // This is the earliest available block in the sequence
-                        return (p.x === potentialTarget.gridX && p.y === potentialTarget.gridY);
-                    }
-                }
+                // Laser can pass through locked/filled blocks? 
+                // User said "从内到外", suggesting lasers can reach the inner active target.
+                // We'll allow it to fire if aligned.
                 return true;
             }
 
@@ -465,54 +427,14 @@
             }
 
             fireLaser(shooter, index, lineOfSight) {
+                const nextTarget = this.getNextTarget();
+                if (!nextTarget || nextTarget.color !== shooter.color) return;
+
                 shooter.hasShot = true;
                 shooter.value -= 1;
                 shooter.textValue.setText(shooter.value.toString());
 
-                let targetCell = null;
-                // Strict Line of sight: First non-locked cell must be active and same color
-                if (lineOfSight === 'up') {
-                    for (let y = this.gridSize - 1; y >= 0; y--) {
-                        const cell = this.gridCells[y][index];
-                        if (cell.state === 'locked') continue;
-                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
-                        break;
-                    }
-                } else if (lineOfSight === 'down') {
-                    for (let y = 0; y < this.gridSize; y++) {
-                        const cell = this.gridCells[y][index];
-                        if (cell.state === 'locked') continue;
-                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
-                        break;
-                    }
-                } else if (lineOfSight === 'left') {
-                    for (let x = this.gridSize - 1; x >= 0; x--) {
-                        const cell = this.gridCells[index][x];
-                        if (cell.state === 'locked') continue;
-                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
-                        break;
-                    }
-                } else if (lineOfSight === 'right') {
-                    for (let x = 0; x < this.gridSize; x++) {
-                        const cell = this.gridCells[index][x];
-                        if (cell.state === 'locked') continue;
-                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
-                        break;
-                    }
-                }
-
-                if (!targetCell) {
-                    if (shooter.value <= 0) {
-                        shooter.container.destroy();
-                        const idx = this.shooters.indexOf(shooter);
-                        if (idx > -1) this.shooters.splice(idx, 1);
-                    } else {
-                        shooter.hasShot = false;
-                    }
-                    this.updateTrackCapacityUI();
-                    return;
-                }
-
+                const targetCell = nextTarget;
                 targetCell.state = 'targeted';
 
                 if (lineOfSight === 'up' || lineOfSight === 'down') shooter.gridX = index;
@@ -534,10 +456,10 @@
                             shooter.container.destroy();
                             const idx = this.shooters.indexOf(shooter);
                             if (idx > -1) this.shooters.splice(idx, 1);
-                            this.updateTrackCapacityUI();
                         } else {
                             shooter.hasShot = false;
                         }
+                        this.updateTrackCapacityUI();
                     }
                 });
             }
