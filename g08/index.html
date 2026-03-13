@@ -68,8 +68,9 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.88.0/dist/phaser.min.js?v=1"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
     <script>
+        console.log("Phaser v1.1.1 Loading...");
         class Showcase extends Phaser.Scene {
             preload() {
                 const graphics = this.make.graphics({ x: 0, y: 0, add: false });
@@ -202,10 +203,6 @@
             }
 
             refreshGridStates() {
-                // Inside-out logic: 
-                // 1. Center cell (7,7) is already filled at start.
-                // 2. Next cells are unlocked strictly according to getRingSequence.
-
                 // Set all unfilled cells to 'locked' initially
                 for (let y = 0; y < this.gridSize; y++) {
                     for (let x = 0; x < this.gridSize; x++) {
@@ -227,7 +224,6 @@
                     this.targetHighlight.setVisible(true);
                     this.targetHighlight.setPosition(nextTarget.rect.x, nextTarget.rect.y);
 
-                    // Add a pulse effect to the highlight
                     if (!this.targetHighlight.pulseTween) {
                         this.targetHighlight.pulseTween = this.tweens.add({
                             targets: this.targetHighlight,
@@ -243,17 +239,14 @@
             }
 
             getNextTarget() {
-                const centerX = 7;
-                const centerY = 7;
-                // Max radius for 15x15 is 7
+                const cx = 7;
+                const cy = 7;
                 for (let d = 0; d <= 7; d++) {
-                    const sequence = this.getRingSequence(d, centerX, centerY);
+                    const sequence = this.getRingSequence(d, cx, cy);
                     for (let i = 0; i < sequence.length; i++) {
                         const p = sequence[i];
                         const cell = this.gridCells[p.y][p.x];
-                        if (cell.state !== 'filled') {
-                            return cell;
-                        }
+                        if (cell.state !== 'filled') return cell;
                     }
                 }
                 return null;
@@ -261,7 +254,6 @@
 
             spawnShooter(colorHexStr, value, colorId) {
                 const color = Phaser.Display.Color.HexStringToColor(colorHexStr).color;
-
                 const container = this.add.container(0, 0);
 
                 const body = this.add.rectangle(0, 0, this.cellSize - 6, this.cellSize - 6, color);
@@ -299,11 +291,8 @@
             }
 
             updateTrackCapacityUI() {
-                const count = this.shooters ? this.shooters.length : 0;
                 const el = document.getElementById('track-capacity-val');
-                if (el) {
-                    el.innerText = `${count}/5`;
-                }
+                if (el) el.innerText = `${this.shooters.length}/5`;
             }
 
             update(time, delta) {
@@ -316,25 +305,16 @@
                     const oldX = shooter.gridX;
                     const oldY = shooter.gridY;
 
-                    if (shooter.direction === 'right') { // Bottom edge
+                    if (shooter.direction === 'right') {
                         shooter.gridX += moveStep;
-                        if (shooter.gridX >= this.gridSize) {
-                            shooter.gridX = this.gridSize;
-                            shooter.direction = 'up';
-                        }
-                    } else if (shooter.direction === 'up') { // Right edge
+                        if (shooter.gridX >= this.gridSize) { shooter.gridX = this.gridSize; shooter.direction = 'up'; }
+                    } else if (shooter.direction === 'up') {
                         shooter.gridY -= moveStep;
-                        if (shooter.gridY <= -1) {
-                            shooter.gridY = -1;
-                            shooter.direction = 'left';
-                        }
-                    } else if (shooter.direction === 'left') { // Top edge
+                        if (shooter.gridY <= -1) { shooter.gridY = -1; shooter.direction = 'left'; }
+                    } else if (shooter.direction === 'left') {
                         shooter.gridX -= moveStep;
-                        if (shooter.gridX <= -1) {
-                            shooter.gridX = -1;
-                            shooter.direction = 'down';
-                        }
-                    } else if (shooter.direction === 'down') { // Left edge
+                        if (shooter.gridX <= -1) { shooter.gridX = -1; shooter.direction = 'down'; }
+                    } else if (shooter.direction === 'down') {
                         shooter.gridY += moveStep;
                         if (shooter.gridY >= this.gridSize) {
                             shooter.gridY = this.gridSize;
@@ -355,12 +335,9 @@
                     this.updateShooterPosition(shooter);
 
                     // If currently shooting or out of ink, don't scan for new targets
-                    if (shooter.hasShot || shooter.value <= 0) {
-                        continue;
-                    }
+                    if (shooter.hasShot || shooter.value <= 0) continue;
 
                     // Check alignment and shooting
-                    let alignmentIndex = -1;
                     if (shooter.direction === 'right' || shooter.direction === 'left') {
                         // Moving horizontally, check X alignment across integers
                         const minX = Math.min(oldX, shooter.gridX);
@@ -401,34 +378,22 @@
                 } else if (lineOfSight === 'left' || lineOfSight === 'right') {
                     if (nextTarget.y !== index) return false;
                 }
-
-                // Laser can pass through locked/filled blocks? 
-                // User said "从内到外", suggesting lasers can reach the inner active target.
-                // We'll allow it to fire if aligned.
                 return true;
             }
 
             getRingSequence(d, cx, cy) {
-                // Returns coordinates in the sequence order specified:
-                // B6(BL), B7(BC), B8(BR), B5(MR), B3(TR), B2(TC), B1(TL), B4(ML)
                 const res = [];
                 if (d === 0) return [{ x: cx, y: cy }];
-
-                // 1. Bottom side (Left to Right): (cx-d, cy+d) to (cx+d, cy+d)
                 for (let x = cx - d; x <= cx + d; x++) res.push({ x, y: cy + d });
-                // 2. Right side (Bottom to Top): (cx+d, cy+d-1) down to (cx+d, cy-d)
                 for (let y = cy + d - 1; y >= cy - d; y--) res.push({ x: cx + d, y });
-                // 3. Top side (Right to Left): (cx+d-1, cy-d) left to (cx-d, cy-d)
                 for (let x = cx + d - 1; x >= cx - d; x--) res.push({ x, y: cy - d });
-                // 4. Left side (Top to Bottom): (cx-d, cy-d+1) down to (cx-d, cy+d-1)
                 for (let y = cy - d + 1; y <= cy + d - 1; y++) res.push({ x: cx - d, y });
-
                 return res;
             }
 
             fireLaser(shooter, index, lineOfSight) {
                 const nextTarget = this.getNextTarget();
-                if (!nextTarget || nextTarget.color !== shooter.color) return;
+                if (!nextTarget) return;
 
                 shooter.hasShot = true;
                 shooter.value -= 1;
