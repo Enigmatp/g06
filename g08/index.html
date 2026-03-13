@@ -114,17 +114,8 @@
                     1: 0xff3b30, 2: 0xffcc00, 3: 0x4cd964, 4: 0x00fbff, 5: 0xff2d55, 6: 0x8a2be2
                 };
 
-                // B6: (8,6), B7: (8,7), B5: (7,8), B3: (6,8), B2: (6,7), B4: (7,6)
-                this.priorityLists = {
-                    3: [
-                        { y: 8, x: 6 }, // B6
-                        { y: 8, x: 7 }, // B7
-                        { y: 7, x: 8 }, // B5
-                        { y: 6, x: 8 }, // B3
-                        { y: 6, x: 7 }, // B2
-                        { y: 7, x: 6 }  // B4
-                    ]
-                };
+                // Mapping will be derived dynamically via getRingCCWSequence
+                this.priorityLists = {};
 
                 // --- DRAW TRACK ---
                 const trackOffset = this.cellSize;
@@ -388,7 +379,7 @@
             }
 
             canShoot(shooter, index, lineOfSight) {
-                // Find potential target first
+                // Find potential target first (the closest active cell of the correct color in the line of sight)
                 let potentialTarget = null;
                 if (lineOfSight === 'up') {
                     for (let y = this.gridSize - 1; y >= 0; y--) {
@@ -397,8 +388,8 @@
                         if (cell.state === 'filled') break;
                         if (cell.state === 'active' && cell.color === shooter.color) {
                             potentialTarget = cell;
+                            break; // Found the closest active cell in this line of sight
                         }
-                        break;
                     }
                 } else if (lineOfSight === 'down') {
                     for (let y = 0; y < this.gridSize; y++) {
@@ -407,8 +398,8 @@
                         if (cell.state === 'filled') break;
                         if (cell.state === 'active' && cell.color === shooter.color) {
                             potentialTarget = cell;
+                            break; // Found the closest active cell in this line of sight
                         }
-                        break;
                     }
                 } else if (lineOfSight === 'left') {
                     for (let x = this.gridSize - 1; x >= 0; x--) {
@@ -417,8 +408,8 @@
                         if (cell.state === 'filled') break;
                         if (cell.state === 'active' && cell.color === shooter.color) {
                             potentialTarget = cell;
+                            break; // Found the closest active cell in this line of sight
                         }
-                        break;
                     }
                 } else if (lineOfSight === 'right') {
                     for (let x = 0; x < this.gridSize; x++) {
@@ -427,74 +418,110 @@
                         if (cell.state === 'filled') break;
                         if (cell.state === 'active' && cell.color === shooter.color) {
                             potentialTarget = cell;
+                            break; // Found the closest active cell in this line of sight
                         }
-                        break;
                     }
                 }
 
                 if (!potentialTarget) return false;
 
-                // Priority Check for specific colors (e.g. Green/3)
-                const priorityList = this.priorityLists[potentialTarget.colorId];
-                if (priorityList) {
-                    // Find where this target sits in the priority list
-                    let myRank = priorityList.findIndex(p => p.x === potentialTarget.gridX && p.y === potentialTarget.gridY);
+                // GLOBAL CCW TARGETING ORDER
+                const centerX = 7;
+                const centerY = 7;
+                const dist = Math.max(Math.abs(potentialTarget.gridX - centerX), Math.abs(potentialTarget.gridY - centerY));
 
-                    if (myRank !== -1) {
-                        // Check if any higher priority cell is still active
-                        for (let i = 0; i < myRank; i++) {
-                            const p = priorityList[i];
-                            const higherPriorityCell = this.gridCells[p.y][p.x];
-                            if (higherPriorityCell.state === 'active' && higherPriorityCell.colorId === potentialTarget.colorId) {
-                                return false; // Must wait for higher priority cell
-                            }
-                        }
+                // Get the CCW sequence for this ring
+                const sequence = this.getRingCCWSequence(dist, centerX, centerY);
+
+                // The target is shootable ONLY if it is the EARLIEST active cell in the global sequence for this ring
+                for (let i = 0; i < sequence.length; i++) {
+                    const p = sequence[i];
+                    const cell = this.gridCells[p.y][p.x];
+                    if (cell.state === 'active') {
+                        // This is the earliest active cell in the global ring order
+                        return (p.x === potentialTarget.gridX && p.y === potentialTarget.gridY);
                     }
                 }
-
+                // If no active cells are found in the sequence (shouldn't happen if potentialTarget is active),
+                // or if potentialTarget is the only active cell, it's shootable.
                 return true;
+            }
+
+            getRingCCWSequence(d, cx, cy) {
+                const res = [];
+                if (d === 0) return [{ x: cx, y: cy }];
+                // 1. Bottom side (Left to Right)
+                for (let x = cx - d; x <= cx + d; x++) res.push({ x, y: cy + d });
+                // 2. Right side (Bottom to Top)
+                for (let y = cy + d - 1; y >= cy - d; y--) res.push({ x: cx + d, y });
+                // 3. Top side (Right to Left)
+                for (let x = cx + d - 1; x >= cx - d; x--) res.push({ x, y: cy - d });
+                // 4. Left side (Top to Bottom)
+                for (let y = cy - d + 1; y <= cy + d - 1; y++) res.push({ x: cx - d, y });
+                return res;
             }
 
             fireLaser(shooter, index, lineOfSight) {
                 shooter.hasShot = true;
-
                 shooter.value -= 1;
                 shooter.textValue.setText(shooter.value.toString());
 
-                // Find target cell (must be the first active cell of correct color, ignoring locked)
                 let targetCell = null;
                 if (lineOfSight === 'up') {
                     for (let y = this.gridSize - 1; y >= 0; y--) {
                         const cell = this.gridCells[y][index];
                         if (cell.state === 'locked') continue;
-                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
-                        break; // Stop at first non-locked cell
+                        if (cell.state === 'filled') break; // Stop if a filled cell is encountered
+                        if (cell.state === 'active' && cell.color === shooter.color) {
+                            targetCell = cell;
+                            break; // Found the closest active cell in this line of sight
+                        }
                     }
                 } else if (lineOfSight === 'down') {
                     for (let y = 0; y < this.gridSize; y++) {
                         const cell = this.gridCells[y][index];
                         if (cell.state === 'locked') continue;
-                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
-                        break;
+                        if (cell.state === 'filled') break; // Stop if a filled cell is encountered
+                        if (cell.state === 'active' && cell.color === shooter.color) {
+                            targetCell = cell;
+                            break; // Found the closest active cell in this line of sight
+                        }
                     }
                 } else if (lineOfSight === 'left') {
                     for (let x = this.gridSize - 1; x >= 0; x--) {
                         const cell = this.gridCells[index][x];
                         if (cell.state === 'locked') continue;
-                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
-                        break;
+                        if (cell.state === 'filled') break; // Stop if a filled cell is encountered
+                        if (cell.state === 'active' && cell.color === shooter.color) {
+                            targetCell = cell;
+                            break; // Found the closest active cell in this line of sight
+                        }
                     }
                 } else if (lineOfSight === 'right') {
                     for (let x = 0; x < this.gridSize; x++) {
                         const cell = this.gridCells[index][x];
                         if (cell.state === 'locked') continue;
-                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
-                        break;
+                        if (cell.state === 'filled') break; // Stop if a filled cell is encountered
+                        if (cell.state === 'active' && cell.color === shooter.color) {
+                            targetCell = cell;
+                            break; // Found the closest active cell in this line of sight
+                        }
                     }
                 }
 
                 if (!targetCell) {
-                    shooter.container.destroy();
+                    // If no target was found (e.g., due to a race condition where another shooter filled it),
+                    // destroy the shooter if its value is 0, otherwise reset hasShot.
+                    if (shooter.value <= 0) {
+                        shooter.container.destroy();
+                        const idx = this.shooters.indexOf(shooter);
+                        if (idx > -1) {
+                            this.shooters.splice(idx, 1);
+                            this.updateTrackCapacityUI();
+                        }
+                    } else {
+                        shooter.hasShot = false; // Allow it to shoot again next frame
+                    }
                     return;
                 }
 
