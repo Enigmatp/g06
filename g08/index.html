@@ -114,6 +114,18 @@
                     1: 0xff3b30, 2: 0xffcc00, 3: 0x4cd964, 4: 0x00fbff, 5: 0xff2d55, 6: 0x8a2be2
                 };
 
+                // B6: (8,6), B7: (8,7), B5: (7,8), B3: (6,8), B2: (6,7), B4: (7,6)
+                this.priorityLists = {
+                    3: [
+                        { y: 8, x: 6 }, // B6
+                        { y: 8, x: 7 }, // B7
+                        { y: 7, x: 8 }, // B5
+                        { y: 6, x: 8 }, // B3
+                        { y: 6, x: 7 }, // B2
+                        { y: 7, x: 6 }  // B4
+                    ]
+                };
+
                 // --- DRAW TRACK ---
                 const trackOffset = this.cellSize;
                 const trackWidth = gridPixelSize + trackOffset * 2;
@@ -376,37 +388,71 @@
             }
 
             canShoot(shooter, index, lineOfSight) {
-                // Returns true if FIRST non-locked cell encountered is 'active' AND matches color
+                // Find potential target first
+                let potentialTarget = null;
                 if (lineOfSight === 'up') {
                     for (let y = this.gridSize - 1; y >= 0; y--) {
                         const cell = this.gridCells[y][index];
                         if (cell.state === 'locked') continue;
-                        if (cell.state === 'filled') return false; // Blocked by filled
-                        return (cell.state === 'active' && cell.color === shooter.color);
+                        if (cell.state === 'filled') break;
+                        if (cell.state === 'active' && cell.color === shooter.color) {
+                            potentialTarget = cell;
+                        }
+                        break;
                     }
                 } else if (lineOfSight === 'down') {
                     for (let y = 0; y < this.gridSize; y++) {
                         const cell = this.gridCells[y][index];
                         if (cell.state === 'locked') continue;
-                        if (cell.state === 'filled') return false;
-                        return (cell.state === 'active' && cell.color === shooter.color);
+                        if (cell.state === 'filled') break;
+                        if (cell.state === 'active' && cell.color === shooter.color) {
+                            potentialTarget = cell;
+                        }
+                        break;
                     }
                 } else if (lineOfSight === 'left') {
                     for (let x = this.gridSize - 1; x >= 0; x--) {
                         const cell = this.gridCells[index][x];
                         if (cell.state === 'locked') continue;
-                        if (cell.state === 'filled') return false;
-                        return (cell.state === 'active' && cell.color === shooter.color);
+                        if (cell.state === 'filled') break;
+                        if (cell.state === 'active' && cell.color === shooter.color) {
+                            potentialTarget = cell;
+                        }
+                        break;
                     }
                 } else if (lineOfSight === 'right') {
                     for (let x = 0; x < this.gridSize; x++) {
                         const cell = this.gridCells[index][x];
                         if (cell.state === 'locked') continue;
-                        if (cell.state === 'filled') return false;
-                        return (cell.state === 'active' && cell.color === shooter.color);
+                        if (cell.state === 'filled') break;
+                        if (cell.state === 'active' && cell.color === shooter.color) {
+                            potentialTarget = cell;
+                        }
+                        break;
                     }
                 }
-                return false;
+
+                if (!potentialTarget) return false;
+
+                // Priority Check for specific colors (e.g. Green/3)
+                const priorityList = this.priorityLists[potentialTarget.colorId];
+                if (priorityList) {
+                    // Find where this target sits in the priority list
+                    let myRank = priorityList.findIndex(p => p.x === potentialTarget.gridX && p.y === potentialTarget.gridY);
+
+                    if (myRank !== -1) {
+                        // Check if any higher priority cell is still active
+                        for (let i = 0; i < myRank; i++) {
+                            const p = priorityList[i];
+                            const higherPriorityCell = this.gridCells[p.y][p.x];
+                            if (higherPriorityCell.state === 'active' && higherPriorityCell.colorId === potentialTarget.colorId) {
+                                return false; // Must wait for higher priority cell
+                            }
+                        }
+                    }
+                }
+
+                return true;
             }
 
             fireLaser(shooter, index, lineOfSight) {
