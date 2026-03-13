@@ -213,21 +213,43 @@
                     }
                 }
 
-                const d = this.getActiveRingIndex();
-                if (d !== -1) {
-                    const cx = 7, cy = 7;
+                const cx = 7, cy = 7;
+                // Check each ring (d=1 to 7) for its next eligible target
+                for (let d = 1; d <= 7; d++) {
                     const seq = this.getRingSequence(d, cx, cy);
+                    let targetFound = false;
                     for (let p of seq) {
                         const cell = this.gridCells[p.y][p.x];
                         if (cell.state !== 'filled') {
-                            cell.state = 'active';
-                            cell.rect.setAlpha(1.0).setStrokeStyle(3, cell.color, 1);
+                            // This is the first un-filled cell in the ring sequence.
+                            // It's eligible ONLY if its parent in d-1 is filled.
+                            if (this.isParentFilled(cell, d)) {
+                                cell.state = 'active';
+                                cell.rect.setAlpha(1.0).setStrokeStyle(3, cell.color, 1);
+                                targetFound = true;
+                            }
+                            // Ring sequence is a strict gate: if the first un-filled cell
+                            // is blocked by its parent, the rest of the ring stays locked.
+                            break;
                         }
                     }
                 }
             }
 
+            isParentFilled(cell, d) {
+                if (d === 0) return true;
+                const cx = 7, cy = 7;
+                const rx = cell.x - cx;
+                const ry = cell.y - cy;
+                // Parent is the nearest cell in the inner ring (d-1)
+                const px = Math.max(-(d - 1), Math.min((d - 1), rx)) + cx;
+                const py = Math.max(-(d - 1), Math.min((d - 1), ry)) + cy;
+                return this.gridCells[py][px].state === 'filled';
+            }
+
             getActiveRingIndex() {
+                // (Old method kept for compatibility or internal metrics if needed, 
+                // but refreshGridStates now handles multi-ring activation)
                 const cx = 7, cy = 7;
                 for (let d = 0; d <= 7; d++) {
                     const seq = this.getRingSequence(d, cx, cy);
