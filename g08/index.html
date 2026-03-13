@@ -425,13 +425,13 @@
 
                 if (!potentialTarget) return false;
 
-                // GLOBAL CCW TARGETING ORDER
+                // GLOBAL CW TARGETING ORDER
                 const centerX = 7;
                 const centerY = 7;
                 const dist = Math.max(Math.abs(potentialTarget.gridX - centerX), Math.abs(potentialTarget.gridY - centerY));
 
-                // Get the CCW sequence for this ring
-                const sequence = this.getRingCCWSequence(dist, centerX, centerY);
+                // Get the CW sequence for this ring
+                const sequence = this.getRingSequence(dist, centerX, centerY);
 
                 // The target is shootable ONLY if it is the EARLIEST active cell in the global sequence for this ring
                 for (let i = 0; i < sequence.length; i++) {
@@ -447,20 +447,20 @@
                 return true;
             }
 
-            getRingCCWSequence(d, cx, cy) {
-                // CCW Loop: Bottom (R to L) -> Left (B to T) -> Top (L to R) -> Right (T to B)
-                // This sequence ensures B6 is followed by B4 (Upwards) and NOT B7.
+            getRingSequence(d, cx, cy) {
+                // Returns coordinates in CLOCKWISE order starting from Bottom-Left corner.
+                // Requested Order: B6(BL), B7(BC), B8(BR), B5(MR), B3(TR), B2(TC), B1(TL), B4(ML)
                 const res = [];
                 if (d === 0) return [{ x: cx, y: cy }];
 
-                // 1. Bottom side (Right to Left): (cx+d, cy+d) down to (cx-d, cy+d)
-                for (let x = cx + d; x >= cx - d; x--) res.push({ x, y: cy + d });
-                // 2. Left side (Bottom to Top): (cx-d, cy+d-1) up to (cx-d, cy-d)
-                for (let y = cy + d - 1; y >= cy - d; y--) res.push({ x: cx - d, y });
-                // 3. Top side (Left to Right): (cx-d+1, cy-d) right to (cx+d, cy-d)
-                for (let x = cx - d + 1; x <= cx + d; x++) res.push({ x, y: cy - d });
-                // 4. Right side (Top to Bottom): (cx+d, cy-d+1) down to (cx+d, cy+d-1)
-                for (let y = cy - d + 1; y <= cy + d - 1; y++) res.push({ x: cx + d, y });
+                // 1. Bottom side (Left to Right): (cx-d, cy+d) to (cx+d, cy+d) -> B6, B7, B8
+                for (let x = cx - d; x <= cx + d; x++) res.push({ x, y: cy + d });
+                // 2. Right side (Bottom to Top): (cx+d, cy+d-1) up to (cx+d, cy-d) -> B5, B3
+                for (let y = cy + d - 1; y >= cy - d; y--) res.push({ x: cx + d, y });
+                // 3. Top side (Right to Left): (cx+d-1, cy-d) left to (cx-d, cy-d) -> B2, B1
+                for (let x = cx + d - 1; x >= cx - d; x--) res.push({ x, y: cy - d });
+                // 4. Left side (Top to Bottom): (cx-d, cy-d+1) down to (cx-d, cy+d-1) -> B4
+                for (let y = cy - d + 1; y <= cy + d - 1; y++) res.push({ x: cx - d, y });
 
                 return res;
             }
