@@ -203,29 +203,39 @@
             }
 
             refreshGridStates() {
+                // Clear active states
                 for (let row of this.gridCells) {
-                    for (let c of row) { if (c.state !== 'filled') { c.state = 'locked'; c.rect.setAlpha(0.1).setStrokeStyle(); } }
-                }
-                const t = this.getNextTarget();
-                if (t) {
-                    t.state = 'active'; t.rect.setAlpha(1.0).setStrokeStyle(3, t.color, 1);
-                    this.targetHighlight.setVisible(true).setPosition(t.rect.x, t.rect.y);
-                    if (!this.targetHighlight.pulse) {
-                        this.targetHighlight.pulse = this.tweens.add({ targets: this.targetHighlight, alpha: 0.3, duration: 500, yoyo: true, repeat: -1 });
+                    for (let cell of row) {
+                        if (cell.state !== 'filled') {
+                            cell.state = 'locked';
+                            cell.rect.setAlpha(0.1).setStrokeStyle();
+                        }
                     }
-                } else { this.targetHighlight.setVisible(false); }
+                }
+
+                const d = this.getActiveRingIndex();
+                if (d !== -1) {
+                    const cx = 7, cy = 7;
+                    const seq = this.getRingSequence(d, cx, cy);
+                    for (let p of seq) {
+                        const cell = this.gridCells[p.y][p.x];
+                        if (cell.state !== 'filled') {
+                            cell.state = 'active';
+                            cell.rect.setAlpha(1.0).setStrokeStyle(3, cell.color, 1);
+                        }
+                    }
+                }
             }
 
-            getNextTarget() {
+            getActiveRingIndex() {
                 const cx = 7, cy = 7;
                 for (let d = 0; d <= 7; d++) {
                     const seq = this.getRingSequence(d, cx, cy);
                     for (let p of seq) {
-                        const cell = this.gridCells[p.y][p.x];
-                        if (cell.state !== 'filled') return cell;
+                        if (this.gridCells[p.y][p.x].state !== 'filled') return d;
                     }
                 }
-                return null;
+                return -1;
             }
 
             getRingSequence(d, cx, cy) {
@@ -287,22 +297,57 @@
             }
 
             canShoot(s, idx, los) {
-                const target = this.getNextTarget();
-                if (!target || target.state === 'targeted' || target.color !== s.color) return false;
-                return (los === 'up' || los === 'down') ? (target.x === idx) : (target.y === idx);
+                const target = this.getTargetInLine(s, idx, los);
+                return !!target;
+            }
+
+            getTargetInLine(s, idx, los) {
+                // Find the first active matching-color cell in the line of sight
+                if (los === 'up') {
+                    for (let y = this.gridSize - 1; y >= 0; y--) {
+                        const cell = this.gridCells[y][idx];
+                        if (cell.state === 'active' && cell.color === s.color) return cell;
+                    }
+                } else if (los === 'down') {
+                    for (let y = 0; y < this.gridSize; y++) {
+                        const cell = this.gridCells[y][idx];
+                        if (cell.state === 'active' && cell.color === s.color) return cell;
+                    }
+                } else if (los === 'right') {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        const cell = this.gridCells[idx][x];
+                        if (cell.state === 'active' && cell.color === s.color) return cell;
+                    }
+                } else if (los === 'left') {
+                    for (let x = this.gridSize - 1; x >= 0; x--) {
+                        const cell = this.gridCells[idx][x];
+                        if (cell.state === 'active' && cell.color === s.color) return cell;
+                    }
+                }
+                return null;
             }
 
             fireLaser(s, idx, los) {
-                const target = this.getNextTarget(); if (!target) return;
-                s.hasShot = true; s.value--; s.text.setText(s.value.toString()); target.state = 'targeted';
+                const target = this.getTargetInLine(s, idx, los);
+                if (!target) return;
+
+                s.hasShot = true; s.value--; s.text.setText(s.value.toString());
+                target.state = 'targeted';
                 if (los === 'up' || los === 'down') s.gridX = idx; else s.gridY = idx;
                 this.updateShooterPos(s);
+
                 const laser = this.add.rectangle(s.container.x, s.container.y, this.cellSize * 0.4, this.cellSize * 0.4, s.color).setDepth(15);
                 this.tweens.add({
                     targets: laser, x: target.rect.x, y: target.rect.y, duration: 150,
                     onComplete: () => {
                         laser.destroy(); this.fillCell(target);
-                        if (s.value <= 0) { s.container.destroy(); this.shooters.splice(this.shooters.indexOf(s), 1); } else { s.hasShot = false; }
+                        if (s.value <= 0) {
+                            const idxS = this.shooters.indexOf(s);
+                            if (idxS > -1) {
+                                s.container.destroy();
+                                this.shooters.splice(idxS, 1);
+                            }
+                        } else { s.hasShot = false; }
                         this.updateTrackCapacityUI();
                     }
                 });
