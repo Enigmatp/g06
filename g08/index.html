@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reverse Pixel Flow (Phaser Edition)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Override some CSS rules so Phaser canvas behaves nicely inside the layout -->
+    <style>
+        #board-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 10px;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            border-radius: 8px;
+            /* Optional rounded look for canvas */
+            /* box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.1); */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <!-- CENTER PHASER CANVAS CONTAINER -->
+        <main id="board-container">
+            <!-- Phaser will inject its <canvas> element here -->
+        </main>
+
+        <!-- BOTTOM MANAGEMENT UI -->
+        <footer id="management-ui">
+            <div class="capacity-info hidden">
+                <span class="capacity-text" id="track-capacity">0/5</span>
+            </div>
+
+            <div class="waiting-list-section">
+                <div class="merge-grid">
+                    <div class="merge-slot empty" data-index="0"></div>
+                    <div class="merge-slot empty" data-index="1"></div>
+                    <div class="merge-slot empty" data-index="2"></div>
+                    <div class="merge-slot empty" data-index="3"></div>
+                    <div class="merge-slot empty" data-index="4"></div>
+                </div>
+            </div>
+
+            <div class="deploy-queue" id="deploy-queue">
+                <!-- dynamically populated -->
+            </div>
+        </footer>
+
+        <!-- WIN MODAL OVERLAY -->
+        <div id="win-overlay" class="hidden">
+            <div class="win-modal">
+                <h2>MASTERPIECE COMPLETE!</h2>
+                <div class="stars">✨🌟✨</div>
+                <button id="next-level-btn">NEXT LEVEL</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./node_modules/phaser/dist/phaser.js"></script>
+    <script>
+        class Showcase extends Phaser.Scene {
+            preload() {
+                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+
+                graphics.fillStyle(0xffffff, 1);
+                graphics.fillRect(0, 0, 24, 24);
+                graphics.generateTexture('pixel_block', 24, 24);
+                graphics.clear();
+            }
+
+            create() {
+                const { width, height } = this.scale;
+
+                // --- 15x15 GRID METRICS ---
+                this.gridSize = 15;
+                // Dynamically fit to canvas width. 15 grid + 2 track margins + 2 outer margins = 19 cells wide.
+                this.cellSize = Math.floor(width / (this.gridSize + 4));
+
+                const gridPixelSize = this.gridSize * this.cellSize;
+                this.startX = width / 2 - gridPixelSize / 2;
+                this.startY = height / 2 - gridPixelSize / 2;
+
+                // --- 15x15 Pixel Sword Pattern ---
+                this.levelPattern = [
+                    [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 4, 3, 4],
+                    [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 4, 3, 3, 3],
+                    [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 4, 3, 3, 3, 4],
+                    [6, 6, 6, 6, 6, 6, 6, 6, 6, 4, 3, 3, 3, 4, 6],
+                    [6, 6, 6, 6, 6, 6, 6, 6, 4, 3, 3, 3, 4, 6, 6],
+                    [6, 6, 6, 6, 6, 6, 6, 4, 3, 3, 3, 4, 6, 6, 6],
+                    [6, 6, 6, 6, 6, 6, 4, 3, 3, 3, 4, 6, 6, 6, 6],
+                    [6, 6, 6, 6, 6, 4, 3, 3, 3, 4, 6, 6, 6, 6, 6],
+                    [6, 6, 6, 2, 2, 4, 3, 3, 4, 6, 6, 6, 6, 6, 6],
+                    [6, 6, 2, 2, 1, 2, 4, 4, 6, 6, 6, 6, 6, 6, 6],
+                    [6, 2, 2, 1, 1, 1, 2, 2, 6, 6, 6, 6, 6, 6, 6],
+                    [6, 6, 2, 2, 1, 2, 5, 6, 6, 6, 6, 6, 6, 6, 6],
+                    [6, 6, 6, 2, 2, 6, 6, 5, 6, 6, 6, 6, 6, 6, 6],
+                    [6, 6, 6, 6, 6, 6, 6, 6, 5, 6, 6, 6, 6, 6, 6],
+                    [6, 6, 6, 6, 6, 6, 6, 6, 6, 2, 6, 6, 6, 6, 6]
+                ];
+                this.levelColors = {
+                    1: 0xff3b30, 2: 0xffcc00, 3: 0x4cd964, 4: 0x00fbff, 5: 0xff2d55, 6: 0x8a2be2
+                };
+
+                // --- DRAW TRACK ---
+                const trackOffset = this.cellSize;
+                const trackWidth = gridPixelSize + trackOffset * 2;
+
+                // Outer boundary (Optional now that it fills the screen, but we'll keep it)
+                this.add.rectangle(
+                    width / 2, height / 2,
+                    trackWidth, trackWidth
+                ).setStrokeStyle(4, 0x334155);
+
+                // Track fill (1 cell margin)
+                this.add.rectangle(width / 2, height / 2, trackWidth, trackWidth, 0x1e293b).setDepth(-10);
+
+                // Center grid fill
+                this.add.rectangle(width / 2, height / 2, gridPixelSize, gridPixelSize, 0x0f172a).setDepth(-9);
+
+                this.colorRequirements = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+                this.shooters = [];
+
+                // Grid Target Ghosts - ONLY drawn for cells part of the pattern
+                this.gridCells = [];
+                for (let y = 0; y < this.gridSize; y++) {
+                    this.gridCells[y] = [];
+                    for (let x = 0; x < this.gridSize; x++) {
+                        const px = this.startX + x * this.cellSize + this.cellSize / 2;
+                        const py = this.startY + y * this.cellSize + this.cellSize / 2;
+
+                        const colorId = this.levelPattern[y][x];
+
+                        // Default state: empty
+                        let state = 'empty';
+                        let ghostColor = 0x000000;
+                        let rect = null;
+
+                        ghostColor = this.levelColors[colorId];
+
+                        // Chebyshev distance for initial 3x3 square seed (d<=1)
+                        const dist = Math.max(Math.abs(x - 7), Math.abs(y - 7));
+
+                        if (dist <= 1) { // Center 3x3 Square
+                            state = 'filled';
+                        } else {
+                            state = 'locked';
+                            this.colorRequirements[colorId]++;
+                        }
+
+                        // Standard 2px inset stroke base
+                        rect = this.add.rectangle(px, py, this.cellSize - 4, this.cellSize - 4, ghostColor);
+
+                        // Initial visual styles (will be updated by refreshGridStates)
+                        if (state === 'locked') {
+                            rect.setAlpha(0.1); // 10% alpha
+                            rect.setSize(this.cellSize - 2, this.cellSize - 2);
+                        } else if (state === 'filled') {
+                            rect.setSize(this.cellSize - 2, this.cellSize - 2);
+                            rect.setAlpha(0.3); // 30% alpha
+                        }
+
+                        this.gridCells[y][x] = {
+                            x: x, y: y,
+                            colorId: colorId,
+                            color: ghostColor,
+                            state: state,
+                            rect: rect
+                        };
+                    }
+                }
+
+                this.refreshGridStates();
+
+                // Initialize external UI Queue
+                if (window.initDeployQueue) {
+                    window.initDeployQueue(this.colorRequirements, this.levelColors);
+                }
+
+                // --- (Removed Capacity Text UI) ---
+            }
+
+            refreshGridStates() {
+                const centerX = 7;
+                const centerY = 7;
+
+                for (let y = 0; y < this.gridSize; y++) {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        const cell = this.gridCells[y][x];
+                        if (!cell) continue;
+
+                        if (cell.state === 'locked' || cell.state === 'active') {
+                            const centerX = 7;
+                            const centerY = 7;
+                            const dist = Math.max(Math.abs(x - centerX), Math.abs(y - centerY));
+                            let hasFilledOrthogonalNeighbor = false;
+
+                            // Check ONLY 4 orthogonal neighbors (Sequential Expansion)
+                            const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+                            for (const [dx, dy] of dirs) {
+                                const nx = x + dx;
+                                const ny = y + dy;
+
+                                if (nx >= 0 && nx < this.gridSize && ny >= 0 && ny < this.gridSize) {
+                                    const neighbor = this.gridCells[ny][nx];
+                                    if (neighbor && neighbor.state === 'filled') {
+                                        hasFilledOrthogonalNeighbor = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (hasFilledOrthogonalNeighbor) {
+                                cell.state = 'active';
+                                cell.rect.setSize(this.cellSize - 4, this.cellSize - 4);
+                                cell.rect.setAlpha(1.0);
+                                cell.rect.setStrokeStyle(2, cell.color, 1);
+                            } else {
+                                cell.state = 'locked';
+                                cell.rect.setSize(this.cellSize - 2, this.cellSize - 2);
+                                cell.rect.setAlpha(0.1); // 10% alpha
+                                cell.rect.setStrokeStyle();
+                            }
+                        }
+                    }
+                }
+            }
+
+            spawnShooter(colorHexStr, value, colorId) {
+                const color = Phaser.Display.Color.HexStringToColor(colorHexStr).color;
+
+                const container = this.add.container(0, 0);
+
+                const body = this.add.rectangle(0, 0, this.cellSize - 6, this.cellSize - 6, color);
+                body.setStrokeStyle(3, 0xffffff, 0.4);
+
+                const textValue = this.add.text(0, 0, value.toString(), {
+                    fontSize: '14px',
+                    fontFamily: 'Arial, sans-serif',
+                    fontStyle: 'bold',
+                    color: '#ffffff',
+                    stroke: '#000000',
+                    strokeThickness: 3
+                }).setOrigin(0.5);
+
+                container.add([body, textValue]);
+                container.setDepth(10);
+
+                const shooter = {
+                    container: container,
+                    color: color,
+                    colorId: colorId,
+                    value: value,
+                    textValue: textValue,
+                    gridX: -1,         // Bottom-Left
+                    gridY: this.gridSize,
+                    direction: 'right', // Counter-clockwise
+                    speed: 12,         // Cells per second
+                    hasShot: false,
+                    loopsCompleted: 0
+                };
+
+                this.shooters.push(shooter);
+                this.updateShooterPosition(shooter);
+                this.updateTrackCapacityUI();
+            }
+
+            updateTrackCapacityUI() {
+                const count = this.shooters ? this.shooters.length : 0;
+                if (this.capacityText) {
+                    this.capacityText.setText(`${count}/5`);
+                }
+                const el = document.getElementById('track-capacity-label');
+                if (el) {
+                    el.innerText = `(${count}/5)`;
+                }
+            }
+
+            update(time, delta) {
+                const dt = delta / 1000;
+
+                for (let i = this.shooters.length - 1; i >= 0; i--) {
+                    const shooter = this.shooters[i];
+
+                    const moveStep = shooter.speed * dt;
+                    const oldX = shooter.gridX;
+                    const oldY = shooter.gridY;
+
+                    if (shooter.direction === 'right') { // Bottom edge
+                        shooter.gridX += moveStep;
+                        if (shooter.gridX >= this.gridSize) {
+                            shooter.gridX = this.gridSize;
+                            shooter.direction = 'up';
+                        }
+                    } else if (shooter.direction === 'up') { // Right edge
+                        shooter.gridY -= moveStep;
+                        if (shooter.gridY <= -1) {
+                            shooter.gridY = -1;
+                            shooter.direction = 'left';
+                        }
+                    } else if (shooter.direction === 'left') { // Top edge
+                        shooter.gridX -= moveStep;
+                        if (shooter.gridX <= -1) {
+                            shooter.gridX = -1;
+                            shooter.direction = 'down';
+                        }
+                    } else if (shooter.direction === 'down') { // Left edge
+                        shooter.gridY += moveStep;
+                        if (shooter.gridY >= this.gridSize) {
+                            shooter.gridY = this.gridSize;
+                            shooter.direction = 'right'; // Loop
+                            shooter.loopsCompleted++;
+
+                            if (shooter.loopsCompleted >= 1) {
+                                // Add to waiting slot and remove from track
+                                window.addToWaitingSlot(shooter.colorId, shooter.value, '#' + shooter.color.toString(16).padStart(6, '0'));
+                                shooter.container.destroy();
+                                this.shooters.splice(i, 1);
+                                this.updateTrackCapacityUI();
+                                continue;
+                            }
+                        }
+                    }
+
+                    this.updateShooterPosition(shooter);
+
+                    // If currently shooting or out of ink, don't scan for new targets
+                    if (shooter.hasShot || shooter.value <= 0) {
+                        continue;
+                    }
+
+                    // Check alignment and shooting
+                    let alignmentIndex = -1;
+                    if (shooter.direction === 'right' || shooter.direction === 'left') {
+                        // Moving horizontally, check X alignment across integers
+                        const minX = Math.min(oldX, shooter.gridX);
+                        const maxX = Math.max(oldX, shooter.gridX);
+                        for (let col = 0; col < this.gridSize; col++) {
+                            if (col >= minX && col <= maxX) {
+                                if (this.canShoot(shooter, col, shooter.direction === 'right' ? 'up' : 'down')) {
+                                    this.fireLaser(shooter, col, shooter.direction === 'right' ? 'up' : 'down');
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        // Moving vertically, check Y alignment across integers
+                        const minY = Math.min(oldY, shooter.gridY);
+                        const maxY = Math.max(oldY, shooter.gridY);
+                        for (let row = 0; row < this.gridSize; row++) {
+                            if (row >= minY && row <= maxY) {
+                                if (this.canShoot(shooter, row, shooter.direction === 'down' ? 'right' : 'left')) {
+                                    this.fireLaser(shooter, row, shooter.direction === 'down' ? 'right' : 'left');
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            canShoot(shooter, index, lineOfSight) {
+                // Returns true if FIRST non-locked cell encountered is 'active' AND matches color
+                if (lineOfSight === 'up') {
+                    for (let y = this.gridSize - 1; y >= 0; y--) {
+                        const cell = this.gridCells[y][index];
+                        if (cell.state === 'locked') continue;
+                        if (cell.state === 'filled') return false; // Blocked by filled
+                        return (cell.state === 'active' && cell.color === shooter.color);
+                    }
+                } else if (lineOfSight === 'down') {
+                    for (let y = 0; y < this.gridSize; y++) {
+                        const cell = this.gridCells[y][index];
+                        if (cell.state === 'locked') continue;
+                        if (cell.state === 'filled') return false;
+                        return (cell.state === 'active' && cell.color === shooter.color);
+                    }
+                } else if (lineOfSight === 'left') {
+                    for (let x = this.gridSize - 1; x >= 0; x--) {
+                        const cell = this.gridCells[index][x];
+                        if (cell.state === 'locked') continue;
+                        if (cell.state === 'filled') return false;
+                        return (cell.state === 'active' && cell.color === shooter.color);
+                    }
+                } else if (lineOfSight === 'right') {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        const cell = this.gridCells[index][x];
+                        if (cell.state === 'locked') continue;
+                        if (cell.state === 'filled') return false;
+                        return (cell.state === 'active' && cell.color === shooter.color);
+                    }
+                }
+                return false;
+            }
+
+            fireLaser(shooter, index, lineOfSight) {
+                shooter.hasShot = true;
+
+                shooter.value -= 1;
+                shooter.textValue.setText(shooter.value.toString());
+
+                // Find target cell (must be the first active cell of correct color, ignoring locked)
+                let targetCell = null;
+                if (lineOfSight === 'up') {
+                    for (let y = this.gridSize - 1; y >= 0; y--) {
+                        const cell = this.gridCells[y][index];
+                        if (cell.state === 'locked') continue;
+                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
+                        break; // Stop at first non-locked cell
+                    }
+                } else if (lineOfSight === 'down') {
+                    for (let y = 0; y < this.gridSize; y++) {
+                        const cell = this.gridCells[y][index];
+                        if (cell.state === 'locked') continue;
+                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
+                        break;
+                    }
+                } else if (lineOfSight === 'left') {
+                    for (let x = this.gridSize - 1; x >= 0; x--) {
+                        const cell = this.gridCells[index][x];
+                        if (cell.state === 'locked') continue;
+                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
+                        break;
+                    }
+                } else if (lineOfSight === 'right') {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        const cell = this.gridCells[index][x];
+                        if (cell.state === 'locked') continue;
+                        if (cell.state === 'active' && cell.color === shooter.color) targetCell = cell;
+                        break;
+                    }
+                }
+
+                if (!targetCell) {
+                    shooter.container.destroy();
+                    return;
+                }
+
+                targetCell.state = 'targeted'; // PREVENT others from targeting
+
+                // Snap shooter exactly to the column/row line before shooting
+                if (lineOfSight === 'up' || lineOfSight === 'down') shooter.gridX = index;
+                if (lineOfSight === 'left' || lineOfSight === 'right') shooter.gridY = index;
+                this.updateShooterPosition(shooter);
+
+                // Create laser visual
+                const laser = this.add.rectangle(shooter.container.x, shooter.container.y, this.cellSize * 0.4, this.cellSize * 0.4, shooter.color);
+                laser.setDepth(15);
+
+                this.tweens.add({
+                    targets: laser,
+                    x: targetCell.rect.x,
+                    y: targetCell.rect.y,
+                    duration: 150,
+                    onComplete: () => {
+                        laser.destroy();
+                        this.fillCell(targetCell);
+
+                        // Check if shooter should be destroyed
+                        if (shooter.value <= 0) {
+                            shooter.container.destroy();
+                            const idx = this.shooters.indexOf(shooter);
+                            if (idx > -1) {
+                                this.shooters.splice(idx, 1);
+                                this.updateTrackCapacityUI();
+                            }
+                        } else {
+                            // Resume moving
+                            shooter.hasShot = false;
+                        }
+                    }
+                });
+            }
+
+            fillCell(cell) {
+                cell.state = 'filled';
+                cell.rect.setSize(this.cellSize - 2, this.cellSize - 2); // Restore full size
+                cell.rect.setAlpha(0.3); // Reduced alpha
+                cell.rect.setStrokeStyle(); // remove stroke
+
+                // Explode particles
+                const particles = this.add.particles(cell.rect.x, cell.rect.y, 'pixel_block', {
+                    speed: { min: 50, max: 150 },
+                    scale: { start: 0.5, end: 0 },
+                    tint: cell.color,
+                    lifespan: 300,
+                    quantity: 10,
+                    blendMode: 'ADD'
+                });
+                this.time.delayedCall(300, () => particles.destroy());
+
+                this.refreshGridStates();
+            }
+
+            updateShooterPosition(shooter) {
+                const px = this.startX + shooter.gridX * this.cellSize + this.cellSize / 2;
+                const py = this.startY + shooter.gridY * this.cellSize + this.cellSize / 2;
+                shooter.container.setPosition(px, py);
+            }
+        }
+
+        const config = {
+            type: Phaser.AUTO,
+            parent: 'board-container',
+            transparent: true, // IMPORTANT: Allows body CSS background/gradients to show underneath Phaser
+            scale: {
+                mode: Phaser.Scale.FIT,
+                autoCenter: Phaser.Scale.CENTER_BOTH,
+                // Make Phaser a flexible square-ish internal resolution for the game board
+                width: 600,
+                height: 600
+            },
+            scene: Showcase,
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 0 },
+                    debug: false
+                }
+            }
+        };
+
+        const game = new Phaser.Game(config);
+
+        let deployQueueData = [];
+
+        window.initDeployQueue = function (reqs, colors) {
+            deployQueueData = [];
+            for (let colorId in reqs) {
+                let remaining = reqs[colorId];
+                if (remaining === 0) continue;
+
+                const hexColor = colors[colorId];
+                // Randomly distribute 'remaining' into chunks of 5-10
+                while (remaining > 0) {
+                    let chunk = Math.floor(Math.random() * 6) + 5;
+                    if (chunk > remaining) chunk = remaining;
+                    deployQueueData.push({ colorId: parseInt(colorId), value: chunk, hex: '#' + hexColor.toString(16).padStart(6, '0') });
+                    remaining -= chunk;
+                }
+            }
+            // Shuffle
+            for (let i = deployQueueData.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deployQueueData[i], deployQueueData[j]] = [deployQueueData[j], deployQueueData[i]];
+            }
+            renderQueue();
+        };
+
+        function renderQueue() {
+            const queueEl = document.getElementById('deploy-queue');
+            queueEl.innerHTML = '';
+
+            // If empty and game won logic here later...
+
+            deployQueueData.forEach((item, index) => {
+                const slot = document.createElement('div');
+                slot.className = 'refresh-slot';
+                if (index >= 3) {
+                    slot.classList.add('inactive');
+                }
+                slot.style.setProperty('--slot-color', item.hex);
+                slot.innerHTML = `<span>${item.value}</span>`;
+
+                if (index < 3) {
+                    slot.addEventListener('click', () => {
+                        const scene = game.scene.getScenes(true)[0];
+                        if (scene && typeof scene.spawnShooter === 'function') {
+                            if (scene.shooters.length >= 5) return; // limit to 5 on conveyor
+                            // Remove from queue
+                            deployQueueData.splice(index, 1);
+                            renderQueue();
+                            // Spawn shooter
+                            scene.spawnShooter(item.hex, item.value, item.colorId);
+                        }
+                    });
+                }
+                queueEl.appendChild(slot);
+            });
+        }
+
+        window.addToWaitingSlot = function (colorId, value, hex) {
+            const slots = document.querySelectorAll('.merge-slot');
+            for (let i = 0; i < slots.length; i++) {
+                if (slots[i].classList.contains('empty')) {
+                    slots[i].classList.remove('empty');
+                    slots[i].style.setProperty('--slot-color', hex);
+                    slots[i].innerHTML = `<span>${value}</span>`;
+                    slots[i].dataset.colorId = colorId;
+                    slots[i].dataset.value = value;
+                    slots[i].setAttribute('draggable', 'true');
+                    break; // Only added once
+                }
+            }
+        };
+
+        // Attach click listener for dynamically added merge slots
+        document.querySelectorAll('.merge-slot').forEach(slot => {
+            slot.addEventListener('click', function () {
+                if (!this.classList.contains('empty')) {
+                    const scene = game.scene.getScenes(true)[0];
+                    if (scene && typeof scene.spawnShooter === 'function') {
+                        if (scene.shooters.length >= 5) return; // limit to 5
+                        const hex = this.style.getPropertyValue('--slot-color');
+                        const value = this.dataset.value;
+                        const colorId = this.dataset.colorId;
+                        scene.spawnShooter(hex, parseInt(value), parseInt(colorId));
+
+                        this.classList.add('empty');
+                        this.style.removeProperty('--slot-color');
+                        this.innerHTML = '';
+                        // Remove datasets so we don't accidentally reuse
+                        delete this.dataset.colorId;
+                    }
+                }
+            });
+
+            // --- DRAG AND DROP MERGE LOGIC ---
+            slot.addEventListener('dragstart', function (e) {
+                if (this.classList.contains('empty')) {
+                    e.preventDefault();
+                    return;
+                }
+                e.dataTransfer.setData('text/plain', this.dataset.index);
+                this.style.opacity = '0.5';
+            });
+
+            slot.addEventListener('dragend', function (e) {
+                this.style.opacity = '1';
+            });
+
+            slot.addEventListener('dragover', function (e) {
+                e.preventDefault();
+            });
+
+            slot.addEventListener('drop', function (e) {
+                e.preventDefault();
+                const fromIndex = e.dataTransfer.getData('text/plain');
+                const toIndex = this.dataset.index;
+                if (fromIndex === toIndex) return;
+
+                const slots = document.querySelectorAll('.merge-slot');
+                const fromSlot = slots[fromIndex];
+                const toSlot = slots[toIndex];
+
+                if (fromSlot.classList.contains('empty')) return;
+
+                if (toSlot.classList.contains('empty')) {
+                    // Move
+                    moveSlot(fromSlot, toSlot);
+                } else {
+                    // Possible Merge
+                    const color1 = fromSlot.dataset.colorId;
+                    const val1 = parseInt(fromSlot.dataset.value);
+                    const color2 = toSlot.dataset.colorId;
+                    const val2 = parseInt(toSlot.dataset.value);
+
+                    if (color1 === color2 && val1 === val2) {
+                        // Merge!
+                        const newValue = val1 + val2;
+                        const hex = toSlot.style.getPropertyValue('--slot-color');
+
+                        // Update target
+                        toSlot.dataset.value = newValue;
+                        toSlot.innerHTML = `<span>${newValue}</span>`;
+                        // Particle effect or visual feedback could go here
+
+                        // Clear source
+                        clearSlot(fromSlot);
+                    } else {
+                        // Swap
+                        swapSlots(fromSlot, toSlot);
+                    }
+                }
+            });
+        });
+
+        function clearSlot(slot) {
+            slot.classList.add('empty');
+            slot.style.removeProperty('--slot-color');
+            slot.innerHTML = '';
+            delete slot.dataset.value;
+            delete slot.dataset.colorId;
+            slot.setAttribute('draggable', 'false');
+        }
+
+        function moveSlot(from, to) {
+            to.classList.remove('empty');
+            to.style.setProperty('--slot-color', from.style.getPropertyValue('--slot-color'));
+            to.innerHTML = from.innerHTML;
+            to.dataset.value = from.dataset.value;
+            to.dataset.colorId = from.dataset.colorId;
+            to.setAttribute('draggable', 'true');
+            clearSlot(from);
+        }
+
+        function swapSlots(s1, s2) {
+            const tempVal = s1.dataset.value;
+            const tempColorId = s1.dataset.colorId;
+            const tempHTML = s1.innerHTML;
+            const tempHex = s1.style.getPropertyValue('--slot-color');
+
+            s1.dataset.value = s2.dataset.value;
+            s1.dataset.colorId = s2.dataset.colorId;
+            s1.innerHTML = s2.innerHTML;
+            s1.style.setProperty('--slot-color', s2.style.getPropertyValue('--slot-color'));
+
+            s2.dataset.value = tempVal;
+            s2.dataset.colorId = tempColorId;
+            s2.innerHTML = tempHTML;
+            s2.style.setProperty('--slot-color', tempHex);
+        }
+    </script>
+</body>
+
+</html>
