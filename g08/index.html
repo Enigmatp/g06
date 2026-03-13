@@ -448,20 +448,19 @@
             }
 
             getRingCCWSequence(d, cx, cy) {
-                // Returns coordinates in CCW order in screen space (y-down)
-                // Increasing angle from Math.atan2(y-cy, x-cx)
+                // CCW Loop: Bottom (R to L) -> Left (B to T) -> Top (L to R) -> Right (T to B)
+                // This sequence ensures B6 is followed by B4 (Upwards) and NOT B7.
                 const res = [];
                 if (d === 0) return [{ x: cx, y: cy }];
 
-                // Correct CCW for screen space (Right -> Down -> Left -> Up)
-                // 1. Right side (Top to Bottom)
-                for (let y = cy - d; y <= cy + d; y++) res.push({ x: cx + d, y });
-                // 2. Bottom side (Right to Left)
-                for (let x = cx + d - 1; x >= cx - d; x--) res.push({ x, y: cy + d });
-                // 3. Left side (Bottom to Top)
+                // 1. Bottom side (Right to Left): (cx+d, cy+d) down to (cx-d, cy+d)
+                for (let x = cx + d; x >= cx - d; x--) res.push({ x, y: cy + d });
+                // 2. Left side (Bottom to Top): (cx-d, cy+d-1) up to (cx-d, cy-d)
                 for (let y = cy + d - 1; y >= cy - d; y--) res.push({ x: cx - d, y });
-                // 4. Top side (Left to Right)
-                for (let x = cx - d + 1; x <= cx + d - 1; x++) res.push({ x, y: cy - d });
+                // 3. Top side (Left to Right): (cx-d+1, cy-d) right to (cx+d, cy-d)
+                for (let x = cx - d + 1; x <= cx + d; x++) res.push({ x, y: cy - d });
+                // 4. Right side (Top to Bottom): (cx+d, cy-d+1) down to (cx+d, cy+d-1)
+                for (let y = cy - d + 1; y <= cy + d - 1; y++) res.push({ x: cx + d, y });
 
                 return res;
             }
@@ -616,28 +615,33 @@
 
         const game = new Phaser.Game(config);
 
-        let deployQueueData = [];
+        // Queue is now managed as 3 independent columns
+        let deployColumns = [[], [], []];
 
         window.initDeployQueue = function (reqs, colors) {
-            deployQueueData = [];
+            deployColumns = [[], [], []];
+            let allChunks = [];
             for (let colorId in reqs) {
                 let remaining = reqs[colorId];
                 if (remaining === 0) continue;
 
                 const hexColor = colors[colorId];
-                // Randomly distribute 'remaining' into chunks of 5-10
                 while (remaining > 0) {
                     let chunk = Math.floor(Math.random() * 11) + 20; // 20-30
                     if (chunk > remaining) chunk = remaining;
-                    deployQueueData.push({ colorId: parseInt(colorId), value: chunk, hex: '#' + hexColor.toString(16).padStart(6, '0') });
+                    allChunks.push({ colorId: parseInt(colorId), value: chunk, hex: '#' + hexColor.toString(16).padStart(6, '0') });
                     remaining -= chunk;
                 }
             }
-            // Shuffle
-            for (let i = deployQueueData.length - 1; i > 0; i--) {
+            // Shuffle all chunks
+            for (let i = allChunks.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [deployQueueData[i], deployQueueData[j]] = [deployQueueData[j], deployQueueData[i]];
+                [allChunks[i], allChunks[j]] = [allChunks[j], allChunks[i]];
             }
+            // Distribute evenly to columns
+            allChunks.forEach((chunk, i) => {
+                deployColumns[i % 3].push(chunk);
+            });
             renderQueue();
         };
 
@@ -645,42 +649,48 @@
             const queueEl = document.getElementById('deploy-queue');
             queueEl.innerHTML = '';
 
-            deployQueueData.forEach((item, index) => {
-                const slot = document.createElement('div');
-                slot.className = 'refresh-slot';
-                if (index >= 3) {
-                    slot.classList.add('inactive');
-                }
-                slot.style.setProperty('--slot-color', item.hex);
-                slot.innerHTML = `<span>${item.value}</span>`;
+            // Find the maximum length of any column to determine how many rows to render
+            const maxRows = Math.max(...deployColumns.map(col => col.length));
 
-                if (index < 3) {
-                    slot.addEventListener('click', () => {
-                        const scene = game.scene.getScenes(true)[0];
-                        if (scene && typeof scene.spawnShooter === 'function') {
-                            if (scene.shooters.length >= 5) return;
+            for (let row = 0; row < maxRows; row++) {
+                for (let col = 0; col < 3; col++) {
+                    const item = deployColumns[col][row];
+                    if (!item) {
+                        // Create empty spacer if needed? Usually we just don't append.
+                        // But we need to maintain the grid structure.
+                        const spacer = document.createElement('div');
+                        spacer.className = 'refresh-slot empty-spacer';
+                        spacer.style.visibility = 'hidden';
+                        queueEl.appendChild(spacer);
+                        continue;
+                    }
 
-                            // Column-wise Shift logic
-                            const col = index % 3;
-                            let current = index;
-                            const capturedItem = { ...item }; // Capture current item data before shifting
+                    const slot = document.createElement('div');
+                    slot.className = 'refresh-slot';
+                    if (row >= 1) { // Row 0 is active, rows 1+ are inactive
+                        slot.classList.add('inactive');
+                    }
+                    slot.style.setProperty('--slot-color', item.hex);
+                    slot.innerHTML = `<span>${item.value}</span>`;
 
-                            while (current + 3 < deployQueueData.length) {
-                                deployQueueData[current] = deployQueueData[current + 3];
-                                current += 3;
+                    if (row === 0) {
+                        slot.addEventListener('click', () => {
+                            const scene = game.scene.getScenes(true)[0];
+                            if (scene && typeof scene.spawnShooter === 'function') {
+                                if (scene.shooters.length >= 5) return;
+
+                                // Shift the column up
+                                const usedItem = deployColumns[col].shift();
+                                renderQueue();
+
+                                // Spawn shooter
+                                scene.spawnShooter(usedItem.hex, usedItem.value, usedItem.colorId);
                             }
-                            // Remove the last one in this column's chain
-                            deployQueueData.splice(current, 1);
-
-                            renderQueue();
-
-                            // Spawn shooter using captured data
-                            scene.spawnShooter(capturedItem.hex, capturedItem.value, capturedItem.colorId);
-                        }
-                    });
+                        });
+                    }
+                    queueEl.appendChild(slot);
                 }
-                queueEl.appendChild(slot);
-            });
+            }
         }
 
         window.addToWaitingSlot = function (colorId, value, hex) {
