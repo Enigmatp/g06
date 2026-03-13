@@ -39,8 +39,8 @@
 
         <!-- BOTTOM MANAGEMENT UI -->
         <footer id="management-ui">
-            <div class="capacity-info hidden">
-                <span class="capacity-text" id="track-capacity">0/5</span>
+            <div class="capacity-info">
+                <span class="capacity-text">CONVEYOR: <span id="track-capacity-val">0/5</span></span>
             </div>
 
             <div class="waiting-list-section">
@@ -286,12 +286,9 @@
 
             updateTrackCapacityUI() {
                 const count = this.shooters ? this.shooters.length : 0;
-                if (this.capacityText) {
-                    this.capacityText.setText(`${count}/5`);
-                }
-                const el = document.getElementById('track-capacity-label');
+                const el = document.getElementById('track-capacity-val');
                 if (el) {
-                    el.innerText = `(${count}/5)`;
+                    el.innerText = `${count}/5`;
                 }
             }
 
@@ -552,7 +549,7 @@
                 const hexColor = colors[colorId];
                 // Randomly distribute 'remaining' into chunks of 5-10
                 while (remaining > 0) {
-                    let chunk = Math.floor(Math.random() * 6) + 5;
+                    let chunk = Math.floor(Math.random() * 11) + 20; // 20-30
                     if (chunk > remaining) chunk = remaining;
                     deployQueueData.push({ colorId: parseInt(colorId), value: chunk, hex: '#' + hexColor.toString(16).padStart(6, '0') });
                     remaining -= chunk;
