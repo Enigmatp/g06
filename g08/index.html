@@ -153,7 +153,7 @@
                         // Chebyshev distance for initial 3x3 square seed (d<=1)
                         const dist = Math.max(Math.abs(x - 7), Math.abs(y - 7));
 
-                        if (dist <= 1) { // Center 3x3 Square
+                        if (dist <= 0) { // Center 1x1 Square (Single Cell)
                             state = 'filled';
                         } else {
                             state = 'locked';
@@ -196,43 +196,50 @@
                 const centerX = 7;
                 const centerY = 7;
 
+                // 1. Find the current "active" ring radius
+                // It's the smallest radius 'd' that has at least one non-filled cell
+                let activeRadius = -1;
+                for (let d = 0; d < this.gridSize; d++) {
+                    let ringComplete = true;
+                    let ringExists = false;
+                    for (let y = 0; y < this.gridSize; y++) {
+                        for (let x = 0; x < this.gridSize; x++) {
+                            const dist = Math.max(Math.abs(x - centerX), Math.abs(y - centerY));
+                            if (dist === d) {
+                                ringExists = true;
+                                if (this.gridCells[y][x].state !== 'filled') {
+                                    ringComplete = false;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!ringComplete) break;
+                    }
+                    if (!ringExists) break;
+                    if (!ringComplete) {
+                        activeRadius = d;
+                        break;
+                    }
+                }
+
+                // 2. Set states based on the activeRadius
                 for (let y = 0; y < this.gridSize; y++) {
                     for (let x = 0; x < this.gridSize; x++) {
                         const cell = this.gridCells[y][x];
-                        if (!cell) continue;
+                        if (!cell || cell.state === 'filled') continue;
 
-                        if (cell.state === 'locked' || cell.state === 'active') {
-                            const centerX = 7;
-                            const centerY = 7;
-                            const dist = Math.max(Math.abs(x - centerX), Math.abs(y - centerY));
-                            let hasFilledOrthogonalNeighbor = false;
+                        const dist = Math.max(Math.abs(x - centerX), Math.abs(y - centerY));
 
-                            // Check ONLY 4 orthogonal neighbors (Sequential Expansion)
-                            const dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
-                            for (const [dx, dy] of dirs) {
-                                const nx = x + dx;
-                                const ny = y + dy;
-
-                                if (nx >= 0 && nx < this.gridSize && ny >= 0 && ny < this.gridSize) {
-                                    const neighbor = this.gridCells[ny][nx];
-                                    if (neighbor && neighbor.state === 'filled') {
-                                        hasFilledOrthogonalNeighbor = true;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (hasFilledOrthogonalNeighbor) {
-                                cell.state = 'active';
-                                cell.rect.setSize(this.cellSize - 4, this.cellSize - 4);
-                                cell.rect.setAlpha(1.0);
-                                cell.rect.setStrokeStyle(2, cell.color, 1);
-                            } else {
-                                cell.state = 'locked';
-                                cell.rect.setSize(this.cellSize - 2, this.cellSize - 2);
-                                cell.rect.setAlpha(0.1); // 10% alpha
-                                cell.rect.setStrokeStyle();
-                            }
+                        if (dist === activeRadius) {
+                            cell.state = 'active';
+                            cell.rect.setSize(this.cellSize - 4, this.cellSize - 4);
+                            cell.rect.setAlpha(1.0);
+                            cell.rect.setStrokeStyle(2, cell.color, 1);
+                        } else {
+                            cell.state = 'locked';
+                            cell.rect.setSize(this.cellSize - 2, this.cellSize - 2);
+                            cell.rect.setAlpha(0.1); // 10% alpha
+                            cell.rect.setStrokeStyle();
                         }
                     }
                 }
