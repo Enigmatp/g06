@@ -1,8 +1,6 @@
 import Phaser from 'phaser';
-import { BootScene } from './scenes/BootScene.js';
 import { GameScene } from './scenes/GameScene.js';
 
-// Design size: 1080x1920 (9:16 portrait), halved for performance
 const GAME_WIDTH = 540;
 const GAME_HEIGHT = 960;
 

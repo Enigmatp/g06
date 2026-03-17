@@ -1,11 +1,24 @@
 import Phaser from 'phaser';
-import { HexTile } from '../objects/HexTile.js';
-import { generateHexMap, hexKey, getNeighbors, hexToPixel } from '../utils/HexUtils.js';
-import { EventType, rollEventType } from '../data/EventTypes.js';
-import { HUD } from '../ui/HUD.js';
 
-const MAP_RADIUS = 5; // number of hex rings around center
-const MAX_ACTIONS_PER_DAY = 6;
+// -- Grid config --
+const GRID_COLS = 11;
+const GRID_ROWS = 11;
+const TILE_W = 64;   // tile width in isometric space
+const TILE_H = 32;   // tile height in isometric space (half of width for 2:1 iso)
+
+// Colors
+const COLOR_GRASS = 0x5cb85c;
+const COLOR_GRASS_ALT = 0x4cae4c;
+const COLOR_GRASS_TOP = 0x6dd06d;
+const COLOR_FOG = 0x3a3a5c;
+const COLOR_FOG_ALT = 0x2e2e4a;
+const COLOR_FOG_TOP = 0x4a4a6e;
+const COLOR_HOVER = 0xffee88;
+const COLOR_PLAYER = 0xe94560;
+const COLOR_PLAYER_DARK = 0xb8354c;
+const COLOR_PLAYER_TOP = 0xff6680;
+const TILE_DEPTH = 12;
+const CUBE_SIZE = 16;
 
 export class GameScene extends Phaser.Scene {
     constructor() {
@@ -15,117 +28,340 @@ export class GameScene extends Phaser.Scene {
     create() {
         const { width, height } = this.scale;
 
-        // -- State
-        this.tileMap = new Map();  // hexKey -> HexTile
-        this.day = 1;
-        this.actionsLeft = MAX_ACTIONS_PER_DAY;
-        this.gold = 0;
-        this.gems = 0;
-        this.hp = 10;
-        this.maxHp = 10;
+        // Offset to center the grid
+        this.offsetX = width / 2;
+        this.offsetY = height / 2 - GRID_ROWS * TILE_H / 2 + 60;
 
-        // -- Map container (separate from HUD so camera only moves map)
-        this.mapContainer = this.add.container(0, 0);
-
-        // -- Generate map
-        this.createMap();
-
-        // -- Reveal start tile
-        const startTile = this.tileMap.get(hexKey(0, 0));
-        if (startTile) {
-            startTile.eventType = EventType.START;
-            startTile.revealImmediate();
-            this.updateClickableTiles();
+        // Grid state: 'fog' or 'grass'
+        this.grid = [];
+        for (let r = 0; r < GRID_ROWS; r++) {
+            this.grid[r] = [];
+            for (let c = 0; c < GRID_COLS; c++) {
+                this.grid[r][c] = 'fog';
+            }
         }
 
-        // -- Camera setup
-        this.setupCamera();
+        // Player starts at center
+        this.playerCol = Math.floor(GRID_COLS / 2);
+        this.playerRow = Math.floor(GRID_ROWS / 2);
+        this.grid[this.playerRow][this.playerCol] = 'grass';
 
-        // -- HUD (fixed to camera)
-        this.hud = new HUD(this);
+        // Tile graphics containers
+        this.tileObjects = [];
+        for (let r = 0; r < GRID_ROWS; r++) {
+            this.tileObjects[r] = [];
+        }
 
-        // -- Event handlers
-        this.events.on('tile-tap', this.onTileTap, this);
-    }
+        // Hover state
+        this.hoveredTile = null;
 
-    createMap() {
-        const coords = generateHexMap(MAP_RADIUS);
+        // Draw everything
+        this.drawGrid();
+        this.drawPlayer();
 
-        coords.forEach(({ q, r }) => {
-            // Determine event type (center is start, edges more dangerous)
-            let eventType;
-            if (q === 0 && r === 0) {
-                eventType = EventType.START;
-            } else {
-                eventType = rollEventType();
-            }
-
-            const tile = new HexTile(this, q, r, eventType);
-            this.tileMap.set(hexKey(q, r), tile);
-            this.mapContainer.add(tile);
-        });
-    }
-
-    setupCamera() {
-        const { width, height } = this.scale;
-
-        // Center camera on the map origin
-        this.cameras.main.centerOn(0, 0);
-
-        // Enable drag to pan
-        this.input.on('pointermove', (pointer) => {
-            if (pointer.isDown && !this._tappedTile) {
-                this.cameras.main.scrollX -= (pointer.x - pointer.prevPosition.x) / this.cameras.main.zoom;
-                this.cameras.main.scrollY -= (pointer.y - pointer.prevPosition.y) / this.cameras.main.zoom;
-            }
-        });
-
-        // Track if we're dragging vs tapping
-        this.input.on('pointerdown', (pointer) => {
-            this._dragStart = { x: pointer.x, y: pointer.y };
-            this._tappedTile = false;
-        });
-
-        this.input.on('pointerup', (pointer) => {
-            const dx = pointer.x - this._dragStart.x;
-            const dy = pointer.y - this._dragStart.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > 10) {
-                // It was a drag, not a tap
-                this._tappedTile = false;
-            }
-        });
-
-        // Set camera bounds
-        const padding = 200;
-        const mapPixelRadius = (MAP_RADIUS + 2) * 36 * 2;
-        this.cameras.main.setBounds(
-            -mapPixelRadius - padding,
-            -mapPixelRadius - padding,
-            mapPixelRadius * 2 + padding * 2,
-            mapPixelRadius * 2 + padding * 2
-        );
+        // Input
+        this.input.on('pointermove', (pointer) => this.onPointerMove(pointer));
+        this.input.on('pointerdown', (pointer) => this.onPointerDown(pointer));
     }
 
     /**
-     * Mark tiles adjacent to revealed tiles as clickable
+     * Convert grid (col, row) to isometric screen position
      */
-    updateClickableTiles() {
-        // First, clear all clickable states
-        this.tileMap.forEach(tile => {
-            if (!tile.isRevealed) {
-                tile.setClickable(false);
-            }
-        });
+    gridToIso(col, row) {
+        const x = (col - row) * (TILE_W / 2) + this.offsetX;
+        const y = (col + row) * (TILE_H / 2) + this.offsetY;
+        return { x, y };
+    }
 
-        // Then, for each revealed tile, mark its unrevealed neighbors as clickable
-        this.tileMap.forEach(tile => {
-            if (tile.isRevealed) {
-                const neighbors = getNeighbors(tile.q, tile.r);
-                neighbors.forEach(({ q, r }) => {
-                    const neighbor = this.tileMap.get(hexKey(q, r));
-                    if (neighbor && !neighbor.isRevealed) {
-                        neighbor.setClickable(true);
+    /**
+     * Convert screen position to grid (col, row)
+     */
+    isoToGrid(screenX, screenY) {
+        const sx = screenX - this.offsetX;
+        const sy = screenY - this.offsetY;
+        const col = Math.floor((sx / (TILE_W / 2) + sy / (TILE_H / 2)) / 2);
+        const row = Math.floor((sy / (TILE_H / 2) - sx / (TILE_W / 2)) / 2);
+        return { col, row };
+    }
+
+    /**
+     * Check if grid coords are valid
+     */
+    isValid(col, row) {
+        return col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS;
+    }
+
+    /**
+     * Check if (col, row) is adjacent to any grass tile
+     */
+    isAdjacentToGrass(col, row) {
+        const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        for (const [dc, dr] of dirs) {
+            const nc = col + dc;
+            const nr = row + dr;
+            if (this.isValid(nc, nr) && this.grid[nr][nc] === 'grass') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Draw the entire grid
+     */
+    drawGrid() {
+        // Clear existing
+        if (this.tileLayer) this.tileLayer.destroy();
+        this.tileLayer = this.add.container(0, 0);
+
+        // Draw back-to-front for proper layering
+        for (let r = 0; r < GRID_ROWS; r++) {
+            for (let c = 0; c < GRID_COLS; c++) {
+                const { x, y } = this.gridToIso(c, r);
+                const state = this.grid[r][c];
+                const container = this.drawTile(x, y, state, c, r);
+                container.setDepth(r + c);
+                this.tileLayer.add(container);
+                this.tileObjects[r][c] = container;
+            }
+        }
+    }
+
+    /**
+     * Draw a single isometric tile (diamond top + side faces)
+     */
+    drawTile(x, y, state, col, row) {
+        const container = this.add.container(x, y);
+
+        let topColor, leftColor, rightColor;
+        if (state === 'grass') {
+            topColor = COLOR_GRASS_TOP;
+            leftColor = COLOR_GRASS;
+            rightColor = COLOR_GRASS_ALT;
+        } else {
+            topColor = COLOR_FOG_TOP;
+            leftColor = COLOR_FOG;
+            rightColor = COLOR_FOG_ALT;
+        }
+
+        const g = this.add.graphics();
+
+        // Left face
+        g.fillStyle(leftColor, 1);
+        g.beginPath();
+        g.moveTo(-TILE_W / 2, 0);
+        g.lineTo(0, TILE_H / 2);
+        g.lineTo(0, TILE_H / 2 + TILE_DEPTH);
+        g.lineTo(-TILE_W / 2, TILE_DEPTH);
+        g.closePath();
+        g.fillPath();
+
+        // Right face
+        g.fillStyle(rightColor, 1);
+        g.beginPath();
+        g.moveTo(TILE_W / 2, 0);
+        g.lineTo(0, TILE_H / 2);
+        g.lineTo(0, TILE_H / 2 + TILE_DEPTH);
+        g.lineTo(TILE_W / 2, TILE_DEPTH);
+        g.closePath();
+        g.fillPath();
+
+        // Top face (diamond)
+        g.fillStyle(topColor, 1);
+        g.beginPath();
+        g.moveTo(0, -TILE_H / 2);
+        g.lineTo(TILE_W / 2, 0);
+        g.lineTo(0, TILE_H / 2);
+        g.lineTo(-TILE_W / 2, 0);
+        g.closePath();
+        g.fillPath();
+
+        // Subtle edge lines
+        g.lineStyle(1, 0x000000, 0.15);
+        g.beginPath();
+        g.moveTo(0, -TILE_H / 2);
+        g.lineTo(TILE_W / 2, 0);
+        g.lineTo(0, TILE_H / 2);
+        g.lineTo(-TILE_W / 2, 0);
+        g.closePath();
+        g.strokePath();
+
+        // Fog pattern overlay
+        if (state === 'fog') {
+            g.fillStyle(0x222244, 0.3);
+            g.fillCircle(0, 0, 6);
+            g.fillCircle(-8, -2, 4);
+            g.fillCircle(8, 2, 4);
+        }
+
+        container.add(g);
+        container.setData('col', col);
+        container.setData('row', row);
+        container.setData('graphics', g);
+
+        return container;
+    }
+
+    /**
+     * Draw the player cube at current position
+     */
+    drawPlayer() {
+        if (this.playerContainer) this.playerContainer.destroy();
+
+        const { x, y } = this.gridToIso(this.playerCol, this.playerRow);
+        this.playerContainer = this.add.container(x, y - TILE_DEPTH);
+        this.playerContainer.setDepth(this.playerRow + this.playerCol + 0.5);
+
+        const s = CUBE_SIZE;
+        const g = this.add.graphics();
+
+        // Left face
+        g.fillStyle(COLOR_PLAYER_DARK, 1);
+        g.beginPath();
+        g.moveTo(-s, -s);
+        g.lineTo(0, -s + s / 2);
+        g.lineTo(0, s / 2);
+        g.lineTo(-s, 0);
+        g.closePath();
+        g.fillPath();
+
+        // Right face
+        g.fillStyle(COLOR_PLAYER, 1);
+        g.beginPath();
+        g.moveTo(s, -s);
+        g.lineTo(0, -s + s / 2);
+        g.lineTo(0, s / 2);
+        g.lineTo(s, 0);
+        g.closePath();
+        g.fillPath();
+
+        // Top face
+        g.fillStyle(COLOR_PLAYER_TOP, 1);
+        g.beginPath();
+        g.moveTo(0, -s * 1.5);
+        g.lineTo(s, -s);
+        g.lineTo(0, -s + s / 2);
+        g.lineTo(-s, -s);
+        g.closePath();
+        g.fillPath();
+
+        // Outline
+        g.lineStyle(1, 0x000000, 0.3);
+        g.beginPath();
+        g.moveTo(0, -s * 1.5);
+        g.lineTo(s, -s);
+        g.lineTo(s, 0);
+        g.lineTo(0, s / 2);
+        g.lineTo(-s, 0);
+        g.lineTo(-s, -s);
+        g.closePath();
+        g.strokePath();
+
+        this.playerContainer.add(g);
+    }
+
+    /**
+     * Redraw a single tile
+     */
+    redrawTile(col, row) {
+        const old = this.tileObjects[row][col];
+        if (old) old.destroy();
+
+        const { x, y } = this.gridToIso(col, row);
+        const state = this.grid[row][col];
+        const container = this.drawTile(x, y, state, col, row);
+        container.setDepth(row + col);
+        this.tileLayer.add(container);
+        this.tileObjects[row][col] = container;
+    }
+
+    /**
+     * Highlight a tile on hover
+     */
+    highlightTile(col, row) {
+        const obj = this.tileObjects[row]?.[col];
+        if (!obj) return;
+        const g = obj.getData('graphics');
+        if (!g) return;
+
+        // Draw highlight overlay on top face
+        g.fillStyle(COLOR_HOVER, 0.3);
+        g.beginPath();
+        g.moveTo(0, -TILE_H / 2);
+        g.lineTo(TILE_W / 2, 0);
+        g.lineTo(0, TILE_H / 2);
+        g.lineTo(-TILE_W / 2, 0);
+        g.closePath();
+        g.fillPath();
+    }
+
+    /**
+     * Clear highlight by redrawing the tile
+     */
+    clearHighlight(col, row) {
+        if (this.isValid(col, row)) {
+            this.redrawTile(col, row);
+        }
+    }
+
+    onPointerMove(pointer) {
+        const { col, row } = this.isoToGrid(pointer.x, pointer.y);
+
+        // Clear previous hover
+        if (this.hoveredTile) {
+            this.clearHighlight(this.hoveredTile.col, this.hoveredTile.row);
+            this.hoveredTile = null;
+        }
+
+        // Highlight if it's a valid fog tile adjacent to grass
+        if (this.isValid(col, row) && this.grid[row][col] === 'fog' && this.isAdjacentToGrass(col, row)) {
+            this.highlightTile(col, row);
+            this.hoveredTile = { col, row };
+        }
+    }
+
+    onPointerDown(pointer) {
+        const { col, row } = this.isoToGrid(pointer.x, pointer.y);
+
+        if (!this.isValid(col, row)) return;
+        if (this.grid[row][col] !== 'fog') return;
+        if (!this.isAdjacentToGrass(col, row)) return;
+
+        // Reveal tile with animation
+        this.revealTile(col, row);
+    }
+
+    /**
+     * Animate fog tile revealing to grass
+     */
+    revealTile(col, row) {
+        const tileObj = this.tileObjects[row][col];
+        if (!tileObj) return;
+
+        // Scale-down-then-up flip animation
+        this.tweens.add({
+            targets: tileObj,
+            scaleX: 0,
+            scaleY: 0.5,
+            duration: 150,
+            ease: 'Sine.easeIn',
+            onComplete: () => {
+                // Change state
+                this.grid[row][col] = 'grass';
+                this.redrawTile(col, row);
+                const newObj = this.tileObjects[row][col];
+                newObj.setScale(0, 0.5);
+
+                // Expand back
+                this.tweens.add({
+                    targets: newObj,
+                    scaleX: 1,
+                    scaleY: 1,
+                    duration: 200,
+                    ease: 'Back.easeOut',
+                    onComplete: () => {
+                        // Move player to new tile
+                        this.movePlayerTo(col, row);
                     }
                 });
             }
@@ -133,136 +369,20 @@ export class GameScene extends Phaser.Scene {
     }
 
     /**
-     * Handle tile tap
+     * Move player to a tile with tween
      */
-    onTileTap(tile) {
-        if (this.actionsLeft <= 0) {
-            this.showMessage('行动点不足！点击 "下一天" 继续');
-            return;
-        }
+    movePlayerTo(col, row) {
+        this.playerCol = col;
+        this.playerRow = row;
+        const { x, y } = this.gridToIso(col, row);
 
-        this._tappedTile = true;
-        this.actionsLeft--;
-
-        tile.flip(() => {
-            // After flip, handle the event
-            this.handleEvent(tile);
-            this.updateClickableTiles();
-            this.hud.update();
-
-            // Check if out of actions
-            if (this.actionsLeft <= 0) {
-                this.time.delayedCall(500, () => {
-                    this.showMessage('今日行动结束！点击 "下一天" 继续');
-                });
-            }
-        });
-
-        this.hud.update();
-    }
-
-    /**
-     * Handle event after tile reveal
-     */
-    handleEvent(tile) {
-        switch (tile.eventType) {
-            case EventType.TREASURE:
-                const goldGain = Phaser.Math.Between(5, 20);
-                this.gold += goldGain;
-                this.showFloatingText(tile, `+${goldGain} 💰`, 0xffd700);
-                break;
-
-            case EventType.ENEMY:
-                const damage = Phaser.Math.Between(1, 3);
-                const reward = Phaser.Math.Between(3, 10);
-                this.hp = Math.max(0, this.hp - damage);
-                this.gold += reward;
-                this.showFloatingText(tile, `-${damage} ❤️  +${reward} 💰`, 0xff4444);
-                if (this.hp <= 0) {
-                    this.time.delayedCall(600, () => this.gameOver());
-                }
-                break;
-
-            case EventType.NPC:
-                const heal = Phaser.Math.Between(1, 3);
-                this.hp = Math.min(this.maxHp, this.hp + heal);
-                this.showFloatingText(tile, `+${heal} ❤️`, 0x44ff44);
-                break;
-
-            case EventType.SHRINE:
-                this.gems += 1;
-                this.maxHp += 1;
-                this.hp = Math.min(this.maxHp, this.hp + 2);
-                this.showFloatingText(tile, `+1 💎  HP上限+1`, 0xaa66ff);
-                break;
-
-            case EventType.RUINS:
-                const ruinGold = Phaser.Math.Between(8, 25);
-                this.gold += ruinGold;
-                this.gems += Phaser.Math.Between(0, 1);
-                this.showFloatingText(tile, `+${ruinGold} 💰`, 0xccaa77);
-                break;
-
-            default:
-                // Grass/Forest/Empty — no special event
-                break;
-        }
-    }
-
-    /**
-     * Show floating text above a tile
-     */
-    showFloatingText(tile, text, color) {
-        const pos = hexToPixel(tile.q, tile.r);
-        const floatText = this.add.text(pos.x, pos.y - 20, text, {
-            fontSize: '16px',
-            fontFamily: '"Segoe UI", Arial, sans-serif',
-            color: `#${color.toString(16).padStart(6, '0')}`,
-            fontStyle: 'bold',
-            stroke: '#000000',
-            strokeThickness: 3,
-        }).setOrigin(0.5);
-
-        this.mapContainer.add(floatText);
-
+        this.playerContainer.setDepth(row + col + 0.5);
         this.tweens.add({
-            targets: floatText,
-            y: pos.y - 60,
-            alpha: 0,
-            duration: 1200,
-            ease: 'Cubic.easeOut',
-            onComplete: () => floatText.destroy(),
-        });
-    }
-
-    /**
-     * Show message banner
-     */
-    showMessage(msg) {
-        // This is handled by HUD
-        this.hud.showBanner(msg);
-    }
-
-    /**
-     * Next day
-     */
-    nextDay() {
-        this.day++;
-        this.actionsLeft = MAX_ACTIONS_PER_DAY;
-        this.hud.update();
-        this.hud.showBanner(`第 ${this.day} 天开始！`);
-    }
-
-    /**
-     * Game over
-     */
-    gameOver() {
-        this.hud.showBanner('💀 探索结束！');
-        // Disable all tiles
-        this.tileMap.forEach(tile => tile.setClickable(false));
-        // Restart after delay
-        this.time.delayedCall(2000, () => {
-            this.scene.restart();
+            targets: this.playerContainer,
+            x: x,
+            y: y - TILE_DEPTH,
+            duration: 250,
+            ease: 'Quad.easeOut',
         });
     }
 }
