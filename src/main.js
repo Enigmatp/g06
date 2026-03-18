@@ -162,12 +162,12 @@ const cardsEl = document.getElementById('chapter-cards');
 CHAPTERS.forEach(ch => {
   const div = document.createElement('div');
   div.id = `card-${ch.id}`;
-  div.className = 'ch-card glass rounded-xl p-4';
+  div.className = 'ch-card glass rounded-xl p-4 ch-locked';
   div.style.setProperty('--ch-color', ch.color);
   div.innerHTML = `
     <div class="flex items-center justify-between mb-2">
-      <span class="text-sm font-bold" style="color:${ch.color}">${ch.label}</span>
-      <span class="ch-badge" id="chbadge-${ch.id}">锁定</span>
+      <span class="text-sm font-bold ch-title">${ch.label}</span>
+      <span class="ch-badge" id="chbadge-${ch.id}">🔒</span>
     </div>
     <p class="text-white/30 text-xs mb-3">${fmtUnlock(ch.start)}</p>
     <div class="h-1 rounded-full bg-white/5 overflow-hidden">
@@ -261,26 +261,32 @@ function updateChapters() {
     const card = document.getElementById(`card-${ch.id}`);
 
     if (currentMin < ch.start) {
-      // Locked
+      // Locked: grey out
       dispFill.style.width = '0%';
       bar.style.width = '0%';
-      badge.textContent = '锁定';
-      badge.style.color = 'rgba(255,255,255,0.3)';
+      badge.textContent = '🔒';
+      badge.style.color = '';
+      card.querySelector('.ch-title').style.color = '';
+      card.classList.add('ch-locked');
       card.classList.remove('ch-card-active');
     } else if (currentMin >= ch.end) {
       // Completed
       dispFill.style.width = '100%';
       bar.style.width = '100%';
-      badge.textContent = ch.partial ? '部分解锁' : '完成 ✓';
+      badge.textContent = '完成 ✓';
       badge.style.color = ch.color;
+      card.querySelector('.ch-title').style.color = ch.color;
+      card.classList.remove('ch-locked');
       card.classList.add('ch-card-active');
     } else {
-      // In progress — instant unlock
+      // In progress
       const pct = Math.round((currentMin - ch.start) / dur * 100);
       dispFill.style.width = `${pct}%`;
       bar.style.width = `${pct}%`;
       badge.textContent = `已完成 ${pct}%`;
       badge.style.color = ch.color;
+      card.querySelector('.ch-title').style.color = ch.color;
+      card.classList.remove('ch-locked');
       card.classList.add('ch-card-active');
     }
   });
