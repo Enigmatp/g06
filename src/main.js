@@ -6,20 +6,20 @@ const MIN_PER_DAY = 120;          // 2 hours per day
 const TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY; // 840 min
 
 // ── Chapter definitions (second row, not the main bar) ───────────────
-// Total display max = 1440 min (24h), Ch10 ends here (partial)
-const CH_DISPLAY_MAX = 1440;
+// Total display max = 2400 min (40h) — shows all 10 chapters with Ch10 partial
+const CH_DISPLAY_MAX = 2400;
 
 const CHAPTERS = [
-  { id: 1, label: '章节 1', start: 0, end: 5, color: '#10b981' },
-  { id: 2, label: '章节 2', start: 5, end: 25, color: '#f59e0b' },
-  { id: 3, label: '章节 3', start: 25, end: 60, color: '#ef4444' },
-  { id: 4, label: '章节 4', start: 60, end: 120, color: '#a855f7' },
-  { id: 5, label: '章节 5', start: 120, end: 180, color: '#ec4899' },
-  { id: 6, label: '章节 6', start: 180, end: 300, color: '#14b8a6' },
-  { id: 7, label: '章节 7', start: 300, end: 480, color: '#f97316' },
-  { id: 8, label: '章节 8', start: 480, end: 780, color: '#06b6d4' },
-  { id: 9, label: '章节 9', start: 780, end: 1260, color: '#84cc16' },
-  { id: 10, label: '章节 10', start: 1260, end: 1440, color: '#e11d48', partial: true },
+  { id: 1, label: '章节 1', start: 0, end: 5, color: '#10b981' }, // immediate
+  { id: 2, label: '章节 2', start: 5, end: 25, color: '#f59e0b' }, // +5 min
+  { id: 3, label: '章节 3', start: 25, end: 60, color: '#ef4444' }, // +20 min
+  { id: 4, label: '章节 4', start: 60, end: 120, color: '#a855f7' }, // +35 min
+  { id: 5, label: '章节 5', start: 120, end: 240, color: '#ec4899' }, // +1h
+  { id: 6, label: '章节 6', start: 240, end: 420, color: '#14b8a6' }, // +2h  → 4h
+  { id: 7, label: '章节 7', start: 420, end: 720, color: '#f97316' }, // +3h  → 7h
+  { id: 8, label: '章节 8', start: 720, end: 1200, color: '#06b6d4' }, // +5h  → 12h
+  { id: 9, label: '章节 9', start: 1200, end: 1980, color: '#84cc16' }, // +8h  → 20h
+  { id: 10, label: '章节 10', start: 1980, end: 2400, color: '#e11d48', partial: true }, // +13h → 33h (部分)
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -120,17 +120,6 @@ document.getElementById('app').innerHTML = `
               <div class="ch-disp-fill" id="chfill-${ch.id}"
                    style="width:0%;background:${ch.color};"></div>
             </div>`;
-}).join('')}
-      </div>
-
-      <!-- Chapter axis labels -->
-      <div class="relative mt-3 chapter-axis-row">
-        ${CHAPTERS.map(ch => {
-  const pct = (ch.start / CH_DISPLAY_MAX * 100).toFixed(4);
-  return `<div class="axis-label" style="left:${pct}%">
-            <span class="axis-main" style="color:${ch.color}">${ch.label}</span>
-            <span class="axis-sub">${fmtUnlock(ch.start)}${ch.partial ? ' 🔓' : ''}</span>
-          </div>`;
 }).join('')}
       </div>
 
@@ -261,7 +250,7 @@ function updateChapters() {
       const pct = Math.round((currentMin - ch.start) / dur * 100);
       dispFill.style.width = `${pct}%`;
       bar.style.width = `${pct}%`;
-      badge.textContent = `已解锁 ${pct}%`;
+      badge.textContent = `已完成 ${pct}%`;
       badge.style.color = ch.color;
       card.classList.add('ch-card-active');
     }
