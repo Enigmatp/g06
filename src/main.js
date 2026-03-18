@@ -22,8 +22,7 @@ document.getElementById('app').innerHTML = `
     <!-- Header -->
     <header class="text-center animate-fade-up">
       <p class="text-xs uppercase tracking-[0.25em] text-brand-400 font-semibold mb-2">G05 · 游戏解锁</p>
-      <h1 class="font-display font-bold text-4xl md:text-5xl text-shimmer mb-3">精英进度追踪</h1>
-      <p class="text-white/40 text-sm md:text-base max-w-md">拖拽时间轴查看各阶段解锁进度</p>
+      <h1 class="font-display font-bold text-4xl md:text-5xl text-shimmer">G05 游戏进度</h1>
     </header>
 
     <!-- Time Progress Card -->
@@ -70,20 +69,7 @@ document.getElementById('app').innerHTML = `
         <div class="relative h-5 mt-1" id="labels"></div>
       </div>
 
-      <!-- Percentage & quick-set buttons -->
-      <div class="flex items-center justify-between mt-4">
-        <div class="flex gap-2 flex-wrap">
-          ${[0, 25, 50, 75, 100].map(p => `
-            <button data-pct="${p}"
-              class="quick-btn px-3 py-1 rounded-lg text-xs font-semibold border border-white/10 bg-white/5
-                     hover:bg-brand-600/40 hover:border-brand-400/50 hover:text-brand-200
-                     transition-all duration-200 text-white/50">
-              ${p}%
-            </button>
-          `).join('')}
-        </div>
-        <span id="pct-display" class="text-white/30 text-sm font-mono">0%</span>
-      </div>
+
     </section>
 
     <!-- Placeholder stage cards -->
@@ -102,9 +88,7 @@ document.getElementById('app').innerHTML = `
       `).join('')}
     </section>
 
-    <footer class="text-white/20 text-xs text-center">
-      Enigmatp · G05 Progress Tracker · 2026
-    </footer>
+
   </div>
 `;
 
@@ -143,7 +127,8 @@ const pctDisplay = document.getElementById('pct-display');
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 function setProgress(fraction) {
-  fraction = clamp(fraction, 0, 1);
+  // Only allow forward progress
+  fraction = clamp(fraction, currentMinute / TOTAL_MINUTES, 1);
   currentMinute = Math.round(fraction * TOTAL_MINUTES);
   const pct = (currentMinute / TOTAL_MINUTES) * 100;
 
@@ -225,12 +210,7 @@ handle.addEventListener('keydown', (e) => {
   if (e.key === 'End') { setProgress(1); e.preventDefault(); }
 });
 
-// Quick-set % buttons
-document.querySelectorAll('.quick-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    setProgress(Number(btn.dataset.pct) / 100);
-  });
-});
+
 
 // ── Stage cards (placeholder logic) ────────────────────────────────
 const stageConfigs = [
