@@ -168,7 +168,7 @@ CHAPTERS.forEach(ch => {
       <span class="text-sm font-bold" style="color:${ch.color}">${ch.label}</span>
       <span class="ch-badge" id="chbadge-${ch.id}">锁定</span>
     </div>
-    <p class="text-white/30 text-xs mb-3">${fmtUnlock(ch.start)}${ch.partial ? '<br><span class="text-xs opacity-60">部分解锁</span>' : ''}</p>
+    <p class="text-white/30 text-xs mb-3">${fmtUnlock(ch.start)}</p>
     <div class="h-1 rounded-full bg-white/5 overflow-hidden">
       <div id="chbar-${ch.id}" class="h-full rounded-full transition-all duration-300"
            style="width:0%;background:${ch.color};"></div>
@@ -285,8 +285,6 @@ function updateChapters() {
   });
 }
 
-setProgress(0);
-
 // ── Build building rows ───────────────────────────────────────────────
 const buildingRowsEl = document.getElementById('building-rows');
 BUILDINGS.forEach(b => {
@@ -337,3 +335,6 @@ function updateBuildings() {
     pctEl.textContent = `${lvlPct}%`;
   });
 }
+
+// ── Init (called after all DOM elements are built) ────────────────────
+setProgress(0);
