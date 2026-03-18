@@ -2,8 +2,8 @@ import './style.css';
 
 // ── Main bar config (3 days × 2h) ───────────────────────────────────
 const TOTAL_DAYS = 3;
-const MIN_PER_DAY = 120;          // 2 hours per day
-const TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY; // 360 min
+const MIN_PER_DAY = 60;           // 1 hour per day
+const TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY; // 180 min
 
 // ── Chapter definitions (second row, not the main bar) ───────────────
 // Total display max = 2400 min (40h) — shows all 10 chapters with Ch10 partial
@@ -101,7 +101,7 @@ document.getElementById('app').innerHTML = `
         </div>
         <div class="text-right">
           <p class="text-white/40 text-sm uppercase tracking-widest mb-1">总时长</p>
-          <span class="font-display font-bold text-2xl text-white/50">3 天 · 6 小时</span>
+          <span class="font-display font-bold text-2xl text-white/50">3 天 · 3 小时</span>
         </div>
       </div>
 
@@ -399,10 +399,10 @@ FEATURES.forEach(f => {
   card.style.borderColor = `${FEAT_COLOR}20`;
   card.innerHTML = `
     <div class="flex items-center justify-between mb-2">
-      <span class="font-bold text-sm feat-title">${f.name}</span>
+      <span class="font-bold text-sm feat-title">${f.name}${f.optional ? ' <span class="feat-optional">(可选)</span>' : ''}</span>
       <span class="feat-badge" id="fbadge-${f.id}">🔒</span>
     </div>
-    <p class="text-white/30 text-xs">${f.unlockLabel}${f.optional ? ' <span style="color:#4ade80">(\u53ef\u9009)</span>' : ''}</p>
+    <p class="text-white/30 text-xs">${f.unlockLabel}</p>
   `;
   featCardsEl.appendChild(card);
 });
@@ -415,16 +415,17 @@ function updateFeatures() {
     const title = card.querySelector('.feat-title');
 
     if (currentMin < f.unlockAt) {
-      card.classList.add('ch-locked');    // reuse same greyscale class
+      card.classList.add('ch-locked');
       badge.textContent = '🔒';
       title.style.color = '';
       card.style.borderColor = `${FEAT_COLOR}15`;
     } else {
+      const c = f.optional ? '#4ade80' : FEAT_COLOR;
       card.classList.remove('ch-locked');
       badge.textContent = '✔';
-      badge.style.color = FEAT_COLOR;
-      title.style.color = FEAT_COLOR;
-      card.style.borderColor = `${FEAT_COLOR}40`;
+      badge.style.color = c;
+      title.style.color = c;
+      card.style.borderColor = `${c}40`;
     }
   });
 }
