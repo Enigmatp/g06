@@ -23,22 +23,23 @@ const CHAPTERS = [
 ];
 
 // ── Building definitions ─────────────────────────────────────────────
-// unlockAt = minutes; levelInterval = minutes per level
-const BLDG_LEVEL_INTERVAL = 60; // 1 level per hour
+const BLDG_LEVEL_INTERVAL = 60;            // 1 level per hour
+const BLDG_COLOR = '#a78bfa';    // single unified color for all buildings
+
 const BUILDINGS = [
   // G1: Initial
-  { id: 'town_hall', name: '市政厅', unlockAt: 0, unlockLabel: '初始', color: '#34d399' },
-  { id: 'med_hall', name: '医馆', unlockAt: 0, unlockLabel: '初始', color: '#fb923c' },
-  { id: 'barracks', name: '兵营', unlockAt: 0, unlockLabel: '初始', color: '#f87171' },
+  { id: 'town_hall', name: '市政厅', unlockAt: 0, unlockLabel: '初始' },
+  { id: 'med_hall', name: '医馆', unlockAt: 0, unlockLabel: '初始' },
+  { id: 'barracks', name: '兵营', unlockAt: 0, unlockLabel: '初始' },
   // G2: 2 min
-  { id: 'weapon_shop', name: '武器店', unlockAt: 2, unlockLabel: '2 分钟', color: '#c084fc' },
-  { id: 'foundry', name: '燔铸所', unlockAt: 2, unlockLabel: '2 分钟', color: '#f472b6' },
+  { id: 'weapon_shop', name: '武器店', unlockAt: 2, unlockLabel: '2 分钟' },
+  { id: 'foundry', name: '燔铸所', unlockAt: 2, unlockLabel: '2 分钟' },
   // G3: Ch2 (5 min)
-  { id: 'armor_shop', name: '护甲店', unlockAt: 5, unlockLabel: '第 2 章', color: '#2dd4bf' },
-  { id: 'tannery', name: '製皮厂', unlockAt: 5, unlockLabel: '第 2 章', color: '#a3e635' },
+  { id: 'armor_shop', name: '护甲店', unlockAt: 5, unlockLabel: '第 2 章' },
+  { id: 'tannery', name: '製皮厂', unlockAt: 5, unlockLabel: '第 2 章' },
   // G4: Ch3 (25 min)
-  { id: 'temple', name: '祝福圣殿', unlockAt: 25, unlockLabel: '第 3 章', color: '#fb7185' },
-  { id: 'crystal', name: '晶石矿场', unlockAt: 25, unlockLabel: '第 3 章', color: '#fde68a' },
+  { id: 'temple', name: '祝福圣殿', unlockAt: 25, unlockLabel: '第 3 章' },
+  { id: 'crystal', name: '晶石矿场', unlockAt: 25, unlockLabel: '第 3 章' },
 ];
 
 
@@ -291,16 +292,31 @@ BUILDINGS.forEach(b => {
   const row = document.createElement('div');
   row.id = `brow-${b.id}`;
   row.className = 'bldg-row glass rounded-xl px-5 py-4 flex items-center gap-4';
-  row.style.borderColor = `${b.color}25`;
+  row.style.borderColor = `${BLDG_COLOR}20`;
+
+  // Offset = fraction of TOTAL_MIN where unlock happens
+  const offsetPct = (b.unlockAt / TOTAL_MIN * 100).toFixed(3);
+  // Width of the active zone (right of unlock point)
+  const activeW = (100 - parseFloat(offsetPct)).toFixed(3);
+
   row.innerHTML = `
     <div class="bldg-name-col">
-      <span class="font-display font-bold text-base" style="color:${b.color}">${b.name}</span>
+      <span class="font-display font-bold text-base" style="color:${BLDG_COLOR}">${b.name}</span>
       <span class="text-white/25 text-xs ml-2">${b.unlockLabel}</span>
     </div>
-    <span class="bldg-badge" id="bbadge-${b.id}" style="border-color:${b.color}40">未解锁</span>
-    <div class="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
-      <div id="bbar-${b.id}" class="bldg-bar h-full rounded-full transition-all duration-300"
-           style="width:0%;background:${b.color};"></div>
+    <span class="bldg-badge" id="bbadge-${b.id}" style="border-color:${BLDG_COLOR}40">未解锁</span>
+    <!-- Full-width track; active zone starts at unlock point -->
+    <div class="flex-1 relative h-2">
+      <!-- pre-unlock dead zone -->
+      <div class="absolute top-0 bottom-0 left-0 rounded-l-full bg-white/5" style="width:${offsetPct}%"></div>
+      <!-- active zone -->
+      <div class="absolute top-0 bottom-0 rounded-r-full bg-white/5 overflow-hidden"
+           style="left:${offsetPct}%;width:${activeW}%">
+        <div id="bbar-${b.id}" class="h-full rounded-full transition-all duration-300"
+             style="width:0%;background:${BLDG_COLOR};"></div>
+      </div>
+      <!-- unlock marker line -->
+      <div class="absolute top-0 bottom-0 w-px" style="left:${offsetPct}%;background:${BLDG_COLOR}60;"></div>
     </div>
     <span class="bldg-lv-pct text-white/30 text-xs font-mono w-12 text-right" id="bpct-${b.id}">—</span>
   `;
