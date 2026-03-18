@@ -6,15 +6,15 @@ import './style.css';
 // Early milestones (5min, 25min, 1h, 2h) all happen within Day 1.
 const TOTAL_DAYS = 7;
 
-// Cumulative real-world time at end of each day (for axis label row-2)
-const DAY_CUM_MIN = [180, 240, 300, 360, 420, 480, 540]; // Day 1..7
+// Cumulative real-world time at end of each day (each day = 2 hours = 120 min)
+const DAY_CUM_MIN = [120, 240, 360, 480, 600, 720, 840]; // Day 1..7
 
-// Early milestones expressed as "fraction of Day 1"
+// Each day = 120 min; early milestones happen within Day 1
 const EARLY = [
-  { id: 'm1', label: '解锁一', desc: '5 分钟', dayFraction: 5 / 180 },
-  { id: 'm2', label: '解锁二', desc: '25 分钟', dayFraction: 25 / 180 },
-  { id: 'm3', label: '解锁三', desc: '1 小时', dayFraction: 60 / 180 },
-  { id: 'm4', label: '解锁四', desc: '2 小时', dayFraction: 120 / 180 },
+  { id: 'm1', label: '解锁一', desc: '5 分钟', dayFraction: 5 / 120 },
+  { id: 'm2', label: '解锁二', desc: '25 分钟', dayFraction: 25 / 120 },
+  { id: 'm3', label: '解锁三', desc: '1 小时', dayFraction: 60 / 120 },
+  { id: 'm4', label: '解锁四', desc: '2 小时', dayFraction: 120 / 120 },
 ];
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -26,14 +26,11 @@ function formatDay(dayVal) {
   const frac = dayVal - day;
   if (day >= TOTAL_DAYS && frac === 0) return `第 ${TOTAL_DAYS} 天`;
   if (frac === 0) return `第 ${day} 天`;
-  // Show partial day as hours+min within that day's 60-min slot
-  const minInDay = Math.round(frac * 60);
+  // Each day = 120 min (2 hours)
+  const minInDay = Math.round(frac * 120);
   if (day === 0) {
-    // We're in Day 1 — map 60-min slot to 180 min (2h intro + 1h day slot)
-    // frac of day 0 maps to 0-180 min
-    const actualMin = Math.round(frac * 180);
-    if (actualMin < 60) return `${actualMin} 分钟`;
-    const h = Math.floor(actualMin / 60), m = actualMin % 60;
+    if (minInDay < 60) return `${minInDay} 分钟`;
+    const h = Math.floor(minInDay / 60), m = minInDay % 60;
     return m === 0 ? `${h} 小时` : `${h} 小时 ${m} 分`;
   }
   return minInDay === 0 ? `第 ${day} 天` : `第 ${day} 天 +${minInDay} 分`;
@@ -83,6 +80,10 @@ document.getElementById('app').innerHTML = `
           ${Array.from({ length: TOTAL_DAYS }, (_, i) => `
             <div class="seg" id="seg-${i}" data-day="${i + 1}">
               <div class="seg-fill" id="segfill-${i}" style="width:0%"></div>
+              ${Array.from({ length: 23 }, (_, t) => {
+  const pct = ((t + 1) / 24 * 100).toFixed(3);
+  return `<div class="seg-tick" style="left:${pct}%"></div>`;
+}).join('')}
             </div>
           `).join('')}
           <!-- Invisible full-width drag overlay -->
@@ -142,8 +143,8 @@ document.getElementById('early-cards').innerHTML =
 document.getElementById('daily-cards').innerHTML =
   Array.from({ length: TOTAL_DAYS }, (_, i) => {
     const d = i + 1;
-    const h = DAY_CUM_MIN[i] / 60;
-    return makeCard(`d${d}`, `第 ${d} 天`, `累计 ${h} 小时`);
+    const cumH = DAY_CUM_MIN[i] / 60;   // 2, 4, 6, 8, 10, 12, 14
+    return makeCard(`d${d}`, `第 ${d} 天`, `累计 ${cumH} 小时`);
   }).join('');
 
 // ── Progress logic ────────────────────────────────────────────────────

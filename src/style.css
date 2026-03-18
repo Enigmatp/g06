@@ -73,6 +73,17 @@
   transition: width 0.04s linear;
 }
 
+/* 5-minute tick marks inside each segment */
+.seg-tick {
+  position: absolute;
+  top: 15%;
+  bottom: 15%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  z-index: 2;
+}
+
 /* Invisible overlay for dragging */
 .seg-overlay {
   position: absolute;
