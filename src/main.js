@@ -126,10 +126,10 @@ document.getElementById('app').innerHTML = `
         <div class="relative mt-3 day-axis">
           ${Array.from({ length: TOTAL_DAYS }, (_, i) => {
   const pct = ((i + 1) / TOTAL_DAYS * 100).toFixed(2);
-  const cumH = (i + 1) * 2;
+  const cumH = (i + 1) * MIN_PER_DAY / 60;
   return `<div class="axis-label" style="left:${pct}%">
               <span class="axis-main">第 ${i + 1} 天</span>
-              <span class="axis-sub">${cumH}h · ${(i + 1) * 120} min</span>
+              <span class="axis-sub">${cumH}h · ${(i + 1) * MIN_PER_DAY} min</span>
             </div>`;
 }).join('')}
         </div>
