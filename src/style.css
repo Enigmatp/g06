@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Base ──────────────────────────────────────── */
+/* ── Base ──────────────────────────────────────────────────────── */
 @layer base {
 
   html,
@@ -18,10 +18,8 @@
   }
 }
 
-/* ── Custom Utilities ───────────────────────────── */
+/* ── Custom Utilities ───────────────────────────────────────────── */
 @layer utilities {
-
-  /* Glassmorphism card */
   .glass {
     background: rgba(22, 33, 62, 0.55);
     backdrop-filter: blur(18px) saturate(1.4);
@@ -29,13 +27,8 @@
     border: 1px solid rgba(255, 255, 255, 0.07);
   }
 
-  /* Shimmer text gradient */
   .text-shimmer {
-    background: linear-gradient(90deg,
-        #6080ff 0%,
-        #a78bfa 40%,
-        #60efff 60%,
-        #6080ff 100%);
+    background: linear-gradient(90deg, #6080ff 0%, #a78bfa 40%, #60efff 60%, #6080ff 100%);
     background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -50,86 +43,86 @@
   }
 }
 
-/* ── Progress Bar ───────────────────────────────── */
-.progress-track {
+/* ── Segmented Progress Bar ─────────────────────────────────────── */
+.seg-track {
   position: relative;
-  height: 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 4px;
+  height: 28px;
   cursor: pointer;
   user-select: none;
 }
 
-.progress-fill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #3d5afe, #7c6fcd, #60efff);
-  background-size: 200% 100%;
-  animation: shimmer 3s linear infinite;
-  transition: width 0.05s linear;
-  pointer-events: none;
+/* One segment */
+.seg {
+  flex: 1;
+  position: relative;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
 }
 
-.progress-glow {
+/* Fill within a segment */
+.seg-fill {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 20px;
-  width: 20px;
-  border-radius: 50%;
-  background: #6080ff;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 4px rgba(96, 128, 255, 0.3), 0 0 16px 4px rgba(96, 128, 255, 0.5);
+  inset: 0;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3d5afe, #7c6fcd);
+  transition: width 0.04s linear;
+}
+
+/* Invisible overlay for dragging */
+.seg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
   cursor: grab;
-  transition: box-shadow 0.2s ease, transform 0.15s ease;
-  transform: translateY(-50%) scale(1);
 }
 
-.progress-glow:hover,
-.progress-glow.dragging {
-  box-shadow: 0 0 0 6px rgba(96, 128, 255, 0.4), 0 0 28px 8px rgba(96, 128, 255, 0.7);
-  transform: translateY(-50%) scale(1.2);
+.seg-overlay:active {
   cursor: grabbing;
 }
 
-/* tick marks */
-.tick-container {
-  position: relative;
-  height: 14px;
-  margin-top: 6px;
-}
-
-.tick {
+/* Drag handle */
+.seg-handle {
   position: absolute;
-  top: 0;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #6080ff;
+  box-shadow: 0 0 0 4px rgba(96, 128, 255, 0.3), 0 0 14px 4px rgba(96, 128, 255, 0.45);
+  z-index: 20;
+  pointer-events: none;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  transform: translate(-50%, -50%) scale(1);
 }
 
-.tick.major {
-  background: rgba(255, 255, 255, 0.35);
+.seg-handle.dragging {
+  box-shadow: 0 0 0 6px rgba(96, 128, 255, 0.4), 0 0 28px 8px rgba(96, 128, 255, 0.7);
+  transform: translate(-50%, -50%) scale(1.25);
 }
 
-/* Tooltip */
+/* ── Tooltip ────────────────────────────────────────────────────── */
 .time-tooltip {
   position: absolute;
-  bottom: calc(100% + 14px);
+  bottom: calc(100% + 16px);
   transform: translateX(-50%);
   background: rgba(15, 22, 96, 0.92);
   border: 1px solid rgba(96, 128, 255, 0.5);
   border-radius: 8px;
-  padding: 4px 10px;
-  font-size: 13px;
+  padding: 5px 12px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   pointer-events: none;
   backdrop-filter: blur(8px);
   box-shadow: 0 4px 16px rgba(96, 128, 255, 0.35);
+  z-index: 30;
 }
 
 .time-tooltip::after {
@@ -142,48 +135,7 @@
   border-top-color: rgba(96, 128, 255, 0.5);
 }
 
-/* Minute label */
-.minute-label {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
-  white-space: nowrap;
-}
-
-/* Ambient blobs */
-.blob {
-  position: fixed;
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* ── Milestone markers on track ─────────────────────────── */
-.milestone-diamond {
-  position: absolute;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  transform: translate(-50%, -50%) rotate(45deg);
-  pointer-events: none;
-  z-index: 1;
-}
-
-.milestone-diamond.early {
-  background: #a78bfa;
-  box-shadow: 0 0 6px 2px rgba(167, 139, 250, 0.5);
-}
-
-.milestone-diamond.daily {
-  background: #60efff;
-  box-shadow: 0 0 6px 2px rgba(96, 239, 255, 0.4);
-}
-
-/* ── Axis labels below track ────────────────────────────── */
+/* ── Axis labels ────────────────────────────────────────────────── */
 .axis-label {
   position: absolute;
   top: 0;
@@ -191,24 +143,24 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
 }
 
 .axis-main {
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.6);
   white-space: nowrap;
   letter-spacing: 0.02em;
 }
 
 .axis-sub {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.22);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
   white-space: nowrap;
 }
 
-/* ── Milestone cards ────────────────────────────────────── */
+/* ── Milestone cards ────────────────────────────────────────────── */
 .milestone-card {
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
@@ -218,9 +170,9 @@
 }
 
 .card-badge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.10);
@@ -238,4 +190,30 @@
   background: rgba(61, 90, 254, 0.28);
   border-color: rgba(96, 128, 255, 0.5);
   color: #c0d2ff;
+}
+
+/* ── Animations ─────────────────────────────────────────────────── */
+.animate-fade-up {
+  animation: fadeUp 0.4s ease-out both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Ambient blobs ──────────────────────────────────────────────── */
+.blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  z-index: 0;
 }
