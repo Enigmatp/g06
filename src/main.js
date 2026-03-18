@@ -1,49 +1,55 @@
 import './style.css';
 
-// ── Config ──────────────────────────────────────────────────────────
-// Internal unit = DAYS (0.0 → 7.0)
-// Each of the 7 segments represents one in-game day.
-// Early milestones (5min, 25min, 1h, 2h) all happen within Day 1.
-const TOTAL_DAYS = 7;
+// ── Chapter Definitions ──────────────────────────────────────────────
+// Each chapter: start/end in minutes from game start
+// Total axis = 1440 min (24h); Ch10 is partial (starts at 21h)
+const TOTAL_MIN = 1440;
 
-// Cumulative real-world time at end of each day (each day = 2 hours = 120 min)
-const DAY_CUM_MIN = [120, 240, 360, 480, 600, 720, 840]; // Day 1..7
-
-// Each day = 120 min; early milestones happen within Day 1
-const EARLY = [
-  { id: 'm1', label: '解锁一', desc: '5 分钟', dayFraction: 5 / 120 },
-  { id: 'm2', label: '解锁二', desc: '25 分钟', dayFraction: 25 / 120 },
-  { id: 'm3', label: '解锁三', desc: '1 小时', dayFraction: 60 / 120 },
-  { id: 'm4', label: '解锁四', desc: '2 小时', dayFraction: 120 / 120 },
+const CHAPTERS = [
+  { id: 1, label: '章节 1', start: 0, end: 5, color: '#10b981' }, // emerald
+  { id: 2, label: '章节 2', start: 5, end: 25, color: '#f59e0b' }, // amber
+  { id: 3, label: '章节 3', start: 25, end: 60, color: '#ef4444' }, // red
+  { id: 4, label: '章节 4', start: 60, end: 120, color: '#a855f7' }, // purple
+  { id: 5, label: '章节 5', start: 120, end: 180, color: '#ec4899' }, // pink
+  { id: 6, label: '章节 6', start: 180, end: 300, color: '#14b8a6' }, // teal
+  { id: 7, label: '章节 7', start: 300, end: 480, color: '#f97316' }, // orange
+  { id: 8, label: '章节 8', start: 480, end: 780, color: '#06b6d4' }, // cyan
+  { id: 9, label: '章节 9', start: 780, end: 1260, color: '#84cc16' }, // lime
+  { id: 10, label: '章节 10', start: 1260, end: 1440, color: '#e11d48', partial: true }, // rose (partial)
 ];
 
-// ── Helpers ─────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-function formatDay(dayVal) {
-  if (dayVal <= 0) return '未开始';
-  const day = Math.floor(dayVal);
-  const frac = dayVal - day;
-  if (day >= TOTAL_DAYS && frac === 0) return `第 ${TOTAL_DAYS} 天`;
-  if (frac === 0) return `第 ${day} 天`;
-  // Each day = 120 min (2 hours)
-  const minInDay = Math.round(frac * 120);
-  if (day === 0) {
-    if (minInDay < 60) return `${minInDay} 分钟`;
-    const h = Math.floor(minInDay / 60), m = minInDay % 60;
-    return m === 0 ? `${h} 小时` : `${h} 小时 ${m} 分`;
-  }
-  return minInDay === 0 ? `第 ${day} 天` : `第 ${day} 天 +${minInDay} 分`;
+function fmtTime(min) {
+  if (min <= 0) return '未开始';
+  if (min < 60) return `${min} 分钟`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m === 0 ? `${h} 小时` : `${h} 小时 ${m} 分`;
+}
+
+function fmtUnlock(min) {
+  if (min === 0) return '立即解锁';
+  return fmtTime(min);
 }
 
 // ── State ────────────────────────────────────────────────────────────
-let currentDay = 0;   // 0.0 → 7.0
+let currentMin = 0;
 let isDragging = false;
+
+// ── Build tick marks for a chapter ───────────────────────────────────
+function buildTicks(dur) {
+  const count = Math.floor((dur - 1) / 5); // ticks at 5, 10, 15, …
+  return Array.from({ length: count }, (_, i) => {
+    const pct = ((i + 1) * 5 / dur * 100).toFixed(3);
+    return `<div class="seg-tick" style="left:${pct}%"></div>`;
+  }).join('');
+}
 
 // ── HTML ─────────────────────────────────────────────────────────────
 document.getElementById('app').innerHTML = `
-  <div class="blob" style="width:600px;height:600px;top:-150px;left:-120px;background:rgba(61,90,254,0.16);"></div>
-  <div class="blob" style="width:500px;height:500px;bottom:-120px;right:-80px;background:rgba(124,111,205,0.14);"></div>
+  <div class="blob" style="width:600px;height:600px;top:-150px;left:-120px;background:rgba(16,185,129,0.10);"></div>
+  <div class="blob" style="width:500px;height:500px;bottom:-120px;right:-80px;background:rgba(168,85,247,0.12);"></div>
 
   <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-8 py-10 gap-8">
 
@@ -52,100 +58,94 @@ document.getElementById('app').innerHTML = `
       <h1 class="font-display font-bold text-5xl md:text-6xl text-shimmer">G05 游戏进度</h1>
     </header>
 
-    <!-- Progress Card -->
-    <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem; animation-delay:0.1s">
+    <!-- Progress card -->
+    <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.1s">
 
-      <!-- Time display -->
+      <!-- Time readout -->
       <div class="flex items-end justify-between mb-8">
         <div>
-          <p class="text-white/40 text-sm uppercase tracking-widest mb-1">当前进度</p>
+          <p class="text-white/40 text-sm uppercase tracking-widest mb-1">当前时间</p>
           <div id="time-display" class="font-display font-bold text-5xl text-white">未开始</div>
         </div>
         <div class="text-right">
           <p class="text-white/40 text-sm uppercase tracking-widest mb-1">总时长</p>
-          <span class="font-display font-bold text-2xl text-white/50">7 天</span>
+          <span class="font-display font-bold text-2xl text-white/50">24 小时</span>
         </div>
       </div>
 
-      <!-- Segmented bar -->
+      <!-- Proportional chapter bar -->
       <div class="relative" id="bar-root">
 
         <!-- Tooltip -->
-        <div id="tooltip" class="time-tooltip" style="display:none; left:0%;">
+        <div id="tooltip" class="time-tooltip" style="display:none;left:0%">
           <span id="tooltip-text">未开始</span>
         </div>
 
-        <!-- 7 segments -->
-        <div class="seg-track" id="track">
-          ${Array.from({ length: TOTAL_DAYS }, (_, i) => `
-            <div class="seg" id="seg-${i}" data-day="${i + 1}">
-              <div class="seg-fill" id="segfill-${i}" style="width:0%"></div>
-              ${Array.from({ length: 23 }, (_, t) => {
-  const pct = ((t + 1) / 24 * 100).toFixed(3);
-  return `<div class="seg-tick" style="left:${pct}%"></div>`;
+        <!-- Segments (proportional widths) -->
+        <div class="chapter-track" id="track">
+          ${CHAPTERS.map(ch => {
+  const w = ((ch.end - ch.start) / TOTAL_MIN * 100).toFixed(4);
+  const dur = ch.end - ch.start;
+  return `
+              <div class="ch-seg" style="width:${w}%;border-color:${ch.color}22;"
+                   id="ch-${ch.id}" title="${ch.label}">
+                <div class="ch-fill" id="fill-${ch.id}"
+                     style="width:0%;background:${ch.color};"></div>
+                ${buildTicks(dur)}
+              </div>`;
 }).join('')}
-            </div>
-          `).join('')}
-          <!-- Invisible full-width drag overlay -->
+          <!-- Drag overlay -->
           <div class="seg-overlay" id="overlay"></div>
           <!-- Handle -->
           <div class="seg-handle" id="handle" style="left:0%"
-               role="slider" aria-label="游戏进度" aria-valuemin="0" aria-valuemax="${TOTAL_DAYS}" aria-valuenow="0" tabindex="0">
+               role="slider" tabindex="0"
+               aria-label="游戏进度" aria-valuemin="0" aria-valuemax="${TOTAL_MIN}" aria-valuenow="0">
           </div>
         </div>
 
-        <!-- Day axis labels -->
-        <div class="relative mt-3" style="height:2.5rem;" id="axis-labels">
-          ${Array.from({ length: TOTAL_DAYS }, (_, i) => {
-  const pct = ((i + 1) / TOTAL_DAYS) * 100;
+        <!-- Axis labels -->
+        <div class="relative mt-3 chapter-axis" id="axis">
+          ${CHAPTERS.map(ch => {
+  const pct = (ch.start / TOTAL_MIN * 100).toFixed(4);
   return `
-              <div class="axis-label" style="left:${pct}%">
-                <span class="axis-main">第 ${i + 1} 天</span>
-                <span class="axis-sub">${DAY_CUM_MIN[i]} min</span>
-              </div>
-            `;
+              <div class="axis-label ch-axis-label" style="left:${pct}%">
+                <span class="axis-main" style="color:${ch.color}">${ch.label}</span>
+                <span class="axis-sub">${fmtUnlock(ch.start)}</span>
+              </div>`;
 }).join('')}
         </div>
       </div>
     </section>
 
-    <!-- Milestone cards -->
-    <section class="w-full animate-fade-up" style="max-width:128rem; animation-delay:0.2s">
-
-      <p class="text-white/30 text-sm uppercase tracking-widest mb-4 font-semibold">早期解锁节点</p>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="early-cards"></div>
-
-      <p class="text-white/30 text-sm uppercase tracking-widest mb-4 font-semibold">每日解锁节点</p>
-      <div class="grid grid-cols-4 md:grid-cols-7 gap-4" id="daily-cards"></div>
+    <!-- Chapter cards -->
+    <section class="w-full animate-fade-up" style="max-width:128rem;animation-delay:0.2s">
+      <p class="text-white/30 text-sm uppercase tracking-widest mb-4 font-semibold">章节解锁进度</p>
+      <div class="grid grid-cols-5 md:grid-cols-10 gap-3" id="chapter-cards"></div>
     </section>
+
   </div>
 `;
 
-// ── Build milestone cards ────────────────────────────────────────────
-function makeCard(id, label, desc) {
-  return `
-    <div id="card-${id}" class="milestone-card glass rounded-xl p-5">
-      <div class="flex items-center justify-between mb-3">
-        <span class="text-white/50 text-sm font-semibold uppercase tracking-wide">${label}</span>
-        <span class="card-badge">锁定</span>
-      </div>
-      <p class="text-white/30 text-base font-mono">${desc}</p>
-      <div class="h-0.5 rounded-full bg-white/5 mt-4 overflow-hidden">
-        <div class="card-bar h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-300 transition-all duration-500" style="width:0%"></div>
-      </div>
+// ── Build chapter cards ───────────────────────────────────────────────
+const cardsEl = document.getElementById('chapter-cards');
+CHAPTERS.forEach(ch => {
+  const div = document.createElement('div');
+  div.id = `card-${ch.id}`;
+  div.className = 'milestone-card glass rounded-xl p-4';
+  div.style.borderColor = `${ch.color}22`;
+  div.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-bold" style="color:${ch.color}">${ch.label}</span>
+      <span class="card-badge" id="badge-${ch.id}" style="border-color:${ch.color}44">锁定</span>
+    </div>
+    <p class="text-white/30 text-xs font-mono mb-3">${fmtUnlock(ch.start)}${ch.partial ? ' (部分)' : ''}</p>
+    <div class="h-1 rounded-full bg-white/5 overflow-hidden">
+      <div class="card-bar h-full rounded-full transition-all duration-300"
+           id="cbar-${ch.id}" style="width:0%;background:${ch.color};"></div>
     </div>
   `;
-}
-
-document.getElementById('early-cards').innerHTML =
-  EARLY.map(m => makeCard(m.id, m.label, m.desc)).join('');
-
-document.getElementById('daily-cards').innerHTML =
-  Array.from({ length: TOTAL_DAYS }, (_, i) => {
-    const d = i + 1;
-    const cumH = DAY_CUM_MIN[i] / 60;   // 2, 4, 6, 8, 10, 12, 14
-    return makeCard(`d${d}`, `第 ${d} 天`, `累计 ${cumH} 小时`);
-  }).join('');
+  cardsEl.appendChild(div);
+});
 
 // ── Progress logic ────────────────────────────────────────────────────
 const overlay = document.getElementById('overlay');
@@ -156,26 +156,16 @@ const timeDisp = document.getElementById('time-display');
 
 function setProgress(fraction) {
   fraction = clamp(fraction, 0, 1);
-  currentDay = fraction * TOTAL_DAYS;
+  currentMin = Math.round(fraction * TOTAL_MIN);
 
-  // Update handle
   handle.style.left = `${fraction * 100}%`;
   tooltip.style.left = `${fraction * 100}%`;
-  handle.setAttribute('aria-valuenow', currentDay.toFixed(2));
+  handle.setAttribute('aria-valuenow', currentMin);
 
-  // Update each segment fill
-  for (let i = 0; i < TOTAL_DAYS; i++) {
-    const segStart = i / TOTAL_DAYS;       // 0, 1/7, 2/7…
-    const segEnd = (i + 1) / TOTAL_DAYS;
-    let pct = 0;
-    if (fraction >= segEnd) pct = 100;
-    else if (fraction > segStart) pct = ((fraction - segStart) / (segEnd - segStart)) * 100;
-    document.getElementById(`segfill-${i}`).style.width = `${pct}%`;
-  }
+  timeDisp.textContent = fmtTime(currentMin);
+  tooltipTxt.textContent = fmtTime(currentMin);
 
-  timeDisp.textContent = formatDay(currentDay);
-  tooltipTxt.textContent = formatDay(currentDay);
-  updateCards();
+  updateChapters();
 }
 
 function fractionFromEvent(e) {
@@ -185,69 +175,64 @@ function fractionFromEvent(e) {
 }
 
 // Drag
-overlay.addEventListener('mousedown', e => { isDragging = true; handle.classList.add('dragging'); tooltip.style.display = 'block'; setProgress(fractionFromEvent(e)); e.preventDefault(); });
-overlay.addEventListener('touchstart', e => { isDragging = true; handle.classList.add('dragging'); tooltip.style.display = 'block'; setProgress(fractionFromEvent(e)); e.preventDefault(); }, { passive: false });
+overlay.addEventListener('mousedown', e => {
+  isDragging = true; handle.classList.add('dragging');
+  tooltip.style.display = 'block'; setProgress(fractionFromEvent(e)); e.preventDefault();
+});
+overlay.addEventListener('touchstart', e => {
+  isDragging = true; handle.classList.add('dragging');
+  tooltip.style.display = 'block'; setProgress(fractionFromEvent(e)); e.preventDefault();
+}, { passive: false });
 
 document.addEventListener('mousemove', e => { if (isDragging) setProgress(fractionFromEvent(e)); });
 document.addEventListener('touchmove', e => { if (isDragging) { setProgress(fractionFromEvent(e)); e.preventDefault(); } }, { passive: false });
-
 document.addEventListener('mouseup', () => { if (!isDragging) return; isDragging = false; handle.classList.remove('dragging'); tooltip.style.display = 'none'; });
 document.addEventListener('touchend', () => { if (!isDragging) return; isDragging = false; handle.classList.remove('dragging'); tooltip.style.display = 'none'; });
 
 handle.addEventListener('mouseenter', () => tooltip.style.display = 'block');
 handle.addEventListener('mouseleave', () => { if (!isDragging) tooltip.style.display = 'none'; });
-
 handle.addEventListener('keydown', e => {
-  const step = 1 / (TOTAL_DAYS * 60); // 1-min resolution
-  const cur = currentDay / TOTAL_DAYS;
+  const step = 1 / TOTAL_MIN;
+  const cur = currentMin / TOTAL_MIN;
   if (e.key === 'ArrowRight') { setProgress(cur + step); e.preventDefault(); }
   if (e.key === 'ArrowLeft') { setProgress(cur - step); e.preventDefault(); }
   if (e.key === 'Home') { setProgress(0); e.preventDefault(); }
   if (e.key === 'End') { setProgress(1); e.preventDefault(); }
 });
 
-// ── Update cards ──────────────────────────────────────────────────────
-function updateCards() {
-  // Early milestones (within Day 1, fraction of first day)
-  EARLY.forEach((m, i) => {
-    const card = document.getElementById(`card-${m.id}`);
-    const badge = card.querySelector('.card-badge');
-    const bar = card.querySelector('.card-bar');
-    const prevFrac = i === 0 ? 0 : EARLY[i - 1].dayFraction;
+// ── Update chapters ───────────────────────────────────────────────────
+function updateChapters() {
+  CHAPTERS.forEach(ch => {
+    const fill = document.getElementById(`fill-${ch.id}`);
+    const badge = document.getElementById(`badge-${ch.id}`);
+    const cbar = document.getElementById(`cbar-${ch.id}`);
+    const card = document.getElementById(`card-${ch.id}`);
+    const dur = ch.end - ch.start;
 
-    if (currentDay >= m.dayFraction) {
-      badge.textContent = '已解锁'; badge.className = 'card-badge unlocked';
-      bar.style.width = '100%'; card.classList.add('card-active');
-    } else if (currentDay > prevFrac) {
-      const pct = Math.round(((currentDay - prevFrac) / (m.dayFraction - prevFrac)) * 100);
-      badge.textContent = `${pct}%`; badge.className = 'card-badge in-progress';
-      bar.style.width = `${pct}%`; card.classList.add('card-active');
+    if (currentMin < ch.start) {
+      // Locked
+      fill.style.width = '0%';
+      cbar.style.width = '0%';
+      badge.textContent = '锁定';
+      badge.style.color = 'rgba(255,255,255,0.28)';
+      card.classList.remove('card-active');
+    } else if (currentMin >= ch.end) {
+      // Completed
+      fill.style.width = '100%';
+      cbar.style.width = '100%';
+      badge.textContent = ch.partial ? '部分解锁' : '完成';
+      badge.style.color = ch.color;
+      card.classList.add('card-active');
     } else {
-      badge.textContent = '锁定'; badge.className = 'card-badge';
-      bar.style.width = '0%'; card.classList.remove('card-active');
+      // In progress — "instantly unlocked" label
+      const pct = Math.round((currentMin - ch.start) / dur * 100);
+      fill.style.width = `${pct}%`;
+      cbar.style.width = `${pct}%`;
+      badge.textContent = `已解锁 ${pct}%`;
+      badge.style.color = ch.color;
+      card.classList.add('card-active');
     }
   });
-
-  // Daily milestones
-  for (let i = 0; i < TOTAL_DAYS; i++) {
-    const d = i + 1;
-    const card = document.getElementById(`card-d${d}`);
-    const badge = card.querySelector('.card-badge');
-    const bar = card.querySelector('.card-bar');
-    const prevDay = i; // unlocked after full day i (0-based)
-
-    if (currentDay >= d) {
-      badge.textContent = '已解锁'; badge.className = 'card-badge unlocked';
-      bar.style.width = '100%'; card.classList.add('card-active');
-    } else if (currentDay > prevDay) {
-      const pct = Math.round((currentDay - prevDay) * 100);
-      badge.textContent = `${pct}%`; badge.className = 'card-badge in-progress';
-      bar.style.width = `${pct}%`; card.classList.add('card-active');
-    } else {
-      badge.textContent = '锁定'; badge.className = 'card-badge';
-      bar.style.width = '0%'; card.classList.remove('card-active');
-    }
-  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────
