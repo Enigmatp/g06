@@ -67,7 +67,7 @@ document.getElementById('app').innerHTML = `
     </header>
 
     <!-- Progress Card -->
-    <section class="glass rounded-2xl p-8 w-full max-w-5xl animate-fade-up" style="animation-delay:0.1s">
+    <section class="glass rounded-2xl p-8 w-full max-w-screen-2xl animate-fade-up" style="animation-delay:0.1s">
 
       <!-- Current time display -->
       <div class="flex items-end justify-between mb-6">
@@ -91,6 +91,7 @@ document.getElementById('app').innerHTML = `
 
         <!-- Track -->
         <div class="progress-track" id="track">
+          <div class="progress-fill" id="fill" style="width:0%"></div>
           <!-- Milestone diamond markers (injected by JS) -->
           <div id="milestone-markers"></div>
           <!-- Drag handle -->
@@ -105,7 +106,7 @@ document.getElementById('app').innerHTML = `
     </section>
 
     <!-- Milestone grid -->
-    <section class="w-full max-w-5xl animate-fade-up" style="animation-delay:0.2s">
+    <section class="w-full max-w-screen-2xl animate-fade-up" style="animation-delay:0.2s">
 
       <!-- Early milestones -->
       <p class="text-white/30 text-xs uppercase tracking-widest mb-3 font-semibold">早期解锁节点</p>
@@ -138,7 +139,7 @@ MILESTONES.forEach(ms => {
   const lbl = document.createElement('div');
   lbl.className = 'axis-label';
   lbl.style.left = `${pct}%`;
-  lbl.innerHTML = `<span class="axis-main">${ms.label}</span><span class="axis-sub">${ms.desc}</span>`;
+  lbl.innerHTML = `<span class="axis-main">${ms.label}</span><span class="axis-sub">${ms.minute} min</span>`;
   axisEl.appendChild(lbl);
 });
 
@@ -167,6 +168,7 @@ buildCards('daily-cards', 'daily');
 
 // ── Progress bar logic ────────────────────────────────────────────────
 const track = document.getElementById('track');
+const fill = document.getElementById('fill');
 const handle = document.getElementById('handle');
 const tooltip = document.getElementById('tooltip');
 const tooltipTxt = document.getElementById('tooltip-text');
@@ -178,6 +180,7 @@ function setProgress(fraction) {
   const pct = (currentMinute / TOTAL_MINUTES) * 100;
 
   handle.style.left = `${pct}%`;
+  fill.style.width = `${pct}%`;
   tooltip.style.left = `${pct}%`;
   handle.setAttribute('aria-valuenow', currentMinute);
 
