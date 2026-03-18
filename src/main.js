@@ -42,6 +42,16 @@ const BUILDINGS = [
   { id: 'crystal', name: '晶石矿场', unlockAt: 25, unlockLabel: '第 3 章' },
 ];
 
+// ── Feature definitions ─────────────────────────────────────────────
+const FEAT_COLOR = '#fbbf24'; // amber — unified color for all features
+const FEATURES = [
+  { id: 'tasks', name: '任务', unlockAt: 0, unlockLabel: '初始' },
+  { id: 'heroes', name: '英雄', unlockAt: 3, unlockLabel: '3 分钟' },
+  { id: 'afk', name: '挂机奖励', unlockAt: 4, unlockLabel: '4 分钟' },
+  { id: 'summon', name: '召唤', unlockAt: 5, unlockLabel: '第 2 章' },
+  { id: 'raid', name: '挑战-远征', unlockAt: 25, unlockLabel: '第 3 章' },
+];
+
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -154,6 +164,12 @@ document.getElementById('app').innerHTML = `
       <div id="building-rows" class="grid grid-cols-5 md:grid-cols-10 gap-3"></div>
     </section>
 
+    <!-- ── Feature unlock ── -->
+    <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.4s">
+      <p class="text-white/30 text-sm uppercase tracking-widest mb-6 font-semibold">功能解锁</p>
+      <div id="feature-cards" class="grid grid-cols-5 md:grid-cols-10 gap-3"></div>
+    </section>
+
   </div>
 `;
 
@@ -215,9 +231,10 @@ function setProgress(fraction) {
     document.getElementById(`segfill-${i}`).style.width = `${pct}%`;
   }
 
-  // Update chapters
+  // Update chapters, buildings, features
   updateChapters();
   updateBuildings();
+  updateFeatures();
 }
 
 function fractionFromEvent(e) {
@@ -359,6 +376,45 @@ function updateBuildings() {
       badge.textContent = `Lv.${cappedLevel}/${maxLevel}`;
       badge.style.color = BLDG_COLOR;
       bar.style.width = maxLevel > 0 ? `${Math.round(cappedLevel / maxLevel * 100)}%` : '0%';
+    }
+  });
+}
+
+// ── Build feature cards ───────────────────────────────────────────────
+const featCardsEl = document.getElementById('feature-cards');
+FEATURES.forEach(f => {
+  const card = document.createElement('div');
+  card.id = `frow-${f.id}`;
+  card.className = 'feat-card glass rounded-xl p-4 ch-locked';
+  card.style.borderColor = `${FEAT_COLOR}20`;
+  card.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <span class="font-bold text-sm feat-title">${f.name}</span>
+      <span class="feat-badge" id="fbadge-${f.id}">🔒</span>
+    </div>
+    <p class="text-white/30 text-xs">${f.unlockLabel}</p>
+  `;
+  featCardsEl.appendChild(card);
+});
+
+// ── Update feature cards ──────────────────────────────────────────────
+function updateFeatures() {
+  FEATURES.forEach(f => {
+    const badge = document.getElementById(`fbadge-${f.id}`);
+    const card = document.getElementById(`frow-${f.id}`);
+    const title = card.querySelector('.feat-title');
+
+    if (currentMin < f.unlockAt) {
+      card.classList.add('ch-locked');    // reuse same greyscale class
+      badge.textContent = '🔒';
+      title.style.color = '';
+      card.style.borderColor = `${FEAT_COLOR}15`;
+    } else {
+      card.classList.remove('ch-locked');
+      badge.textContent = '✔';
+      badge.style.color = FEAT_COLOR;
+      title.style.color = FEAT_COLOR;
+      card.style.borderColor = `${FEAT_COLOR}40`;
     }
   });
 }
