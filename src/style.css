@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base ──────────────────────────────────────── */
+@layer base {
+  html, body, #app {
+    @apply h-full w-full;
+  }
+
+  body {
+    @apply bg-dark-900 text-white;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* ── Custom Utilities ───────────────────────────── */
+@layer utilities {
+  /* Glassmorphism card */
+  .glass {
+    background: rgba(22, 33, 62, 0.55);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  /* Shimmer text gradient */
+  .text-shimmer {
+    background: linear-gradient(
+      90deg,
+      #6080ff 0%,
+      #a78bfa 40%,
+      #60efff 60%,
+      #6080ff 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s linear infinite;
+  }
+
+  @keyframes shimmer {
+    to { background-position: 200% center; }
+  }
+}
+
+/* ── Progress Bar ───────────────────────────────── */
+.progress-track {
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer;
+  user-select: none;
+}
+
+.progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3d5afe, #7c6fcd, #60efff);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  transition: width 0.05s linear;
+  pointer-events: none;
+}
+
+.progress-glow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #6080ff;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 4px rgba(96,128,255,0.3), 0 0 16px 4px rgba(96,128,255,0.5);
+  cursor: grab;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  transform: translateY(-50%) scale(1);
+}
+
+.progress-glow:hover,
+.progress-glow.dragging {
+  box-shadow: 0 0 0 6px rgba(96,128,255,0.4), 0 0 28px 8px rgba(96,128,255,0.7);
+  transform: translateY(-50%) scale(1.2);
+  cursor: grabbing;
+}
+
+/* tick marks */
+.tick-container {
+  position: relative;
+  height: 14px;
+  margin-top: 6px;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  background: rgba(255,255,255,0.15);
+  transform: translateX(-50%);
+}
+
+.tick.major {
+  background: rgba(255,255,255,0.35);
+}
+
+/* Tooltip */
+.time-tooltip {
+  position: absolute;
+  bottom: calc(100% + 14px);
+  transform: translateX(-50%);
+  background: rgba(15, 22, 96, 0.92);
+  border: 1px solid rgba(96,128,255,0.5);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(96,128,255,0.35);
+}
+
+.time-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(96,128,255,0.5);
+}
+
+/* Minute label */
+.minute-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255,255,255,0.4);
+  white-space: nowrap;
+}
+
+/* Ambient blobs */
+.blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
