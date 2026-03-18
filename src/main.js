@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
+import { SpinePlugin } from '@esotericsoftware/spine-phaser-v3';
 import { GameScene } from './scenes/GameScene.js';
 
 const GAME_WIDTH = 540;
 const GAME_HEIGHT = 960;
 
 const config = {
-    type: Phaser.AUTO,
+    type: Phaser.WEBGL,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
     parent: 'game-container',
@@ -13,6 +14,11 @@ const config = {
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
+    },
+    plugins: {
+        scene: [
+            { key: 'spine.SpinePlugin', plugin: SpinePlugin, mapping: 'spine' },
+        ],
     },
     scene: [GameScene],
 };

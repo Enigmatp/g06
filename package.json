@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@esotericsoftware/spine-phaser-v3": "^4.2.106",
     "phaser": "^3.87.0"
   },
   "devDependencies": {
