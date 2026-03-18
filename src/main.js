@@ -151,7 +151,7 @@ document.getElementById('app').innerHTML = `
     <!-- ── Building unlock rows ── -->
     <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.3s">
       <p class="text-white/30 text-sm uppercase tracking-widest mb-6 font-semibold">建筑解锁与升级</p>
-      <div id="building-rows" class="flex flex-col gap-3"></div>
+      <div id="building-rows" class="grid grid-cols-5 md:grid-cols-10 gap-3"></div>
     </section>
 
   </div>
@@ -286,69 +286,55 @@ function updateChapters() {
   });
 }
 
-// ── Build building rows ───────────────────────────────────────────────
+// ── Build building cards ───────────────────────────────────────────────
 const buildingRowsEl = document.getElementById('building-rows');
 BUILDINGS.forEach(b => {
-  const row = document.createElement('div');
-  row.id = `brow-${b.id}`;
-  row.className = 'bldg-row glass rounded-xl px-5 py-4 flex items-center gap-4';
-  row.style.borderColor = `${BLDG_COLOR}20`;
-
-  // Offset = fraction of TOTAL_MIN where unlock happens
-  const offsetPct = (b.unlockAt / TOTAL_MIN * 100).toFixed(3);
-  // Width of the active zone (right of unlock point)
-  const activeW = (100 - parseFloat(offsetPct)).toFixed(3);
-
-  row.innerHTML = `
-    <div class="bldg-name-col">
-      <span class="font-display font-bold text-base" style="color:${BLDG_COLOR}">${b.name}</span>
-      <span class="text-white/25 text-xs ml-2">${b.unlockLabel}</span>
+  const card = document.createElement('div');
+  card.id = `brow-${b.id}`;
+  card.className = 'bldg-card glass rounded-xl p-4 bldg-locked';
+  card.style.borderColor = `${BLDG_COLOR}20`;
+  card.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <span class="font-bold text-sm bldg-name">${b.name}</span>
+      <span class="bldg-badge" id="bbadge-${b.id}">🔒</span>
     </div>
-    <span class="bldg-badge" id="bbadge-${b.id}" style="border-color:${BLDG_COLOR}40">未解锁</span>
-    <!-- Full-width track; active zone starts at unlock point -->
-    <div class="flex-1 relative h-2">
-      <!-- pre-unlock dead zone -->
-      <div class="absolute top-0 bottom-0 left-0 rounded-l-full bg-white/5" style="width:${offsetPct}%"></div>
-      <!-- active zone -->
-      <div class="absolute top-0 bottom-0 rounded-r-full bg-white/5 overflow-hidden"
-           style="left:${offsetPct}%;width:${activeW}%">
-        <div id="bbar-${b.id}" class="h-full rounded-full transition-all duration-300"
-             style="width:0%;background:${BLDG_COLOR};"></div>
-      </div>
-      <!-- unlock marker line -->
-      <div class="absolute top-0 bottom-0 w-px" style="left:${offsetPct}%;background:${BLDG_COLOR}60;"></div>
+    <p class="text-white/30 text-xs mb-3">${b.unlockLabel}</p>
+    <div class="h-1 rounded-full bg-white/5 overflow-hidden">
+      <div id="bbar-${b.id}" class="h-full rounded-full transition-all duration-300"
+           style="width:0%;background:${BLDG_COLOR};"></div>
     </div>
-    <span class="bldg-lv-pct text-white/30 text-xs font-mono w-12 text-right" id="bpct-${b.id}">—</span>
   `;
-  buildingRowsEl.appendChild(row);
+  buildingRowsEl.appendChild(card);
 });
 
-// ── Update building rows ──────────────────────────────────────────────
+// ── Update building cards ───────────────────────────────────────────────
 function updateBuildings() {
   BUILDINGS.forEach(b => {
     const badge = document.getElementById(`bbadge-${b.id}`);
     const bar = document.getElementById(`bbar-${b.id}`);
-    const pctEl = document.getElementById(`bpct-${b.id}`);
-    const row = document.getElementById(`brow-${b.id}`);
+    const card = document.getElementById(`brow-${b.id}`);
+    const name = card.querySelector('.bldg-name');
 
     if (currentMin < b.unlockAt) {
-      badge.textContent = '未解锁';
-      badge.style.color = 'rgba(255,255,255,0.25)';
+      // Locked: grey out whole card
+      card.classList.add('bldg-locked');
+      card.classList.remove('bldg-active');
+      badge.textContent = '🔒';
+      name.style.color = '';
       bar.style.width = '0%';
-      pctEl.textContent = '—';
-      row.classList.remove('bldg-active');
       return;
     }
 
-    row.classList.add('bldg-active');
+    // Unlocked
+    card.classList.remove('bldg-locked');
+    card.classList.add('bldg-active');
+    name.style.color = BLDG_COLOR;
     const elapsed = currentMin - b.unlockAt;
     const level = Math.floor(elapsed / BLDG_LEVEL_INTERVAL) + 1;
     const lvlPct = Math.round((elapsed % BLDG_LEVEL_INTERVAL) / BLDG_LEVEL_INTERVAL * 100);
-
     badge.textContent = `Lv.${level}`;
-    badge.style.color = b.color;
+    badge.style.color = BLDG_COLOR;
     bar.style.width = `${lvlPct}%`;
-    pctEl.textContent = `${lvlPct}%`;
   });
 }
 
