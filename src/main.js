@@ -1,9 +1,9 @@
 import './style.css';
 
-// ── Main bar config (7 days × 2h) ───────────────────────────────────
-const TOTAL_DAYS = 7;
+// ── Main bar config (3 days × 2h) ───────────────────────────────────
+const TOTAL_DAYS = 3;
 const MIN_PER_DAY = 120;          // 2 hours per day
-const TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY; // 840 min
+const TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY; // 360 min
 
 // ── Chapter definitions (second row, not the main bar) ───────────────
 // Total display max = 2400 min (40h) — shows all 10 chapters with Ch10 partial
@@ -49,7 +49,7 @@ const FEATURES = [
   { id: 'heroes', name: '英雄', unlockAt: 3, unlockLabel: '3 分钟' },
   { id: 'afk', name: '挂机奖励', unlockAt: 4, unlockLabel: '4 分钟' },
   { id: 'summon', name: '召唤', unlockAt: 5, unlockLabel: '第 2 章' },
-  { id: 'raid', name: '挑战-远征', unlockAt: 25, unlockLabel: '第 3 章' },
+  { id: 'raid', name: '挑战-远征', unlockAt: 25, unlockLabel: '第 3 章', optional: true },
 ];
 
 
@@ -88,7 +88,7 @@ document.getElementById('app').innerHTML = `
 
     <!-- Header -->
     <header class="text-center animate-fade-up">
-      <h1 class="font-display font-bold text-5xl md:text-6xl text-shimmer">G05 游戏进度</h1>
+      <h1 class="font-display font-bold text-5xl md:text-6xl text-shimmer">G05 v0.2.0 游戏进度</h1>
     </header>
 
     <!-- ── Main 7-day bar ── -->
@@ -101,7 +101,7 @@ document.getElementById('app').innerHTML = `
         </div>
         <div class="text-right">
           <p class="text-white/40 text-sm uppercase tracking-widest mb-1">总时长</p>
-          <span class="font-display font-bold text-2xl text-white/50">7 天 · 14 小时</span>
+          <span class="font-display font-bold text-2xl text-white/50">3 天 · 6 小时</span>
         </div>
       </div>
 
@@ -185,7 +185,8 @@ CHAPTERS.forEach(ch => {
       <span class="text-sm font-bold ch-title">${ch.label}</span>
       <span class="ch-badge" id="chbadge-${ch.id}">🔒</span>
     </div>
-    <p class="text-white/30 text-xs mb-3">${fmtUnlock(ch.start)}</p>
+    <p class="text-white/30 text-xs mb-1">${fmtUnlock(ch.start)}</p>
+    <p class="text-xs font-mono mb-2 ch-stage" id="chstage-${ch.id}"></p>
     <div class="h-1 rounded-full bg-white/5 overflow-hidden">
       <div id="chbar-${ch.id}" class="h-full rounded-full transition-all duration-300"
            style="width:0%;background:${ch.color};"></div>
@@ -276,33 +277,42 @@ function updateChapters() {
     const badge = document.getElementById(`chbadge-${ch.id}`);
     const bar = document.getElementById(`chbar-${ch.id}`);
     const card = document.getElementById(`card-${ch.id}`);
+    const stageEl = document.getElementById(`chstage-${ch.id}`);
+    const title = card.querySelector('.ch-title');
+
+    // Total stages in this chapter (10 sec each)
+    const totalStages = Math.floor((ch.end - ch.start) * 60 / 10);
 
     if (currentMin < ch.start) {
-      // Locked: grey out
       dispFill.style.width = '0%';
       bar.style.width = '0%';
       badge.textContent = '🔒';
       badge.style.color = '';
-      card.querySelector('.ch-title').style.color = '';
+      title.style.color = '';
+      stageEl.textContent = '';
+      stageEl.style.color = '';
       card.classList.add('ch-locked');
       card.classList.remove('ch-card-active');
     } else if (currentMin >= ch.end) {
-      // Completed
       dispFill.style.width = '100%';
       bar.style.width = '100%';
       badge.textContent = '完成 ✓';
       badge.style.color = ch.color;
-      card.querySelector('.ch-title').style.color = ch.color;
+      title.style.color = ch.color;
+      stageEl.textContent = `${ch.id}-${totalStages}`;
+      stageEl.style.color = ch.color;
       card.classList.remove('ch-locked');
       card.classList.add('ch-card-active');
     } else {
-      // In progress
       const pct = Math.round((currentMin - ch.start) / dur * 100);
+      const curStage = Math.max(1, Math.floor((currentMin - ch.start) * 6));
       dispFill.style.width = `${pct}%`;
       bar.style.width = `${pct}%`;
       badge.textContent = `已完成 ${pct}%`;
       badge.style.color = ch.color;
-      card.querySelector('.ch-title').style.color = ch.color;
+      title.style.color = ch.color;
+      stageEl.textContent = `${ch.id}-${curStage}`;
+      stageEl.style.color = ch.color;
       card.classList.remove('ch-locked');
       card.classList.add('ch-card-active');
     }
@@ -392,7 +402,7 @@ FEATURES.forEach(f => {
       <span class="font-bold text-sm feat-title">${f.name}</span>
       <span class="feat-badge" id="fbadge-${f.id}">🔒</span>
     </div>
-    <p class="text-white/30 text-xs">${f.unlockLabel}</p>
+    <p class="text-white/30 text-xs">${f.unlockLabel}${f.optional ? ' <span style="color:#4ade80">(\u53ef\u9009)</span>' : ''}</p>
   `;
   featCardsEl.appendChild(card);
 });
