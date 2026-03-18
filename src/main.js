@@ -1,55 +1,57 @@
 import './style.css';
 
-// ── Chapter Definitions ──────────────────────────────────────────────
-// Each chapter: start/end in minutes from game start
-// Total axis = 1440 min (24h); Ch10 is partial (starts at 21h)
-const TOTAL_MIN = 1440;
+// ── Main bar config (7 days × 2h) ───────────────────────────────────
+const TOTAL_DAYS = 7;
+const MIN_PER_DAY = 120;          // 2 hours per day
+const TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY; // 840 min
+
+// ── Chapter definitions (second row, not the main bar) ───────────────
+// Total display max = 1440 min (24h), Ch10 ends here (partial)
+const CH_DISPLAY_MAX = 1440;
 
 const CHAPTERS = [
-  { id: 1, label: '章节 1', start: 0, end: 5, color: '#10b981' }, // emerald
-  { id: 2, label: '章节 2', start: 5, end: 25, color: '#f59e0b' }, // amber
-  { id: 3, label: '章节 3', start: 25, end: 60, color: '#ef4444' }, // red
-  { id: 4, label: '章节 4', start: 60, end: 120, color: '#a855f7' }, // purple
-  { id: 5, label: '章节 5', start: 120, end: 180, color: '#ec4899' }, // pink
-  { id: 6, label: '章节 6', start: 180, end: 300, color: '#14b8a6' }, // teal
-  { id: 7, label: '章节 7', start: 300, end: 480, color: '#f97316' }, // orange
-  { id: 8, label: '章节 8', start: 480, end: 780, color: '#06b6d4' }, // cyan
-  { id: 9, label: '章节 9', start: 780, end: 1260, color: '#84cc16' }, // lime
-  { id: 10, label: '章节 10', start: 1260, end: 1440, color: '#e11d48', partial: true }, // rose (partial)
+  { id: 1, label: '章节 1', start: 0, end: 5, color: '#10b981' },
+  { id: 2, label: '章节 2', start: 5, end: 25, color: '#f59e0b' },
+  { id: 3, label: '章节 3', start: 25, end: 60, color: '#ef4444' },
+  { id: 4, label: '章节 4', start: 60, end: 120, color: '#a855f7' },
+  { id: 5, label: '章节 5', start: 120, end: 180, color: '#ec4899' },
+  { id: 6, label: '章节 6', start: 180, end: 300, color: '#14b8a6' },
+  { id: 7, label: '章节 7', start: 300, end: 480, color: '#f97316' },
+  { id: 8, label: '章节 8', start: 480, end: 780, color: '#06b6d4' },
+  { id: 9, label: '章节 9', start: 780, end: 1260, color: '#84cc16' },
+  { id: 10, label: '章节 10', start: 1260, end: 1440, color: '#e11d48', partial: true },
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-function fmtTime(min) {
+function fmtMin(min) {
   if (min <= 0) return '未开始';
   if (min < 60) return `${min} 分钟`;
   const h = Math.floor(min / 60), m = min % 60;
-  return m === 0 ? `${h} 小时` : `${h} 小时 ${m} 分`;
+  return m === 0 ? `${h} 小时` : `${h}h ${m}m`;
 }
 
 function fmtUnlock(min) {
-  if (min === 0) return '立即解锁';
-  return fmtTime(min);
+  return min === 0 ? '立即' : fmtMin(min);
 }
 
 // ── State ────────────────────────────────────────────────────────────
 let currentMin = 0;
 let isDragging = false;
 
-// ── Build tick marks for a chapter ───────────────────────────────────
-function buildTicks(dur) {
-  const count = Math.floor((dur - 1) / 5); // ticks at 5, 10, 15, …
+// ── Build tick marks ─────────────────────────────────────────────────
+function buildTicks(count) {
   return Array.from({ length: count }, (_, i) => {
-    const pct = ((i + 1) * 5 / dur * 100).toFixed(3);
+    const pct = ((i + 1) / (count + 1) * 100).toFixed(3);
     return `<div class="seg-tick" style="left:${pct}%"></div>`;
   }).join('');
 }
 
 // ── HTML ─────────────────────────────────────────────────────────────
 document.getElementById('app').innerHTML = `
-  <div class="blob" style="width:600px;height:600px;top:-150px;left:-120px;background:rgba(16,185,129,0.10);"></div>
-  <div class="blob" style="width:500px;height:500px;bottom:-120px;right:-80px;background:rgba(168,85,247,0.12);"></div>
+  <div class="blob" style="width:520px;height:520px;top:-120px;left:-80px;background:rgba(61,90,254,0.15);"></div>
+  <div class="blob" style="width:420px;height:420px;bottom:-100px;right:-60px;background:rgba(168,85,247,0.12);"></div>
 
   <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-8 py-10 gap-8">
 
@@ -58,71 +60,83 @@ document.getElementById('app').innerHTML = `
       <h1 class="font-display font-bold text-5xl md:text-6xl text-shimmer">G05 游戏进度</h1>
     </header>
 
-    <!-- Progress card -->
+    <!-- ── Main 7-day bar ── -->
     <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.1s">
 
-      <!-- Time readout -->
       <div class="flex items-end justify-between mb-8">
         <div>
-          <p class="text-white/40 text-sm uppercase tracking-widest mb-1">当前时间</p>
+          <p class="text-white/40 text-sm uppercase tracking-widest mb-1">当前进度</p>
           <div id="time-display" class="font-display font-bold text-5xl text-white">未开始</div>
         </div>
         <div class="text-right">
           <p class="text-white/40 text-sm uppercase tracking-widest mb-1">总时长</p>
-          <span class="font-display font-bold text-2xl text-white/50">24 小时</span>
+          <span class="font-display font-bold text-2xl text-white/50">7 天 · 14 小时</span>
         </div>
       </div>
 
-      <!-- Proportional chapter bar -->
+      <!-- Segmented bar -->
       <div class="relative" id="bar-root">
-
-        <!-- Tooltip -->
         <div id="tooltip" class="time-tooltip" style="display:none;left:0%">
           <span id="tooltip-text">未开始</span>
         </div>
 
-        <!-- Segments (proportional widths) -->
-        <div class="chapter-track" id="track">
-          ${CHAPTERS.map(ch => {
-  const w = ((ch.end - ch.start) / TOTAL_MIN * 100).toFixed(4);
-  const dur = ch.end - ch.start;
-  return `
-              <div class="ch-seg" style="width:${w}%;border-color:${ch.color}22;"
-                   id="ch-${ch.id}" title="${ch.label}">
-                <div class="ch-fill" id="fill-${ch.id}"
-                     style="width:0%;background:${ch.color};"></div>
-                ${buildTicks(dur)}
-              </div>`;
-}).join('')}
-          <!-- Drag overlay -->
+        <div class="seg-track" id="track">
+          ${Array.from({ length: TOTAL_DAYS }, (_, i) => `
+            <div class="seg" id="seg-${i}">
+              <div class="seg-fill" id="segfill-${i}" style="width:0%"></div>
+              ${buildTicks(23)}
+            </div>`).join('')}
           <div class="seg-overlay" id="overlay"></div>
-          <!-- Handle -->
-          <div class="seg-handle" id="handle" style="left:0%"
-               role="slider" tabindex="0"
-               aria-label="游戏进度" aria-valuemin="0" aria-valuemax="${TOTAL_MIN}" aria-valuenow="0">
-          </div>
+          <div class="seg-handle" id="handle" style="left:0%" role="slider" tabindex="0"
+               aria-valuemin="0" aria-valuemax="${TOTAL_MIN}" aria-valuenow="0"></div>
         </div>
 
-        <!-- Axis labels -->
-        <div class="relative mt-3 chapter-axis" id="axis">
-          ${CHAPTERS.map(ch => {
-  const pct = (ch.start / TOTAL_MIN * 100).toFixed(4);
-  return `
-              <div class="axis-label ch-axis-label" style="left:${pct}%">
-                <span class="axis-main" style="color:${ch.color}">${ch.label}</span>
-                <span class="axis-sub">${fmtUnlock(ch.start)}</span>
-              </div>`;
+        <!-- Day axis -->
+        <div class="relative mt-3 day-axis">
+          ${Array.from({ length: TOTAL_DAYS }, (_, i) => {
+  const pct = ((i + 1) / TOTAL_DAYS * 100).toFixed(2);
+  const cumH = (i + 1) * 2;
+  return `<div class="axis-label" style="left:${pct}%">
+              <span class="axis-main">第 ${i + 1} 天</span>
+              <span class="axis-sub">${cumH}h · ${(i + 1) * 120} min</span>
+            </div>`;
 }).join('')}
         </div>
       </div>
     </section>
 
-    <!-- Chapter cards -->
-    <section class="w-full animate-fade-up" style="max-width:128rem;animation-delay:0.2s">
-      <p class="text-white/30 text-sm uppercase tracking-widest mb-4 font-semibold">章节解锁进度</p>
-      <div class="grid grid-cols-5 md:grid-cols-10 gap-3" id="chapter-cards"></div>
-    </section>
+    <!-- ── Chapter row (proportional, driven by main bar) ── -->
+    <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.2s">
 
+      <p class="text-white/30 text-sm uppercase tracking-widest mb-6 font-semibold">章节解锁进度</p>
+
+      <!-- Proportional chapter display bar -->
+      <div class="chapter-disp-track">
+        ${CHAPTERS.map(ch => {
+  const w = ((ch.end - ch.start) / CH_DISPLAY_MAX * 100).toFixed(4);
+  return `
+            <div class="ch-disp-seg" style="width:${w}%;border-color:${ch.color}30;"
+                 title="${ch.label}">
+              <div class="ch-disp-fill" id="chfill-${ch.id}"
+                   style="width:0%;background:${ch.color};"></div>
+            </div>`;
+}).join('')}
+      </div>
+
+      <!-- Chapter axis labels -->
+      <div class="relative mt-3 chapter-axis-row">
+        ${CHAPTERS.map(ch => {
+  const pct = (ch.start / CH_DISPLAY_MAX * 100).toFixed(4);
+  return `<div class="axis-label" style="left:${pct}%">
+            <span class="axis-main" style="color:${ch.color}">${ch.label}</span>
+            <span class="axis-sub">${fmtUnlock(ch.start)}${ch.partial ? ' 🔓' : ''}</span>
+          </div>`;
+}).join('')}
+      </div>
+
+      <!-- Chapter cards -->
+      <div class="grid grid-cols-5 md:grid-cols-10 gap-3 mt-8" id="chapter-cards"></div>
+    </section>
   </div>
 `;
 
@@ -131,23 +145,23 @@ const cardsEl = document.getElementById('chapter-cards');
 CHAPTERS.forEach(ch => {
   const div = document.createElement('div');
   div.id = `card-${ch.id}`;
-  div.className = 'milestone-card glass rounded-xl p-4';
-  div.style.borderColor = `${ch.color}22`;
+  div.className = 'ch-card glass rounded-xl p-4';
+  div.style.setProperty('--ch-color', ch.color);
   div.innerHTML = `
     <div class="flex items-center justify-between mb-2">
       <span class="text-sm font-bold" style="color:${ch.color}">${ch.label}</span>
-      <span class="card-badge" id="badge-${ch.id}" style="border-color:${ch.color}44">锁定</span>
+      <span class="ch-badge" id="chbadge-${ch.id}">锁定</span>
     </div>
-    <p class="text-white/30 text-xs font-mono mb-3">${fmtUnlock(ch.start)}${ch.partial ? ' (部分)' : ''}</p>
+    <p class="text-white/30 text-xs mb-3">${fmtUnlock(ch.start)}${ch.partial ? '<br><span class="text-xs opacity-60">部分解锁</span>' : ''}</p>
     <div class="h-1 rounded-full bg-white/5 overflow-hidden">
-      <div class="card-bar h-full rounded-full transition-all duration-300"
-           id="cbar-${ch.id}" style="width:0%;background:${ch.color};"></div>
+      <div id="chbar-${ch.id}" class="h-full rounded-full transition-all duration-300"
+           style="width:0%;background:${ch.color};"></div>
     </div>
   `;
   cardsEl.appendChild(div);
 });
 
-// ── Progress logic ────────────────────────────────────────────────────
+// ── Progress (main bar) ───────────────────────────────────────────────
 const overlay = document.getElementById('overlay');
 const handle = document.getElementById('handle');
 const tooltip = document.getElementById('tooltip');
@@ -162,9 +176,29 @@ function setProgress(fraction) {
   tooltip.style.left = `${fraction * 100}%`;
   handle.setAttribute('aria-valuenow', currentMin);
 
-  timeDisp.textContent = fmtTime(currentMin);
-  tooltipTxt.textContent = fmtTime(currentMin);
+  // Day display
+  if (currentMin === 0) {
+    timeDisp.textContent = '未开始';
+  } else {
+    const day = Math.floor(currentMin / MIN_PER_DAY) + 1;
+    const minInDay = currentMin % MIN_PER_DAY;
+    timeDisp.textContent = minInDay === 0
+      ? `第 ${Math.floor(currentMin / MIN_PER_DAY)} 天`
+      : `第 ${day} 天 · ${fmtMin(minInDay)}`;
+  }
+  tooltipTxt.textContent = fmtMin(currentMin);
 
+  // Update main bar segments
+  for (let i = 0; i < TOTAL_DAYS; i++) {
+    const segStart = i * MIN_PER_DAY;
+    const segEnd = (i + 1) * MIN_PER_DAY;
+    let pct = 0;
+    if (currentMin >= segEnd) pct = 100;
+    else if (currentMin > segStart) pct = (currentMin - segStart) / MIN_PER_DAY * 100;
+    document.getElementById(`segfill-${i}`).style.width = `${pct}%`;
+  }
+
+  // Update chapters
   updateChapters();
 }
 
@@ -174,7 +208,6 @@ function fractionFromEvent(e) {
   return clamp((cx - rect.left) / rect.width, 0, 1);
 }
 
-// Drag
 overlay.addEventListener('mousedown', e => {
   isDragging = true; handle.classList.add('dragging');
   tooltip.style.display = 'block'; setProgress(fractionFromEvent(e)); e.preventDefault();
@@ -200,40 +233,39 @@ handle.addEventListener('keydown', e => {
   if (e.key === 'End') { setProgress(1); e.preventDefault(); }
 });
 
-// ── Update chapters ───────────────────────────────────────────────────
+// ── Update chapter display ────────────────────────────────────────────
 function updateChapters() {
   CHAPTERS.forEach(ch => {
-    const fill = document.getElementById(`fill-${ch.id}`);
-    const badge = document.getElementById(`badge-${ch.id}`);
-    const cbar = document.getElementById(`cbar-${ch.id}`);
-    const card = document.getElementById(`card-${ch.id}`);
     const dur = ch.end - ch.start;
+    const dispFill = document.getElementById(`chfill-${ch.id}`);
+    const badge = document.getElementById(`chbadge-${ch.id}`);
+    const bar = document.getElementById(`chbar-${ch.id}`);
+    const card = document.getElementById(`card-${ch.id}`);
 
     if (currentMin < ch.start) {
       // Locked
-      fill.style.width = '0%';
-      cbar.style.width = '0%';
+      dispFill.style.width = '0%';
+      bar.style.width = '0%';
       badge.textContent = '锁定';
-      badge.style.color = 'rgba(255,255,255,0.28)';
-      card.classList.remove('card-active');
+      badge.style.color = 'rgba(255,255,255,0.3)';
+      card.classList.remove('ch-card-active');
     } else if (currentMin >= ch.end) {
       // Completed
-      fill.style.width = '100%';
-      cbar.style.width = '100%';
-      badge.textContent = ch.partial ? '部分解锁' : '完成';
+      dispFill.style.width = '100%';
+      bar.style.width = '100%';
+      badge.textContent = ch.partial ? '部分解锁' : '完成 ✓';
       badge.style.color = ch.color;
-      card.classList.add('card-active');
+      card.classList.add('ch-card-active');
     } else {
-      // In progress — "instantly unlocked" label
+      // In progress — instant unlock
       const pct = Math.round((currentMin - ch.start) / dur * 100);
-      fill.style.width = `${pct}%`;
-      cbar.style.width = `${pct}%`;
+      dispFill.style.width = `${pct}%`;
+      bar.style.width = `${pct}%`;
       badge.textContent = `已解锁 ${pct}%`;
       badge.style.color = ch.color;
-      card.classList.add('card-active');
+      card.classList.add('ch-card-active');
     }
   });
 }
 
-// ── Init ──────────────────────────────────────────────────────────────
 setProgress(0);
