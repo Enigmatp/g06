@@ -315,6 +315,9 @@ BUILDINGS.forEach(b => {
 
 // ── Update building cards ───────────────────────────────────────────────
 function updateBuildings() {
+  // 市政厅 level = number of chapters currently unlocked (ch.start <= currentMin)
+  const townHallLevel = CHAPTERS.filter(ch => currentMin >= ch.start).length;
+
   BUILDINGS.forEach(b => {
     const badge = document.getElementById(`bbadge-${b.id}`);
     const bar = document.getElementById(`bbar-${b.id}`);
@@ -322,7 +325,6 @@ function updateBuildings() {
     const name = card.querySelector('.bldg-name');
 
     if (currentMin < b.unlockAt) {
-      // Locked: grey out whole card
       card.classList.add('bldg-locked');
       card.classList.remove('bldg-active');
       badge.textContent = '🔒';
@@ -331,16 +333,29 @@ function updateBuildings() {
       return;
     }
 
-    // Unlocked
     card.classList.remove('bldg-locked');
     card.classList.add('bldg-active');
     name.style.color = BLDG_COLOR;
-    const elapsed = currentMin - b.unlockAt;
-    const level = Math.floor(elapsed / BLDG_LEVEL_INTERVAL) + 1;
-    const lvlPct = Math.round((elapsed % BLDG_LEVEL_INTERVAL) / BLDG_LEVEL_INTERVAL * 100);
-    badge.textContent = `Lv.${level}`;
-    badge.style.color = BLDG_COLOR;
-    bar.style.width = `${lvlPct}%`;
+
+    if (b.id === 'town_hall') {
+      // 市政厅: level = chapter level, no max
+      badge.textContent = `Lv.${townHallLevel}`;
+      badge.style.color = BLDG_COLOR;
+      // Bar = fraction of total chapters unlocked
+      bar.style.width = `${Math.round(townHallLevel / CHAPTERS.length * 100)}%`;
+    } else {
+      // Other buildings: cap at townHallLevel × 10
+      const elapsed = currentMin - b.unlockAt;
+      const rawLevel = Math.floor(elapsed / BLDG_LEVEL_INTERVAL) + 1;
+      const maxLevel = townHallLevel * 10;
+      const curLevel = Math.min(rawLevel, maxLevel);
+      badge.textContent = `Lv.${curLevel}/${maxLevel}`;
+      badge.style.color = BLDG_COLOR;
+      // Bar = current / max
+      bar.style.width = maxLevel > 0
+        ? `${Math.round(curLevel / maxLevel * 100)}%`
+        : '0%';
+    }
   });
 }
 
