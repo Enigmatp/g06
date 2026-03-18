@@ -63,12 +63,11 @@ document.getElementById('app').innerHTML = `
 
     <!-- Header -->
     <header class="text-center animate-fade-up">
-      <p class="text-xs uppercase tracking-[0.25em] text-brand-400 font-semibold mb-2">G05 · 游戏解锁</p>
       <h1 class="font-display font-bold text-4xl md:text-5xl text-shimmer">G05 游戏进度</h1>
     </header>
 
     <!-- Progress Card -->
-    <section class="glass rounded-2xl p-8 w-full max-w-3xl animate-fade-up" style="animation-delay:0.1s">
+    <section class="glass rounded-2xl p-8 w-full max-w-5xl animate-fade-up" style="animation-delay:0.1s">
 
       <!-- Current time display -->
       <div class="flex items-end justify-between mb-6">
@@ -92,7 +91,6 @@ document.getElementById('app').innerHTML = `
 
         <!-- Track -->
         <div class="progress-track" id="track">
-          <div class="progress-fill" id="fill" style="width:0%"></div>
           <!-- Milestone diamond markers (injected by JS) -->
           <div id="milestone-markers"></div>
           <!-- Drag handle -->
@@ -107,7 +105,7 @@ document.getElementById('app').innerHTML = `
     </section>
 
     <!-- Milestone grid -->
-    <section class="w-full max-w-3xl animate-fade-up" style="animation-delay:0.2s">
+    <section class="w-full max-w-5xl animate-fade-up" style="animation-delay:0.2s">
 
       <!-- Early milestones -->
       <p class="text-white/30 text-xs uppercase tracking-widest mb-3 font-semibold">早期解锁节点</p>
@@ -169,19 +167,16 @@ buildCards('daily-cards', 'daily');
 
 // ── Progress bar logic ────────────────────────────────────────────────
 const track = document.getElementById('track');
-const fill = document.getElementById('fill');
 const handle = document.getElementById('handle');
 const tooltip = document.getElementById('tooltip');
 const tooltipTxt = document.getElementById('tooltip-text');
 const timeDisp = document.getElementById('time-display');
 
 function setProgress(fraction) {
-  // Forward-only
-  fraction = clamp(fraction, currentMinute / TOTAL_MINUTES, 1);
+  fraction = clamp(fraction, 0, 1);
   currentMinute = Math.round(fraction * TOTAL_MINUTES);
   const pct = (currentMinute / TOTAL_MINUTES) * 100;
 
-  fill.style.width = `${pct}%`;
   handle.style.left = `${pct}%`;
   tooltip.style.left = `${pct}%`;
   handle.setAttribute('aria-valuenow', currentMinute);
@@ -217,6 +212,8 @@ handle.addEventListener('keydown', e => {
   const step = 1 / TOTAL_MINUTES;
   const cur = currentMinute / TOTAL_MINUTES;
   if (e.key === 'ArrowRight') { setProgress(cur + step); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { setProgress(cur - step); e.preventDefault(); }
+  if (e.key === 'Home') { setProgress(0); e.preventDefault(); }
   if (e.key === 'End') { setProgress(1); e.preventDefault(); }
 });
 
