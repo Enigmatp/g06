@@ -313,10 +313,21 @@ BUILDINGS.forEach(b => {
   buildingRowsEl.appendChild(card);
 });
 
+// ── Chapter-interpolated building level ───────────────────────────────
+// Returns the level that any building should be at right now,
+// based on chapter progress: hits exactly N×10 when Ch.(N+1) opens.
+function getBuildingLevel() {
+  const chIdx = CHAPTERS.filter(ch => currentMin >= ch.start).length - 1; // 0-based
+  const ch = CHAPTERS[chIdx];
+  const dur = ch.end - ch.start;
+  const pct = dur > 0 ? Math.min((currentMin - ch.start) / dur, 1) : 1;
+  return Math.floor(chIdx * 10 + pct * 10);
+}
+
 // ── Update building cards ───────────────────────────────────────────────
 function updateBuildings() {
-  // 市政厅 level = number of chapters currently unlocked (ch.start <= currentMin)
   const townHallLevel = CHAPTERS.filter(ch => currentMin >= ch.start).length;
+  const curLevel = getBuildingLevel(); // same for all non-townhall buildings
 
   BUILDINGS.forEach(b => {
     const badge = document.getElementById(`bbadge-${b.id}`);
@@ -338,23 +349,16 @@ function updateBuildings() {
     name.style.color = BLDG_COLOR;
 
     if (b.id === 'town_hall') {
-      // 市政厅: level = chapter level, no max
+      // 市政厅: level = chapter count, no max displayed
       badge.textContent = `Lv.${townHallLevel}`;
       badge.style.color = BLDG_COLOR;
-      // Bar = fraction of total chapters unlocked
       bar.style.width = `${Math.round(townHallLevel / CHAPTERS.length * 100)}%`;
     } else {
-      // Other buildings: cap at townHallLevel × 10
-      const elapsed = currentMin - b.unlockAt;
-      const rawLevel = Math.floor(elapsed / BLDG_LEVEL_INTERVAL) + 1;
       const maxLevel = townHallLevel * 10;
-      const curLevel = Math.min(rawLevel, maxLevel);
-      badge.textContent = `Lv.${curLevel}/${maxLevel}`;
+      const cappedLevel = Math.min(curLevel, maxLevel);
+      badge.textContent = `Lv.${cappedLevel}/${maxLevel}`;
       badge.style.color = BLDG_COLOR;
-      // Bar = current / max
-      bar.style.width = maxLevel > 0
-        ? `${Math.round(curLevel / maxLevel * 100)}%`
-        : '0%';
+      bar.style.width = maxLevel > 0 ? `${Math.round(cappedLevel / maxLevel * 100)}%` : '0%';
     }
   });
 }
