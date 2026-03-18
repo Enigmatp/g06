@@ -22,6 +22,26 @@ const CHAPTERS = [
   { id: 10, label: '章节 10', start: 1980, end: 2400, color: '#e11d48', partial: true }, // +13h → 33h (部分)
 ];
 
+// ── Building definitions ─────────────────────────────────────────────
+// unlockAt = minutes; levelInterval = minutes per level
+const BLDG_LEVEL_INTERVAL = 60; // 1 level per hour
+const BUILDINGS = [
+  // G1: Initial
+  { id: 'town_hall', name: '市政厅', unlockAt: 0, unlockLabel: '初始', color: '#34d399' },
+  { id: 'med_hall', name: '医馆', unlockAt: 0, unlockLabel: '初始', color: '#fb923c' },
+  { id: 'barracks', name: '兵营', unlockAt: 0, unlockLabel: '初始', color: '#f87171' },
+  // G2: 2 min
+  { id: 'weapon_shop', name: '武器店', unlockAt: 2, unlockLabel: '2 分钟', color: '#c084fc' },
+  { id: 'foundry', name: '燔铸所', unlockAt: 2, unlockLabel: '2 分钟', color: '#f472b6' },
+  // G3: Ch2 (5 min)
+  { id: 'armor_shop', name: '护甲店', unlockAt: 5, unlockLabel: '第 2 章', color: '#2dd4bf' },
+  { id: 'tannery', name: '製皮厂', unlockAt: 5, unlockLabel: '第 2 章', color: '#a3e635' },
+  // G4: Ch3 (25 min)
+  { id: 'temple', name: '祝福圣殿', unlockAt: 25, unlockLabel: '第 3 章', color: '#fb7185' },
+  { id: 'crystal', name: '晶石矿场', unlockAt: 25, unlockLabel: '第 3 章', color: '#fde68a' },
+];
+
+
 // ── Helpers ──────────────────────────────────────────────────────────
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
@@ -126,6 +146,13 @@ document.getElementById('app').innerHTML = `
       <!-- Chapter cards -->
       <div class="grid grid-cols-5 md:grid-cols-10 gap-3 mt-8" id="chapter-cards"></div>
     </section>
+
+    <!-- ── Building unlock rows ── -->
+    <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.3s">
+      <p class="text-white/30 text-sm uppercase tracking-widest mb-6 font-semibold">建筑解锁与升级</p>
+      <div id="building-rows" class="flex flex-col gap-3"></div>
+    </section>
+
   </div>
 `;
 
@@ -189,6 +216,7 @@ function setProgress(fraction) {
 
   // Update chapters
   updateChapters();
+  updateBuildings();
 }
 
 function fractionFromEvent(e) {
@@ -258,3 +286,54 @@ function updateChapters() {
 }
 
 setProgress(0);
+
+// ── Build building rows ───────────────────────────────────────────────
+const buildingRowsEl = document.getElementById('building-rows');
+BUILDINGS.forEach(b => {
+  const row = document.createElement('div');
+  row.id = `brow-${b.id}`;
+  row.className = 'bldg-row glass rounded-xl px-5 py-4 flex items-center gap-4';
+  row.style.borderColor = `${b.color}25`;
+  row.innerHTML = `
+    <div class="bldg-name-col">
+      <span class="font-display font-bold text-base" style="color:${b.color}">${b.name}</span>
+      <span class="text-white/25 text-xs ml-2">${b.unlockLabel}</span>
+    </div>
+    <span class="bldg-badge" id="bbadge-${b.id}" style="border-color:${b.color}40">未解锁</span>
+    <div class="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+      <div id="bbar-${b.id}" class="bldg-bar h-full rounded-full transition-all duration-300"
+           style="width:0%;background:${b.color};"></div>
+    </div>
+    <span class="bldg-lv-pct text-white/30 text-xs font-mono w-12 text-right" id="bpct-${b.id}">—</span>
+  `;
+  buildingRowsEl.appendChild(row);
+});
+
+// ── Update building rows ──────────────────────────────────────────────
+function updateBuildings() {
+  BUILDINGS.forEach(b => {
+    const badge = document.getElementById(`bbadge-${b.id}`);
+    const bar = document.getElementById(`bbar-${b.id}`);
+    const pctEl = document.getElementById(`bpct-${b.id}`);
+    const row = document.getElementById(`brow-${b.id}`);
+
+    if (currentMin < b.unlockAt) {
+      badge.textContent = '未解锁';
+      badge.style.color = 'rgba(255,255,255,0.25)';
+      bar.style.width = '0%';
+      pctEl.textContent = '—';
+      row.classList.remove('bldg-active');
+      return;
+    }
+
+    row.classList.add('bldg-active');
+    const elapsed = currentMin - b.unlockAt;
+    const level = Math.floor(elapsed / BLDG_LEVEL_INTERVAL) + 1;
+    const lvlPct = Math.round((elapsed % BLDG_LEVEL_INTERVAL) / BLDG_LEVEL_INTERVAL * 100);
+
+    badge.textContent = `Lv.${level}`;
+    badge.style.color = b.color;
+    bar.style.width = `${lvlPct}%`;
+    pctEl.textContent = `${lvlPct}%`;
+  });
+}
