@@ -1,9 +1,9 @@
 import './style.css';
 
-// ── Main bar config (3 days × 2h) ───────────────────────────────────
-const TOTAL_DAYS = 3;
-const MIN_PER_DAY = 60;           // 1 hour per day
-const TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY; // 180 min
+// ── Main bar config (editable) ──────────────────────────────
+let TOTAL_DAYS = 3;
+let MIN_PER_DAY = 60;           // minutes per day
+let TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY;
 
 // ── Chapter definitions (second row, not the main bar) ───────────────
 // Total display max = 2400 min (40h) — shows all 10 chapters with Ch10 partial
@@ -94,14 +94,20 @@ document.getElementById('app').innerHTML = `
     <!-- ── Main 7-day bar ── -->
     <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.1s">
 
-      <div class="flex items-end justify-between mb-8">
+      <div class="flex items-end justify-between mb-8 gap-6">
         <div>
-          <p class="text-white/40 text-sm uppercase tracking-widest mb-1">当前进度</p>
+          <p class="text-white/40 text-sm uppercase tracking-widest mb-1">总进度</p>
           <div id="time-display" class="font-display font-bold text-5xl text-white">未开始</div>
         </div>
-        <div class="text-right">
-          <p class="text-white/40 text-sm uppercase tracking-widest mb-1">总时长</p>
-          <span class="font-display font-bold text-2xl text-white/50">3 天 · 3 小时</span>
+        <div class="flex gap-6 items-end">
+          <div class="text-center">
+            <p class="text-white/40 text-xs uppercase tracking-widest mb-1">总时长（天）</p>
+            <input type="number" id="input-days" value="3" min="1" max="60" class="config-input">
+          </div>
+          <div class="text-center">
+            <p class="text-white/40 text-xs uppercase tracking-widest mb-1">每日时长（分）</p>
+            <input type="number" id="input-mpd" value="60" min="1" max="480" class="config-input">
+          </div>
         </div>
       </div>
 
@@ -112,27 +118,14 @@ document.getElementById('app').innerHTML = `
         </div>
 
         <div class="seg-track" id="track">
-          ${Array.from({ length: TOTAL_DAYS }, (_, i) => `
-            <div class="seg" id="seg-${i}">
-              <div class="seg-fill" id="segfill-${i}" style="width:0%"></div>
-              ${buildTicks(23)}
-            </div>`).join('')}
+          <div id="seg-container" style="display:contents"></div>
           <div class="seg-overlay" id="overlay"></div>
           <div class="seg-handle" id="handle" style="left:0%" role="slider" tabindex="0"
                aria-valuemin="0" aria-valuemax="${TOTAL_MIN}" aria-valuenow="0"></div>
         </div>
 
         <!-- Day axis -->
-        <div class="relative mt-3 day-axis">
-          ${Array.from({ length: TOTAL_DAYS }, (_, i) => {
-  const pct = ((i + 1) / TOTAL_DAYS * 100).toFixed(2);
-  const cumH = (i + 1) * MIN_PER_DAY / 60;
-  return `<div class="axis-label" style="left:${pct}%">
-              <span class="axis-main">第 ${i + 1} 天</span>
-              <span class="axis-sub">${cumH}h · ${(i + 1) * MIN_PER_DAY} min</span>
-            </div>`;
-}).join('')}
-        </div>
+        <div class="relative mt-3 day-axis" id="axis-container"></div>
       </div>
     </section>
 
@@ -431,4 +424,50 @@ function updateFeatures() {
 }
 
 // ── Init (called after all DOM elements are built) ────────────────────
-setProgress(0);
+
+// Rebuild segments + axis when TOTAL_DAYS or MIN_PER_DAY changes
+function rebuildBar() {
+  TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY;
+  handle.setAttribute('aria-valuemax', TOTAL_MIN);
+
+  // Regenerate segments
+  const segContainer = document.getElementById('seg-container');
+  segContainer.innerHTML = Array.from({ length: TOTAL_DAYS }, (_, i) => `
+    <div class="seg" id="seg-${i}">
+      <div class="seg-fill" id="segfill-${i}" style="width:0%"></div>
+      ${buildTicks(23)}
+    </div>`).join('');
+
+  // Regenerate axis labels
+  const axisContainer = document.getElementById('axis-container');
+  axisContainer.innerHTML = Array.from({ length: TOTAL_DAYS }, (_, i) => {
+    const pct = ((i + 1) / TOTAL_DAYS * 100).toFixed(2);
+    const cumH = (i + 1) * MIN_PER_DAY / 60;
+    return `<div class="axis-label" style="left:${pct}%">
+      <span class="axis-main">\u7b2c ${i + 1} \u5929</span>
+      <span class="axis-sub">${cumH}h \u00b7 ${(i + 1) * MIN_PER_DAY} min</span>
+    </div>`;
+  }).join('');
+
+  // Clamp and refresh current position
+  const frac = TOTAL_MIN > 0 ? clamp(currentMin / TOTAL_MIN, 0, 1) : 0;
+  setProgress(frac);
+}
+
+// Wire config inputs
+function setupInputs() {
+  const inDays = document.getElementById('input-days');
+  const inMpd = document.getElementById('input-mpd');
+
+  inDays.addEventListener('input', () => {
+    const v = parseInt(inDays.value);
+    if (!isNaN(v) && v >= 1) { TOTAL_DAYS = v; rebuildBar(); }
+  });
+  inMpd.addEventListener('input', () => {
+    const v = parseInt(inMpd.value);
+    if (!isNaN(v) && v >= 1) { MIN_PER_DAY = v; rebuildBar(); }
+  });
+}
+
+rebuildBar();
+setupInputs();
