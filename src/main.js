@@ -6,20 +6,21 @@ let MIN_PER_DAY = 60;           // minutes per day
 let TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY;
 
 // ── Chapter definitions (second row, not the main bar) ───────────────
-// Total display max = 2400 min (40h) — shows all 10 chapters with Ch10 partial
-const CH_DISPLAY_MAX = 2400;
+// Fibonacci intervals starting 5,5 → 5,10,15,25,40,65,105,170,275,445
+// Cumulative starts: 0,5,15,30,55,95,160,265,435,710  (Ch10 ends at 1155)
+const CH_DISPLAY_MAX = 1200; // display window (rounds Ch10 end to 1200)
 
 const CHAPTERS = [
-  { id: 1, label: '章节 1', start: 0, end: 5, color: '#10b981' }, // immediate
-  { id: 2, label: '章节 2', start: 5, end: 25, color: '#f59e0b' }, // +5 min
-  { id: 3, label: '章节 3', start: 25, end: 60, color: '#ef4444' }, // +20 min
-  { id: 4, label: '章节 4', start: 60, end: 120, color: '#a855f7' }, // +35 min
-  { id: 5, label: '章节 5', start: 120, end: 240, color: '#ec4899' }, // +1h
-  { id: 6, label: '章节 6', start: 240, end: 420, color: '#14b8a6' }, // +2h  → 4h
-  { id: 7, label: '章节 7', start: 420, end: 720, color: '#f97316' }, // +3h  → 7h
-  { id: 8, label: '章节 8', start: 720, end: 1200, color: '#06b6d4' }, // +5h  → 12h
-  { id: 9, label: '章节 9', start: 1200, end: 1980, color: '#84cc16' }, // +8h  → 20h
-  { id: 10, label: '章节 10', start: 1980, end: 2400, color: '#e11d48', partial: true }, // +13h → 33h (部分)
+  { id: 1, label: '章节 1', start: 0, end: 5, color: '#10b981' }, // +5
+  { id: 2, label: '章节 2', start: 5, end: 15, color: '#f59e0b' }, // +10
+  { id: 3, label: '章节 3', start: 15, end: 30, color: '#ef4444' }, // +15
+  { id: 4, label: '章节 4', start: 30, end: 55, color: '#a855f7' }, // +25
+  { id: 5, label: '章节 5', start: 55, end: 95, color: '#ec4899' }, // +40
+  { id: 6, label: '章节 6', start: 95, end: 160, color: '#14b8a6' }, // +65
+  { id: 7, label: '章节 7', start: 160, end: 265, color: '#f97316' }, // +105
+  { id: 8, label: '章节 8', start: 265, end: 435, color: '#06b6d4' }, // +170
+  { id: 9, label: '章节 9', start: 435, end: 710, color: '#84cc16' }, // +275
+  { id: 10, label: '章节 10', start: 710, end: 1155, color: '#e11d48', partial: true }, // +445
 ];
 
 // ── Building definitions ─────────────────────────────────────────────
