@@ -35,10 +35,10 @@ const BUILDINGS = [
   { id: 'barracks', name: '兵营', unlockAt: 0, unlockLabel: '初始', noLevel: true },
   { id: 'weapon_shop', name: '武器店', unlockAt: 50 / 60, unlockLabel: '关卡1-1（第1章）', noLevel: true },
   { id: 'foundry', name: '熔铸所', unlockAt: 150 / 60, unlockLabel: '关卡1-3（第1章）' },
-  { id: 'armor_shop', name: '护甲店', unlockAt: 5, unlockLabel: '关卡2-1（第2章）', noLevel: true },
-  { id: 'tannery', name: '製皮厂', unlockAt: 5, unlockLabel: '关卡2-1（第2章）' },
-  { id: 'temple', name: '祝福圣殿', unlockAt: 15, unlockLabel: '关卡3-1（第3章）', noLevel: true },
-  { id: 'crystal', name: '晶石矿场', unlockAt: 15, unlockLabel: '关卡3-1（第3章）' },
+  { id: 'armor_shop', name: '护甲店', unlockAt: 500 / 60, unlockLabel: '关卡2-4（第2章）', noLevel: true },
+  { id: 'tannery', name: '製皮厂', unlockAt: 700 / 60, unlockLabel: '关卡2-8（第2章）' },
+  { id: 'temple', name: '祝福圣殿', unlockAt: 20, unlockLabel: '关卡3-6（第3章）', noLevel: true },
+  { id: 'crystal', name: '晶石矿场', unlockAt: 25, unlockLabel: '关卡3-12（第3章）' },
 ];
 
 // ── Feature definitions ─────────────────────────────────────────────
@@ -92,11 +92,11 @@ document.getElementById('app').innerHTML = `
   <div class="blob" style="width:520px;height:520px;top:-120px;left:-80px;background:rgba(61,90,254,0.15);"></div>
   <div class="blob" style="width:420px;height:420px;bottom:-100px;right:-60px;background:rgba(168,85,247,0.12);"></div>
 
-  <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-8 py-4 gap-4">
+  <div class="relative z-10 min-h-screen flex flex-col items-center justify-start px-8 py-4 gap-4">
 
     <!-- Header -->
     <header class="text-center animate-fade-up">
-      <h1 class="font-display font-bold text-5xl md:text-6xl text-shimmer">G05 v0.2.0 游戏进度</h1>
+      <h1 class="font-display font-bold text-3xl md:text-4xl text-shimmer">G05 游戏数值 v0.2.0</h1>
     </header>
 
     <!-- Tab nav -->
@@ -190,8 +190,7 @@ document.getElementById('app').innerHTML = `
     <!-- ── BUILDINGS TAB ── -->
     <div id="tab-buildings" style="display:none;flex-direction:column;gap:1.5rem;width:100%;align-items:center">
       <section class="glass rounded-2xl p-5 w-full" style="max-width:128rem">
-        <p class="text-white/30 text-sm uppercase tracking-widest mb-1 font-semibold">建筑升级详情</p>
-        <p class="text-white/20 text-xs mb-6">市政厅等级 = 已解锁章节数&emsp;·&emsp;其他建筑每章节 +10 级&emsp;·&emsp;无等级建筑仅显示解锁状态</p>
+        <p class="text-white/30 text-sm uppercase tracking-widest mb-4 font-semibold">建筑升级详情</p>
         <div id="bldg-detail-list" class="flex flex-col gap-4"></div>
       </section>
     </div><!-- /tab-buildings -->
@@ -270,7 +269,6 @@ function setProgress(fraction) {
   updateChapters();
   updateBuildings();
   updateFeatures();
-  updateBldgDetail();
 }
 
 function fractionFromEvent(e) {
@@ -534,85 +532,179 @@ window.switchTab = function (id) {
   document.getElementById(`tab-btn-${id}`).classList.add('tab-active');
 };
 
-// ── Build building detail cards ───────────────────────────────────────
+// ── Town Hall manual progress bar ────────────────────────────────────
 const bldgDetailEl = document.getElementById('bldg-detail-list');
-BUILDINGS.forEach(b => {
-  const color = b.id === 'town_hall' ? TOWN_HALL_COLOR : b.noLevel ? NO_LVL_COLOR : BLDG_COLOR;
-  const typeLabel = b.id === 'town_hall' ? '市政厅' : b.noLevel ? '无等级' : '升级建筑';
+let thCurrent = 1;
+let thMax = 10;
 
+{
+  const color = TOWN_HALL_COLOR;
   const row = document.createElement('div');
-  row.id = `bdetail-${b.id}`;
   row.className = 'bldg-detail-row glass rounded-xl p-5';
   row.style.borderLeft = `4px solid ${color}`;
   row.innerHTML = `
-    <div class="flex items-start justify-between gap-4 flex-wrap">
-      <div>
-        <p class="font-bold text-base" style="color:${color}">${b.name}
-          <span class="text-xs font-normal text-white/30 ml-2">${typeLabel}</span>
-        </p>
-        <p class="text-white/30 text-xs mt-1">解锁：${b.unlockLabel}</p>
+    <div class="flex items-center justify-between gap-4 flex-wrap mb-4">
+      <p class="font-bold text-base" style="color:${color}">市政厅</p>
+      <div class="flex gap-4 items-end">
+        <div class="text-center">
+          <p class="text-white/40 text-xs mb-1">当前（等级）</p>
+          <input type="number" id="th-current" value="1" min="0" class="config-input" style="width:6rem">
+        </div>
+        <div class="text-center">
+          <p class="text-white/40 text-xs mb-1">最大（等级）</p>
+          <input type="number" id="th-max" value="10" min="1" class="config-input" style="width:6rem">
+        </div>
       </div>
-      <span class="bldg-badge text-base" id="bdetail-badge-${b.id}">🔒</span>
     </div>
-    <div class="mt-3" id="bdetail-body-${b.id}"></div>
-    <div class="h-1.5 rounded-full bg-white/5 overflow-hidden mt-3">
-      <div id="bdetail-bar-${b.id}" class="h-full rounded-full transition-all duration-300" style="width:0%;background:${color}"></div>
+    <div style="position:relative;height:14px;border-radius:8px;background:rgba(255,255,255,0.08);margin-bottom:10px" id="th-track">
+      <div id="th-fill" style="position:absolute;left:0;top:0;height:100%;border-radius:8px;background:${color};width:10%;pointer-events:none"></div>
+      <div id="th-overlay" style="position:absolute;inset:0;cursor:pointer;border-radius:8px"></div>
+      <div id="th-handle" style="position:absolute;top:50%;transform:translate(-50%,-50%);left:10%;width:20px;height:20px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,0.8);pointer-events:none"></div>
     </div>
+    <div id="th-ticks" style="position:relative;height:20px;margin-top:2px;margin-bottom:4px"></div>
+    <p class="text-sm" style="color:${color}" id="th-display"><b>Lv.1</b> / 10</p>
+    <div id="th-unlock-info" class="mt-4" style="min-height:44px"></div>
   `;
   bldgDetailEl.appendChild(row);
-});
+}
 
-// ── Update building detail tab ────────────────────────────────────────
-function updateBldgDetail() {
-  if (!document.getElementById('bdetail-badge-town_hall')) return;
-  const townHallLevel = CHAPTERS.filter(ch => currentMin >= ch.start).length;
-  const curLevel = getBuildingLevel();
+function setThProgress() {
+  thCurrent = Math.max(0, Math.min(thCurrent, thMax));
+  const pct = thMax > 0 ? (thCurrent / thMax * 100) : 0;
+  document.getElementById('th-handle').style.left = `${pct}%`;
+  document.getElementById('th-fill').style.width = `${pct}%`;
+  document.getElementById('th-display').innerHTML = `<b>Lv.${thCurrent}</b> / ${thMax}`;
+  const inCur = document.getElementById('th-current');
+  if (document.activeElement !== inCur) inCur.value = thCurrent;
 
-  BUILDINGS.forEach(b => {
-    const badge = document.getElementById(`bdetail-badge-${b.id}`);
-    const body = document.getElementById(`bdetail-body-${b.id}`);
-    const bar = document.getElementById(`bdetail-bar-${b.id}`);
-    const color = b.id === 'town_hall' ? TOWN_HALL_COLOR : b.noLevel ? NO_LVL_COLOR : BLDG_COLOR;
-
-    if (currentMin < b.unlockAt) {
-      badge.textContent = '🔒';
-      badge.style.color = '';
-      bar.style.width = '0%';
-      body.innerHTML = `<p class="text-white/25 text-sm">尚未解锁 — ${b.unlockLabel}</p>`;
-      return;
+  // Regenerate tick marks
+  const ticksEl = document.getElementById('th-ticks');
+  ticksEl.innerHTML = '';
+  for (let i = 0; i <= thMax; i++) {
+    const pos = (i / thMax * 100);
+    const isMajor = (i === 0 || i === thMax || i % 5 === 0);
+    const tick = document.createElement('div');
+    tick.style.cssText = `position:absolute;left:${pos}%;transform:translateX(-50%);width:${isMajor ? 2 : 1}px;height:${isMajor ? 8 : 5}px;background:rgba(255,255,255,${isMajor ? 0.4 : 0.18});top:0`;
+    ticksEl.appendChild(tick);
+    if (isMajor) {
+      const lbl = document.createElement('span');
+      lbl.style.cssText = `position:absolute;left:${pos}%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,0.3);top:9px;white-space:nowrap;line-height:1`;
+      lbl.textContent = i;
+      ticksEl.appendChild(lbl);
     }
+  }
 
-    badge.style.color = color;
+  updateThInfo();
+}
 
-    if (b.noLevel) {
-      badge.textContent = '✔';
-      bar.style.width = '100%';
-      body.innerHTML = `<p class="text-sm" style="color:${color}">已解锁，无等级系统</p>`;
-    } else if (b.id === 'town_hall') {
-      badge.textContent = `Lv.${townHallLevel}`;
-      bar.style.width = `${Math.round(townHallLevel / CHAPTERS.length * 100)}%`;
-      const nextCh = CHAPTERS[townHallLevel];
-      body.innerHTML = `
-        <p class="text-sm mb-1" style="color:${color}"><b>当前等级：Lv.${townHallLevel}</b> / ${CHAPTERS.length}</p>
-        <p class="text-white/40 text-xs">等级 = 已解锁章节数</p>
-        ${nextCh
-          ? `<p class="text-white/30 text-xs mt-1">下次升级：解锁 ${nextCh.label}（${fmtUnlock(nextCh.start)}）</p>`
-          : '<p class="text-white/30 text-xs mt-1">已达最高等级</p>'}
-      `;
-    } else {
-      const maxLevel = townHallLevel * 10;
-      const cappedLevel = Math.min(Math.max(1, curLevel), maxLevel);
-      badge.textContent = `Lv.${cappedLevel}/${maxLevel}`;
-      bar.style.width = maxLevel > 0 ? `${Math.round(cappedLevel / maxLevel * 100)}%` : '0%';
-      const nextCh = CHAPTERS[townHallLevel];
-      const isCapped = cappedLevel >= maxLevel;
-      body.innerHTML = `
-        <p class="text-sm mb-1" style="color:${color}"><b>当前等级：Lv.${cappedLevel}</b> / ${maxLevel}</p>
-        <p class="text-white/40 text-xs">上限 = 市政厅 Lv.${townHallLevel} × 10&emsp;·&emsp;每章节 +10 级</p>
-        ${isCapped && nextCh
-          ? `<p class="text-white/30 text-xs mt-1">已达当前上限，等待解锁 ${nextCh.label}（${fmtUnlock(nextCh.start)}）</p>`
-          : ''}
-      `;
+// ── Town Hall per-level requirements (dynamic) ───────────────────────
+// Map unlockAt (minutes) → TH level that unlocks it
+function thLevelFor(unlockAtMin) {
+  if (unlockAtMin <= 0) return 0;
+  let level = 1;
+  for (let i = 0; i < CHAPTERS.length; i++) {
+    if (unlockAtMin >= CHAPTERS[i].start) level = i + 1;
+    else break;
+  }
+  return level;
+}
+
+function updateThInfo() {
+  const el = document.getElementById('th-unlock-info');
+  if (!el) return;
+  const lvl = thCurrent;
+
+  const chipHtml = (label, color) =>
+    `<div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;color:${color};white-space:nowrap">${label}</div>`;
+
+  // ── 需求 chips ──
+  const reqChips = [];
+
+  // Game level requirement first: TH Lv.N needs chapter N-1 completed
+  if (lvl >= 2 && CHAPTERS[lvl - 2]) {
+    const ch = CHAPTERS[lvl - 2];
+    const durMin = ch.end - ch.start;
+    const totalLevels = Math.round(durMin * 60 / 50);
+    reqChips.push(chipHtml(`关卡${ch.id}-${totalLevels}`, 'rgba(255,255,255,0.75)'));
+  }
+
+  // Building level requirements as "X等级上限+10"
+  if (lvl >= 2) {
+    reqChips.push(chipHtml('医馆等级上限+10', BLDG_COLOR));
+    reqChips.push(chipHtml('熔铸所等级上限+10', BLDG_COLOR));
+  }
+  if (lvl >= 3) reqChips.push(chipHtml('製皮厂等级上限+10', BLDG_COLOR));
+  if (lvl >= 4) reqChips.push(chipHtml('晶石矿场等级上限+10', BLDG_COLOR));
+
+  // ── 解锁 chips ──
+  const unlockChips = [];
+  // Buildings that unlock at this TH level (skip town_hall & initial ones at lvl 1)
+  BUILDINGS.forEach(b => {
+    if (b.id === 'town_hall') return;
+    if (thLevelFor(b.unlockAt) === lvl && lvl >= 1) {
+      const c = b.noLevel ? NO_LVL_COLOR : BLDG_COLOR;
+      unlockChips.push(chipHtml(b.name, c));
     }
   });
+  // Features that unlock at this TH level
+  FEATURES.forEach(f => {
+    if (thLevelFor(f.unlockAt) === lvl) {
+      const c = f.optional ? '#4ade80' : FEAT_COLOR;
+      unlockChips.push(chipHtml(f.name + (f.optional ? ' (可选)' : ''), c));
+    }
+  });
+  // Leveled building cap increase
+  const capBuildings = ['医馆', '熔铸所'];
+  if (lvl >= 3) capBuildings.push('製皮厂');
+  if (lvl >= 4) capBuildings.push('晶石矿场');
+  if (lvl >= 2) {
+    unlockChips.push(chipHtml(`升级建筑等级上限 → Lv.${lvl * 10}`, BLDG_COLOR));
+  }
+
+  let html = '';
+  if (reqChips.length > 0) {
+    html += `<p class="text-white/30 text-xs font-semibold uppercase tracking-widest mb-2">需求</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">${reqChips.join('')}</div>`;
+  }
+  if (unlockChips.length > 0) {
+    html += `<p class="text-white/30 text-xs font-semibold uppercase tracking-widest mb-2">解锁</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${unlockChips.join('')}</div>`;
+  }
+  el.innerHTML = html;
 }
+
+
+function setupThBar() {
+  const track = document.getElementById('th-track');
+  const overlay = document.getElementById('th-overlay');
+  let dragging = false;
+
+  const getFrac = (e) => {
+    const rect = track.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    return Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
+  };
+  const applyFrac = (frac) => { thCurrent = Math.round(frac * thMax); setThProgress(); };
+
+  overlay.addEventListener('mousedown', e => { dragging = true; applyFrac(getFrac(e)); e.preventDefault(); });
+  overlay.addEventListener('touchstart', e => { dragging = true; applyFrac(getFrac(e)); e.preventDefault(); }, { passive: false });
+  document.addEventListener('mousemove', e => { if (dragging) applyFrac(getFrac(e)); });
+  document.addEventListener('touchmove', e => { if (dragging) { applyFrac(getFrac(e)); e.preventDefault(); } }, { passive: false });
+  document.addEventListener('mouseup', () => { dragging = false; });
+  document.addEventListener('touchend', () => { dragging = false; });
+
+  document.getElementById('th-current').addEventListener('input', e => {
+    const v = parseInt(e.target.value);
+    if (!isNaN(v) && v >= 0) { thCurrent = v; setThProgress(); }
+  });
+  document.getElementById('th-max').addEventListener('input', e => {
+    const v = parseInt(e.target.value);
+    if (!isNaN(v) && v >= 1) { thMax = v; setThProgress(); }
+  });
+
+  setThProgress();
+}
+
+setupThBar();
+
+
