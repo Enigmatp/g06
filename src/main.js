@@ -628,13 +628,13 @@ function updateThInfo() {
     reqChips.push(chipHtml(`关卡${ch.id}-${totalLevels}`, 'rgba(255,255,255,0.75)'));
   }
 
-  // Building level requirements as "X等级上限+10"
+  // Building level requirements
   if (lvl >= 2) {
-    reqChips.push(chipHtml('医馆等级上限+10', BLDG_COLOR));
-    reqChips.push(chipHtml('熔铸所等级上限+10', BLDG_COLOR));
+    reqChips.push(chipHtml(`医馆 Lv.${(lvl - 1) * 10}`, BLDG_COLOR));
+    reqChips.push(chipHtml(`熔铸所 Lv.${lvl * 10}`, BLDG_COLOR));
   }
-  if (lvl >= 3) reqChips.push(chipHtml('製皮厂等级上限+10', BLDG_COLOR));
-  if (lvl >= 4) reqChips.push(chipHtml('晶石矿场等级上限+10', BLDG_COLOR));
+  if (lvl >= 3) reqChips.push(chipHtml(`製皮厂 Lv.${lvl * 10}`, BLDG_COLOR));
+  if (lvl >= 4) reqChips.push(chipHtml(`晶石矿场 Lv.${lvl * 10}`, BLDG_COLOR));
 
   // ── 解锁 chips ──
   const unlockChips = [];
