@@ -6,20 +6,20 @@ let MIN_PER_DAY = 60;           // minutes per day
 let TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY;
 
 // ── Chapter definitions ───────────────────────────────────────────────
-// Fibonacci intervals starting 5,5 → 5,10,15,25,40,65,105,170,275,445
-const CH_DISPLAY_MAX = 1200;
+// Durations = 10 × Fibonacci: 10, 20, 30, 50, 80, 130, 210, 340, 550, 890
+const CH_DISPLAY_MAX = 2400;
 
 const CHAPTERS = [
-  { id: 1, label: '章节 1', start: 0, end: 5, color: '#10b981' },
-  { id: 2, label: '章节 2', start: 5, end: 15, color: '#f59e0b' },
-  { id: 3, label: '章节 3', start: 15, end: 30, color: '#ef4444' },
-  { id: 4, label: '章节 4', start: 30, end: 55, color: '#a855f7' },
-  { id: 5, label: '章节 5', start: 55, end: 95, color: '#ec4899' },
-  { id: 6, label: '章节 6', start: 95, end: 160, color: '#14b8a6' },
-  { id: 7, label: '章节 7', start: 160, end: 265, color: '#f97316' },
-  { id: 8, label: '章节 8', start: 265, end: 435, color: '#06b6d4' },
-  { id: 9, label: '章节 9', start: 435, end: 710, color: '#84cc16' },
-  { id: 10, label: '章节 10', start: 710, end: 1155, color: '#e11d48', partial: true },
+  { id: 1, label: '章节 1', start: 0, end: 10, color: '#10b981' },
+  { id: 2, label: '章节 2', start: 10, end: 30, color: '#f59e0b' },
+  { id: 3, label: '章节 3', start: 30, end: 60, color: '#ef4444' },
+  { id: 4, label: '章节 4', start: 60, end: 110, color: '#a855f7' },
+  { id: 5, label: '章节 5', start: 110, end: 190, color: '#ec4899' },
+  { id: 6, label: '章节 6', start: 190, end: 320, color: '#14b8a6' },
+  { id: 7, label: '章节 7', start: 320, end: 530, color: '#f97316' },
+  { id: 8, label: '章节 8', start: 530, end: 870, color: '#06b6d4' },
+  { id: 9, label: '章节 9', start: 870, end: 1420, color: '#84cc16' },
+  { id: 10, label: '章节 10', start: 1420, end: 2310, color: '#e11d48' },
 ];
 
 // ── Building definitions ─────────────────────────────────────────────
@@ -102,6 +102,7 @@ document.getElementById('app').innerHTML = `
     <!-- Tab nav -->
     <nav class="tab-nav animate-fade-up" style="animation-delay:0.05s">
       <button class="tab-btn tab-active" onclick="switchTab('overview')" id="tab-btn-overview">总览</button>
+      <button class="tab-btn" onclick="switchTab('resources')" id="tab-btn-resources">循环</button>
       <button class="tab-btn" onclick="switchTab('buildings')" id="tab-btn-buildings">建筑</button>
     </nav>
 
@@ -194,6 +195,151 @@ document.getElementById('app').innerHTML = `
         <div id="bldg-detail-list" class="flex flex-col gap-4"></div>
       </section>
     </div><!-- /tab-buildings -->
+
+    <!-- ── RESOURCES TAB ── -->
+    <div id="tab-resources" style="display:none;flex-direction:column;gap:1.5rem;width:100%;align-items:center">
+      <section class="glass rounded-2xl p-5 w-full" style="max-width:128rem">
+        <p class="text-white/30 text-sm uppercase tracking-widest mb-5 font-semibold">主循环</p>
+
+        <div style="position:relative;width:1090px;height:540px;margin:0 auto">
+          <!-- Top row: 医馆 关卡 熔铸所 製皮厂 晶石矿场 -->
+          <div class="rc-box" style="position:absolute;left:30px;top:60px;border-style:dashed;color:#84cc16;border-color:rgba(132,204,22,0.3);background:rgba(132,204,22,0.06)">医馆</div>
+          <div class="rc-box rc-green" style="position:absolute;left:370px;top:60px">关卡</div>
+          <div class="rc-box rc-blue" style="position:absolute;left:550px;top:60px">熔铸所</div>
+          <div class="rc-box rc-purple" style="position:absolute;left:730px;top:60px">製皮厂</div>
+          <div class="rc-box rc-pink" style="position:absolute;left:910px;top:60px">晶石矿场</div>
+          <!-- Bottom row: 召唤 队伍 武器店 护甲店 祝福圣殿 -->
+          <div class="rc-box" style="position:absolute;left:30px;top:320px;border-color:rgba(139,92,246,0.5);color:#8b5cf6">召唤</div>
+          <div class="rc-box rc-amber" style="position:absolute;left:370px;top:320px">队伍</div>
+          <div class="rc-box rc-blue" style="position:absolute;left:550px;top:320px">武器店</div>
+          <div class="rc-box rc-purple" style="position:absolute;left:730px;top:320px">护甲店</div>
+          <div class="rc-box rc-pink" style="position:absolute;left:910px;top:320px">祝福圣殿</div>
+          <svg style="position:absolute;left:0;top:0;width:1090px;height:540px;pointer-events:none" viewBox="0 0 1090 540">
+            <!-- GOLD: unified bar y=35 from 医馆(110) to 晶石矿场(990) -->
+            <path d="M110,35 H990" fill="none" stroke="rgba(251,191,36,0.3)" stroke-width="2.5"/>
+            <path d="M110,35 V60" fill="none" stroke="rgba(251,191,36,0.3)" stroke-width="2.5"/>
+            <path d="M450,60 V35" fill="none" stroke="rgba(251,191,36,0.3)" stroke-width="2.5"/>
+            <path d="M630,35 V60" fill="none" stroke="rgba(251,191,36,0.3)" stroke-width="2.5"/>
+            <path d="M810,35 V60" fill="none" stroke="rgba(251,191,36,0.3)" stroke-width="2.5"/>
+            <path d="M990,35 V60" fill="none" stroke="rgba(251,191,36,0.3)" stroke-width="2.5"/>
+            <text x="540" y="28" fill="#fbbf24" font-size="14" font-weight="700" opacity="0.7">金币</text>
+            <!-- Gold dots to RIGHT buildings -->
+            <circle r="4" fill="#fbbf24"><animateMotion dur="1.6s" repeatCount="indefinite" path="M450,60 V35 H630 V60"/></circle>
+            <circle r="4" fill="#fbbf24"><animateMotion dur="1.6s" repeatCount="indefinite" path="M450,60 V35 H630 V60" begin="0.5s"/></circle>
+            <circle r="4" fill="#fbbf24"><animateMotion dur="2s" repeatCount="indefinite" path="M450,60 V35 H810 V60"/></circle>
+            <circle r="4" fill="#fbbf24"><animateMotion dur="2s" repeatCount="indefinite" path="M450,60 V35 H810 V60" begin="0.6s"/></circle>
+            <circle r="4" fill="#fbbf24"><animateMotion dur="2.4s" repeatCount="indefinite" path="M450,60 V35 H990 V60"/></circle>
+            <circle r="4" fill="#fbbf24"><animateMotion dur="2.4s" repeatCount="indefinite" path="M450,60 V35 H990 V60" begin="0.7s"/></circle>
+            <!-- Gold dots to 医馆 (same bar-and-drop style, going left) -->
+            <circle r="4" fill="#fbbf24"><animateMotion dur="1.6s" repeatCount="indefinite" path="M450,60 V35 H110 V60"/></circle>
+            <circle r="4" fill="#fbbf24"><animateMotion dur="1.6s" repeatCount="indefinite" path="M450,60 V35 H110 V60" begin="0.5s"/></circle>
+            <!-- 加速: 医馆RIGHT(190,140) → 关卡LEFT(370,140) -->
+            <path d="M190,140 H370" fill="none" stroke="rgba(132,204,22,0.3)" stroke-width="2.5"/>
+            <text x="240" y="132" fill="#84cc16" font-size="14" font-weight="700" opacity="0.7">加速</text>
+            <circle r="3" fill="#84cc16"><animateMotion dur="1.4s" repeatCount="indefinite" path="M190,140 H370"/></circle>
+            <circle r="3" fill="#84cc16"><animateMotion dur="1.4s" repeatCount="indefinite" path="M190,140 H370" begin="0.7s"/></circle>
+            <!-- MATERIALS: vertical (same format) -->
+            <path d="M630,220 V320" fill="none" stroke="rgba(96,165,250,0.3)" stroke-width="2.5"/>
+            <path d="M810,220 V320" fill="none" stroke="rgba(167,139,250,0.3)" stroke-width="2.5"/>
+            <path d="M990,220 V320" fill="none" stroke="rgba(244,114,182,0.3)" stroke-width="2.5"/>
+            <text x="636" y="275" fill="#60a5fa" font-size="14" font-weight="700" opacity="0.7">精钢</text>
+            <text x="816" y="275" fill="#a78bfa" font-size="14" font-weight="700" opacity="0.7">皮革</text>
+            <text x="996" y="275" fill="#f472b6" font-size="14" font-weight="700" opacity="0.7">晶石</text>
+            <circle r="3" fill="#60a5fa"><animateMotion dur="1.4s" repeatCount="indefinite" path="M630,220 V320"/></circle>
+            <circle r="3" fill="#a78bfa"><animateMotion dur="1.4s" repeatCount="indefinite" path="M810,220 V320" begin="0.5s"/></circle>
+            <circle r="3" fill="#f472b6"><animateMotion dur="1.4s" repeatCount="indefinite" path="M990,220 V320" begin="1s"/></circle>
+            <!-- 通关: 队伍TOP(450,320) → UP to 关卡BOTTOM(450,220) -->
+            <path d="M450,220 V320" fill="none" stroke="rgba(16,185,129,0.3)" stroke-width="2.5"/>
+            <text x="456" y="275" fill="#10b981" font-size="14" font-weight="700" opacity="0.7">通关</text>
+            <circle r="3" fill="#10b981"><animateMotion dur="1.4s" repeatCount="indefinite" path="M450,320 V220"/></circle>
+            <circle r="3" fill="#10b981"><animateMotion dur="1.4s" repeatCount="indefinite" path="M450,320 V220" begin="0.7s"/></circle>
+            <!-- POWER: merged horizontal bar at y=505 + vertical rises -->
+            <path d="M450,505 H990" fill="none" stroke="rgba(34,211,238,0.3)" stroke-width="2.5"/>
+            <path d="M450,480 V505" fill="none" stroke="rgba(34,211,238,0.3)" stroke-width="2.5"/>
+            <path d="M630,480 V505" fill="none" stroke="rgba(34,211,238,0.3)" stroke-width="2.5"/>
+            <path d="M810,480 V505" fill="none" stroke="rgba(34,211,238,0.3)" stroke-width="2.5"/>
+            <path d="M990,480 V505" fill="none" stroke="rgba(34,211,238,0.3)" stroke-width="2.5"/>
+            <text x="600" y="520" fill="#22d3ee" font-size="14" font-weight="700" opacity="0.7">战力</text>
+            <!-- Power dots: each combat→down→bar→left→up to 队伍 -->
+            <circle r="4" fill="#22d3ee"><animateMotion dur="1.6s" repeatCount="indefinite" path="M630,480 V505 H450 V480"/></circle>
+            <circle r="4" fill="#22d3ee"><animateMotion dur="1.6s" repeatCount="indefinite" path="M630,480 V505 H450 V480" begin="0.5s"/></circle>
+            <circle r="4" fill="#22d3ee"><animateMotion dur="2s" repeatCount="indefinite" path="M810,480 V505 H450 V480"/></circle>
+            <circle r="4" fill="#22d3ee"><animateMotion dur="2s" repeatCount="indefinite" path="M810,480 V505 H450 V480" begin="0.6s"/></circle>
+            <circle r="4" fill="#22d3ee"><animateMotion dur="2.4s" repeatCount="indefinite" path="M990,480 V505 H450 V480"/></circle>
+            <circle r="4" fill="#22d3ee"><animateMotion dur="2.4s" repeatCount="indefinite" path="M990,480 V505 H450 V480" begin="0.7s"/></circle>
+
+            <!-- 召唤英雄: 召唤RIGHT(190,400) → 队伍LEFT(370,400) -->
+            <path d="M190,400 H370" fill="none" stroke="rgba(139,92,246,0.3)" stroke-width="2.5"/>
+            <text x="240" y="392" fill="#8b5cf6" font-size="12" font-weight="700" opacity="0.7">召唤英雄</text>
+            <circle r="3" fill="#8b5cf6"><animateMotion dur="1.4s" repeatCount="indefinite" path="M190,400 H370"/></circle>
+          </svg>
+        </div>
+
+      </section>
+
+    <!-- ── Economy parameters ── -->
+    <section class="glass rounded-2xl p-5 w-full" style="max-width:128rem">
+      <p class="text-white/30 text-sm uppercase tracking-widest mb-4 font-semibold">经济参数</p>
+      <div class="eco-param-grid">
+        <div class="text-center">
+          <p class="text-white/40 text-xs">金币基数</p>
+          <input type="number" id="eco-gold-base" value="10" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
+        </div>
+        <div class="text-center">
+          <p class="text-white/40 text-xs">成本公比</p>
+          <input type="number" id="eco-cost-multi" value="1.15" step="0.01" min="1.01" class="config-input" style="width:5.5rem;font-size:1.2rem">
+        </div>
+        <div class="text-center">
+          <p class="text-white/40 text-xs">加速/级 (%)</p>
+          <input type="number" id="eco-accel" value="5" min="0" step="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
+        </div>
+        <div class="text-center">
+          <p class="text-white/40 text-xs" style="color:#84cc16">医馆基价</p>
+          <input type="number" id="eco-base-med" value="5" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
+        </div>
+        <div class="text-center">
+          <p class="text-white/40 text-xs" style="color:#60a5fa">熔铸所基价</p>
+          <input type="number" id="eco-base-foundry" value="10" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
+        </div>
+        <div class="text-center">
+          <p class="text-white/40 text-xs" style="color:#a78bfa">製皮厂基价</p>
+          <input type="number" id="eco-base-tannery" value="25" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
+        </div>
+        <div class="text-center">
+          <p class="text-white/40 text-xs" style="color:#f472b6">晶石矿场基价</p>
+          <input type="number" id="eco-base-crystal" value="60" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Per-level simulation table ── -->
+    <section class="glass rounded-2xl p-5 w-full" style="max-width:128rem">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+        <p class="text-white/30 text-sm uppercase tracking-widest font-semibold">每关数值模拟</p>
+        <p class="text-white/20 text-xs" id="eco-summary"></p>
+      </div>
+      <div style="max-height:640px;overflow-y:auto;border-radius:12px;border:1px solid rgba(255,255,255,0.06)">
+        <table class="eco-table" id="eco-table">
+          <thead>
+            <tr>
+              <th>章节</th>
+              <th>关卡数</th>
+              <th>章节金币</th>
+              <th>累计金币</th>
+              <th style="color:#84cc16">加速</th>
+              <th style="color:#84cc16">医馆</th>
+              <th style="color:#60a5fa">熔铸</th>
+              <th style="color:#a78bfa">製皮</th>
+              <th style="color:#f472b6">晶石</th>
+              <th>余额</th>
+            </tr>
+          </thead>
+          <tbody id="eco-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    </div><!-- /tab-resources -->
 
   </div>
 `;
@@ -524,10 +670,10 @@ setupInputs();
 
 // ── Tab switching ─────────────────────────────────────────────────────
 window.switchTab = function (id) {
-  const ovEl = document.getElementById('tab-overview');
-  const blEl = document.getElementById('tab-buildings');
-  ovEl.style.display = id === 'overview' ? 'flex' : 'none';
-  blEl.style.display = id === 'buildings' ? 'flex' : 'none';
+  ['overview', 'buildings', 'resources'].forEach(tab => {
+    const el = document.getElementById(`tab-${tab}`);
+    el.style.display = id === tab ? 'flex' : 'none';
+  });
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
   document.getElementById(`tab-btn-${id}`).classList.add('tab-active');
 };
@@ -548,7 +694,7 @@ let thMax = 10;
       <div class="flex gap-4 items-end">
         <div class="text-center">
           <p class="text-white/40 text-xs mb-1">当前（等级）</p>
-          <input type="number" id="th-current" value="1" min="0" class="config-input" style="width:6rem">
+          <input type="number" id="th-current" value="1" min="1" class="config-input" style="width:6rem">
         </div>
         <div class="text-center">
           <p class="text-white/40 text-xs mb-1">最大（等级）</p>
@@ -569,7 +715,7 @@ let thMax = 10;
 }
 
 function setThProgress() {
-  thCurrent = Math.max(0, Math.min(thCurrent, thMax));
+  thCurrent = Math.max(1, Math.min(thCurrent, thMax));
   const pct = thMax > 0 ? (thCurrent / thMax * 100) : 0;
   document.getElementById('th-handle').style.left = `${pct}%`;
   document.getElementById('th-fill').style.width = `${pct}%`;
@@ -597,18 +743,7 @@ function setThProgress() {
   updateThInfo();
 }
 
-// ── Town Hall per-level requirements (dynamic) ───────────────────────
-// Map unlockAt (minutes) → TH level that unlocks it
-function thLevelFor(unlockAtMin) {
-  if (unlockAtMin <= 0) return 0;
-  let level = 1;
-  for (let i = 0; i < CHAPTERS.length; i++) {
-    if (unlockAtMin >= CHAPTERS[i].start) level = i + 1;
-    else break;
-  }
-  return level;
-}
-
+// ── Town Hall per-level info ──────────────────────────────────────────
 function updateThInfo() {
   const el = document.getElementById('th-unlock-info');
   if (!el) return;
@@ -617,60 +752,34 @@ function updateThInfo() {
   const chipHtml = (label, color) =>
     `<div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;color:${color};white-space:nowrap">${label}</div>`;
 
-  // ── 需求 chips ──
-  const reqChips = [];
+  const capLv = lvl * 10;
 
-  // Game level requirement first: TH Lv.N needs chapter N-1 completed
-  if (lvl >= 2 && CHAPTERS[lvl - 2]) {
-    const ch = CHAPTERS[lvl - 2];
-    const durMin = ch.end - ch.start;
-    const totalLevels = Math.round(durMin * 60 / 50);
-    reqChips.push(chipHtml(`关卡${ch.id}-${totalLevels}`, 'rgba(255,255,255,0.75)'));
-  }
-
-  // Building level requirements
-  if (lvl >= 2) {
+  if (lvl <= 1) {
+    el.innerHTML = `
+      <p class="text-white/30 text-xs font-semibold uppercase tracking-widest mb-2">需求</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">${chipHtml('无', 'rgba(255,255,255,0.4)')}</div>
+      <p class="text-white/30 text-xs font-semibold uppercase tracking-widest mb-2">解锁</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${chipHtml(`建筑等级上限: Lv.${capLv}`, BLDG_COLOR)}</div>`;
+  } else {
+    // 需求: game level + building levels
+    const reqChips = [];
+    if (CHAPTERS[lvl - 2]) {
+      const ch = CHAPTERS[lvl - 2];
+      const durMin = ch.end - ch.start;
+      const totalLevels = Math.round(durMin * 60 / 50);
+      reqChips.push(chipHtml(`关卡${ch.id}-${totalLevels}`, 'rgba(255,255,255,0.75)'));
+    }
     reqChips.push(chipHtml(`医馆 Lv.${(lvl - 1) * 10}`, BLDG_COLOR));
     reqChips.push(chipHtml(`熔铸所 Lv.${lvl * 10}`, BLDG_COLOR));
-  }
-  if (lvl >= 3) reqChips.push(chipHtml(`製皮厂 Lv.${lvl * 10}`, BLDG_COLOR));
-  if (lvl >= 4) reqChips.push(chipHtml(`晶石矿场 Lv.${lvl * 10}`, BLDG_COLOR));
+    if (lvl >= 3) reqChips.push(chipHtml(`製皮厂 Lv.${lvl * 10}`, BLDG_COLOR));
+    if (lvl >= 4) reqChips.push(chipHtml(`晶石矿场 Lv.${lvl * 10}`, BLDG_COLOR));
 
-  // ── 解锁 chips ──
-  const unlockChips = [];
-  // Buildings that unlock at this TH level (skip town_hall & initial ones at lvl 1)
-  BUILDINGS.forEach(b => {
-    if (b.id === 'town_hall') return;
-    if (thLevelFor(b.unlockAt) === lvl && lvl >= 1) {
-      const c = b.noLevel ? NO_LVL_COLOR : BLDG_COLOR;
-      unlockChips.push(chipHtml(b.name, c));
-    }
-  });
-  // Features that unlock at this TH level
-  FEATURES.forEach(f => {
-    if (thLevelFor(f.unlockAt) === lvl) {
-      const c = f.optional ? '#4ade80' : FEAT_COLOR;
-      unlockChips.push(chipHtml(f.name + (f.optional ? ' (可选)' : ''), c));
-    }
-  });
-  // Leveled building cap increase
-  const capBuildings = ['医馆', '熔铸所'];
-  if (lvl >= 3) capBuildings.push('製皮厂');
-  if (lvl >= 4) capBuildings.push('晶石矿场');
-  if (lvl >= 2) {
-    unlockChips.push(chipHtml(`升级建筑等级上限 → Lv.${lvl * 10}`, BLDG_COLOR));
+    el.innerHTML = `
+      <p class="text-white/30 text-xs font-semibold uppercase tracking-widest mb-2">需求</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">${reqChips.join('')}</div>
+      <p class="text-white/30 text-xs font-semibold uppercase tracking-widest mb-2">解锁</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${chipHtml(`升级建筑等级上限 → Lv.${capLv}`, BLDG_COLOR)}</div>`;
   }
-
-  let html = '';
-  if (reqChips.length > 0) {
-    html += `<p class="text-white/30 text-xs font-semibold uppercase tracking-widest mb-2">需求</p>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">${reqChips.join('')}</div>`;
-  }
-  if (unlockChips.length > 0) {
-    html += `<p class="text-white/30 text-xs font-semibold uppercase tracking-widest mb-2">解锁</p>
-    <div style="display:flex;flex-wrap:wrap;gap:8px">${unlockChips.join('')}</div>`;
-  }
-  el.innerHTML = html;
 }
 
 
@@ -707,4 +816,126 @@ function setupThBar() {
 
 setupThBar();
 
+// ── Economy simulation ──────────────────────────────────────────────
+const ECO_UNLOCK_SEC = { med: 0, foundry: 150, tannery: 700, crystal: 1500 };
+const ECO_KEYS = ['med', 'foundry', 'tannery', 'crystal'];
+const ECO_LABELS = { med: '医馆', foundry: '熔铸所', tannery: '製皮厂', crystal: '晶石矿场' };
 
+function getEcoParams() {
+  return {
+    goldBase: parseFloat(document.getElementById('eco-gold-base')?.value) || 10,
+    costMulti: parseFloat(document.getElementById('eco-cost-multi')?.value) || 1.15,
+    accelPerLv: (parseFloat(document.getElementById('eco-accel')?.value) || 5) / 100,
+    base: {
+      med: parseFloat(document.getElementById('eco-base-med')?.value) || 5,
+      foundry: parseFloat(document.getElementById('eco-base-foundry')?.value) || 10,
+      tannery: parseFloat(document.getElementById('eco-base-tannery')?.value) || 25,
+      crystal: parseFloat(document.getElementById('eco-base-crystal')?.value) || 60,
+    },
+  };
+}
+
+function upgradeCost(baseCost, lvNow, multi) {
+  return Math.round(baseCost * Math.pow(multi, lvNow));
+}
+
+function simulateEconomy() {
+  const p = getEcoParams();
+  let budget = 0, totalGold = 0, globalN = 0;
+  const lv = { med: 0, foundry: 0, tannery: 0, crystal: 0 };
+  const totalSpent = { med: 0, foundry: 0, tannery: 0, crystal: 0 };
+  const chapterRows = [];
+
+  for (const ch of CHAPTERS) {
+    const chDurSec = (ch.end - ch.start) * 60;
+    const chStartSec = ch.start * 60;
+    let elapsed = 0, levelInCh = 0, chGold = 0;
+    const bldgCap = ch.id * 10;
+
+    while (true) {
+      const accel = 1 + lv.med * p.accelPerLv;
+      const levelTime = 50 / accel;
+      if (elapsed + levelTime > chDurSec + 0.01) break;
+
+      elapsed += levelTime;
+      globalN++;
+      levelInCh++;
+
+      const gold = Math.round(p.goldBase * globalN);
+      budget += gold;
+      totalGold += gold;
+      chGold += gold;
+
+      const gameTimeSec = chStartSec + elapsed;
+
+      // Auto-upgrade in priority order
+      for (const key of ECO_KEYS) {
+        if (gameTimeSec < ECO_UNLOCK_SEC[key]) continue;
+        while (lv[key] < bldgCap) {
+          const cost = upgradeCost(p.base[key], lv[key], p.costMulti);
+          if (budget >= cost) {
+            budget -= cost;
+            totalSpent[key] += cost;
+            lv[key]++;
+          } else break;
+        }
+      }
+    }
+
+    // One summary row per chapter
+    const chEndSec = ch.end * 60;
+    chapterRows.push({
+      ch: ch.id, levelCount: levelInCh, chGold, totalGold,
+      accel: 1 + lv.med * p.accelPerLv,
+      medLv: lv.med, foundryLv: lv.foundry,
+      tanneryLv: lv.tannery, crystalLv: lv.crystal,
+      budget: Math.round(budget),
+      chEndSec,
+    });
+  }
+
+  return { rows: chapterRows, totalLevels: globalN, totalGold, totalSpent, finalLevels: { ...lv }, budget: Math.round(budget) };
+}
+
+function rebuildEcoTable() {
+  const result = simulateEconomy();
+  const { rows } = result;
+  const tbody = document.getElementById('eco-table-body');
+  const summary = document.getElementById('eco-summary');
+  if (!tbody) return;
+
+  // Summary text
+  if (summary) {
+    const fl = result.finalLevels;
+    summary.textContent = `共 ${result.totalLevels} 关 · 总金币 ${result.totalGold.toLocaleString()} · `
+      + `医${fl.med} 熔${fl.foundry} 皮${fl.tannery} 晶${fl.crystal} · 余额 ${result.budget.toLocaleString()}`;
+  }
+
+  // Build per-chapter table HTML
+  const fmtN = v => v.toLocaleString();
+  tbody.innerHTML = rows.map(r => {
+    const unlocked = s => r.chEndSec >= ECO_UNLOCK_SEC[s];
+    return `<tr>
+      <td style="font-weight:600">Ch ${r.ch}</td>
+      <td>${r.levelCount}</td>
+      <td>${fmtN(r.chGold)}</td>
+      <td>${fmtN(r.totalGold)}</td>
+      <td style="color:#84cc16">${r.accel.toFixed(2)}×</td>
+      <td style="color:#84cc16">${r.medLv}</td>
+      <td class="${unlocked('foundry') ? '' : 'eco-locked'}">${unlocked('foundry') ? r.foundryLv : '🔒'}</td>
+      <td class="${unlocked('tannery') ? '' : 'eco-locked'}">${unlocked('tannery') ? r.tanneryLv : '🔒'}</td>
+      <td class="${unlocked('crystal') ? '' : 'eco-locked'}">${unlocked('crystal') ? r.crystalLv : '🔒'}</td>
+      <td>${fmtN(r.budget)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Wire up parameter inputs
+['eco-gold-base', 'eco-cost-multi', 'eco-accel',
+  'eco-base-med', 'eco-base-foundry', 'eco-base-tannery', 'eco-base-crystal'
+].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', rebuildEcoTable);
+});
+
+rebuildEcoTable();
