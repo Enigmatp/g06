@@ -337,3 +337,9 @@
 .config-input::-webkit-outer-spin-button {
   opacity: 0.3;
 }
+/* -- Tab nav -- */
+.tab-nav { display:flex; gap:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.10); border-radius:14px; padding:5px; width:100%; max-width:128rem; }
+.tab-btn { flex:1; padding:10px 24px; border-radius:10px; border:none; background:transparent; color:rgba(255,255,255,0.45); font-size:0.95rem; font-weight:600; cursor:pointer; transition:background 0.2s,color 0.2s; }
+.tab-btn:hover { color:rgba(255,255,255,0.75); background:rgba(255,255,255,0.06); }
+.tab-btn.tab-active { background:rgba(255,255,255,0.12); color:#fff; }
+.bldg-detail-row { border-left:4px solid transparent; transition:border-color 0.3s; }

@@ -5,52 +5,51 @@ let TOTAL_DAYS = 3;
 let MIN_PER_DAY = 60;           // minutes per day
 let TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY;
 
-// ── Chapter definitions (second row, not the main bar) ───────────────
+// ── Chapter definitions ───────────────────────────────────────────────
 // Fibonacci intervals starting 5,5 → 5,10,15,25,40,65,105,170,275,445
-// Cumulative starts: 0,5,15,30,55,95,160,265,435,710  (Ch10 ends at 1155)
-const CH_DISPLAY_MAX = 1200; // display window (rounds Ch10 end to 1200)
+const CH_DISPLAY_MAX = 1200;
 
 const CHAPTERS = [
-  { id: 1, label: '章节 1', start: 0, end: 5, color: '#10b981' }, // +5
-  { id: 2, label: '章节 2', start: 5, end: 15, color: '#f59e0b' }, // +10
-  { id: 3, label: '章节 3', start: 15, end: 30, color: '#ef4444' }, // +15
-  { id: 4, label: '章节 4', start: 30, end: 55, color: '#a855f7' }, // +25
-  { id: 5, label: '章节 5', start: 55, end: 95, color: '#ec4899' }, // +40
-  { id: 6, label: '章节 6', start: 95, end: 160, color: '#14b8a6' }, // +65
-  { id: 7, label: '章节 7', start: 160, end: 265, color: '#f97316' }, // +105
-  { id: 8, label: '章节 8', start: 265, end: 435, color: '#06b6d4' }, // +170
-  { id: 9, label: '章节 9', start: 435, end: 710, color: '#84cc16' }, // +275
-  { id: 10, label: '章节 10', start: 710, end: 1155, color: '#e11d48', partial: true }, // +445
+  { id: 1, label: '章节 1', start: 0, end: 5, color: '#10b981' },
+  { id: 2, label: '章节 2', start: 5, end: 15, color: '#f59e0b' },
+  { id: 3, label: '章节 3', start: 15, end: 30, color: '#ef4444' },
+  { id: 4, label: '章节 4', start: 30, end: 55, color: '#a855f7' },
+  { id: 5, label: '章节 5', start: 55, end: 95, color: '#ec4899' },
+  { id: 6, label: '章节 6', start: 95, end: 160, color: '#14b8a6' },
+  { id: 7, label: '章节 7', start: 160, end: 265, color: '#f97316' },
+  { id: 8, label: '章节 8', start: 265, end: 435, color: '#06b6d4' },
+  { id: 9, label: '章节 9', start: 435, end: 710, color: '#84cc16' },
+  { id: 10, label: '章节 10', start: 710, end: 1155, color: '#e11d48', partial: true },
 ];
 
 // ── Building definitions ─────────────────────────────────────────────
-const BLDG_LEVEL_INTERVAL = 60;            // 1 level per hour
-const BLDG_COLOR = '#a78bfa';    // single unified color for all buildings
+const BLDG_LEVEL_INTERVAL = 60;
+const BLDG_COLOR = '#a78bfa'; // leveled buildings (purple)
+const TOWN_HALL_COLOR = '#f59e0b'; // 市政厅 (amber/gold)
+const NO_LVL_COLOR = '#22d3ee'; // no-level buildings (cyan)
 
 const BUILDINGS = [
-  // G1: Initial
+  // sorted by unlockAt
   { id: 'town_hall', name: '市政厅', unlockAt: 0, unlockLabel: '初始' },
   { id: 'med_hall', name: '医馆', unlockAt: 0, unlockLabel: '初始' },
-  { id: 'barracks', name: '兵营', unlockAt: 0, unlockLabel: '初始' },
-  // G2: 2 min
-  { id: 'weapon_shop', name: '武器店', unlockAt: 2, unlockLabel: '2 分钟' },
-  { id: 'foundry', name: '燔铸所', unlockAt: 2, unlockLabel: '2 分钟' },
-  // G3: Ch2 (5 min)
-  { id: 'armor_shop', name: '护甲店', unlockAt: 5, unlockLabel: '第 2 章' },
-  { id: 'tannery', name: '製皮厂', unlockAt: 5, unlockLabel: '第 2 章' },
-  // G4: Ch3 (25 min)
-  { id: 'temple', name: '祝福圣殿', unlockAt: 25, unlockLabel: '第 3 章' },
-  { id: 'crystal', name: '晶石矿场', unlockAt: 25, unlockLabel: '第 3 章' },
+  { id: 'barracks', name: '兵营', unlockAt: 0, unlockLabel: '初始', noLevel: true },
+  { id: 'weapon_shop', name: '武器店', unlockAt: 50 / 60, unlockLabel: '关卡1-1（第1章）', noLevel: true },
+  { id: 'foundry', name: '熔铸所', unlockAt: 150 / 60, unlockLabel: '关卡1-3（第1章）' },
+  { id: 'armor_shop', name: '护甲店', unlockAt: 5, unlockLabel: '关卡2-1（第2章）', noLevel: true },
+  { id: 'tannery', name: '製皮厂', unlockAt: 5, unlockLabel: '关卡2-1（第2章）' },
+  { id: 'temple', name: '祝福圣殿', unlockAt: 15, unlockLabel: '关卡3-1（第3章）', noLevel: true },
+  { id: 'crystal', name: '晶石矿场', unlockAt: 15, unlockLabel: '关卡3-1（第3章）' },
 ];
 
 // ── Feature definitions ─────────────────────────────────────────────
-const FEAT_COLOR = '#fbbf24'; // amber — unified color for all features
+const FEAT_COLOR = '#fbbf24';
 const FEATURES = [
+  // sorted by unlockAt
   { id: 'tasks', name: '任务', unlockAt: 0, unlockLabel: '初始' },
-  { id: 'heroes', name: '英雄', unlockAt: 3, unlockLabel: '3 分钟' },
-  { id: 'afk', name: '挂机奖励', unlockAt: 4, unlockLabel: '4 分钟' },
-  { id: 'summon', name: '召唤', unlockAt: 5, unlockLabel: '第 2 章' },
-  { id: 'raid', name: '挑战-远征', unlockAt: 25, unlockLabel: '第 3 章', optional: true },
+  { id: 'afk', name: '挂机奖励', unlockAt: 250 / 60, unlockLabel: '关卡1-5（第1章）' },
+  { id: 'heroes', name: '英雄', unlockAt: 5, unlockLabel: '关卡2-1（第2章）' },
+  { id: 'summon', name: '召唤', unlockAt: 15, unlockLabel: '关卡3-1（第3章）' },
+  { id: 'raid', name: '挑战-远征', unlockAt: 30, unlockLabel: '关卡4-1（第4章）', optional: true },
 ];
 
 
@@ -59,8 +58,16 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 function fmtMin(min) {
   if (min <= 0) return '未开始';
-  if (min < 60) return `${min} 分钟`;
-  const h = Math.floor(min / 60), m = min % 60;
+  if (min < 1) {
+    const s = Math.round(min * 60);
+    return `${s} 秒`;
+  }
+  if (min < 60) {
+    const m = Math.floor(min);
+    const s = Math.round((min - m) * 60);
+    return s > 0 ? `${m} 分 ${s} 秒` : `${m} 分钟`;
+  }
+  const h = Math.floor(min / 60), m = Math.floor(min % 60);
   return m === 0 ? `${h} 小时` : `${h}h ${m}m`;
 }
 
@@ -85,22 +92,35 @@ document.getElementById('app').innerHTML = `
   <div class="blob" style="width:520px;height:520px;top:-120px;left:-80px;background:rgba(61,90,254,0.15);"></div>
   <div class="blob" style="width:420px;height:420px;bottom:-100px;right:-60px;background:rgba(168,85,247,0.12);"></div>
 
-  <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-8 py-10 gap-8">
+  <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-8 py-4 gap-4">
 
     <!-- Header -->
     <header class="text-center animate-fade-up">
       <h1 class="font-display font-bold text-5xl md:text-6xl text-shimmer">G05 v0.2.0 游戏进度</h1>
     </header>
 
-    <!-- ── Main 7-day bar ── -->
-    <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.1s">
+    <!-- Tab nav -->
+    <nav class="tab-nav animate-fade-up" style="animation-delay:0.05s">
+      <button class="tab-btn tab-active" onclick="switchTab('overview')" id="tab-btn-overview">总览</button>
+      <button class="tab-btn" onclick="switchTab('buildings')" id="tab-btn-buildings">建筑</button>
+    </nav>
 
-      <div class="flex items-end justify-between mb-8 gap-6">
+    <!-- ── OVERVIEW TAB ── -->
+    <div id="tab-overview" style="display:flex;flex-direction:column;gap:1.5rem;width:100%;align-items:center">
+
+    <!-- ── Main bar ── -->
+    <section class="glass rounded-2xl p-5 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.1s">
+
+      <div class="flex items-end justify-between mb-5 gap-6">
         <div>
-          <p class="text-white/40 text-sm uppercase tracking-widest mb-1">总进度</p>
-          <div id="time-display" class="font-display font-bold text-5xl text-white">未开始</div>
+          <p class="text-white/40 text-xs uppercase tracking-widest mb-1">总进度</p>
+          <div id="time-display" class="font-display font-bold text-3xl text-white">未开始</div>
         </div>
-        <div class="flex gap-6 items-end">
+        <div class="flex gap-4 items-end">
+          <div class="text-center">
+            <p class="text-white/40 text-xs uppercase tracking-widest mb-1">当前（分钟）</p>
+            <input type="number" id="input-current" value="0" min="0" class="config-input" style="width:7rem">
+          </div>
           <div class="text-center">
             <p class="text-white/40 text-xs uppercase tracking-widest mb-1">总时长（天）</p>
             <input type="number" id="input-days" value="3" min="1" max="60" class="config-input">
@@ -130,10 +150,11 @@ document.getElementById('app').innerHTML = `
       </div>
     </section>
 
-    <!-- ── Chapter row (proportional, driven by main bar) ── -->
-    <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.2s">
+    <!-- ── Chapter row ── -->
+    <section class="glass rounded-2xl p-5 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.2s">
 
-      <p class="text-white/30 text-sm uppercase tracking-widest mb-6 font-semibold">章节解锁进度</p>
+      <p class="text-white/30 text-sm uppercase tracking-widest mb-1 font-semibold">章节解锁进度</p>
+      <p class="text-white/20 text-xs mb-4">每关 5 波&emsp;·&emsp;每波 10 秒</p>
 
       <!-- Proportional chapter display bar -->
       <div class="chapter-disp-track">
@@ -149,20 +170,31 @@ document.getElementById('app').innerHTML = `
       </div>
 
       <!-- Chapter cards -->
-      <div class="grid grid-cols-5 md:grid-cols-10 gap-3 mt-8" id="chapter-cards"></div>
+      <div class="grid grid-cols-5 md:grid-cols-10 gap-3 mt-4" id="chapter-cards"></div>
     </section>
 
     <!-- ── Building unlock rows ── -->
-    <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.3s">
-      <p class="text-white/30 text-sm uppercase tracking-widest mb-6 font-semibold">建筑解锁与升级</p>
+    <section class="glass rounded-2xl p-5 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.3s">
+      <p class="text-white/30 text-sm uppercase tracking-widest mb-4 font-semibold">建筑解锁与升级</p>
       <div id="building-rows" class="grid grid-cols-5 md:grid-cols-10 gap-3"></div>
     </section>
 
     <!-- ── Feature unlock ── -->
-    <section class="glass rounded-2xl p-10 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.4s">
-      <p class="text-white/30 text-sm uppercase tracking-widest mb-6 font-semibold">功能解锁</p>
+    <section class="glass rounded-2xl p-5 w-full animate-fade-up" style="max-width:128rem;animation-delay:0.4s">
+      <p class="text-white/30 text-sm uppercase tracking-widest mb-4 font-semibold">功能解锁</p>
       <div id="feature-cards" class="grid grid-cols-5 md:grid-cols-10 gap-3"></div>
     </section>
+
+    </div><!-- /tab-overview -->
+
+    <!-- ── BUILDINGS TAB ── -->
+    <div id="tab-buildings" style="display:none;flex-direction:column;gap:1.5rem;width:100%;align-items:center">
+      <section class="glass rounded-2xl p-5 w-full" style="max-width:128rem">
+        <p class="text-white/30 text-sm uppercase tracking-widest mb-1 font-semibold">建筑升级详情</p>
+        <p class="text-white/20 text-xs mb-6">市政厅等级 = 已解锁章节数&emsp;·&emsp;其他建筑每章节 +10 级&emsp;·&emsp;无等级建筑仅显示解锁状态</p>
+        <div id="bldg-detail-list" class="flex flex-col gap-4"></div>
+      </section>
+    </div><!-- /tab-buildings -->
 
   </div>
 `;
@@ -198,7 +230,10 @@ const timeDisp = document.getElementById('time-display');
 
 function setProgress(fraction) {
   fraction = clamp(fraction, 0, 1);
-  currentMin = Math.round(fraction * TOTAL_MIN);
+  // Round to nearest 10-second step (1/6 of a minute)
+  const WAVE_STEP = 1 / 6;
+  currentMin = Math.round((fraction * TOTAL_MIN) / WAVE_STEP) * WAVE_STEP;
+  currentMin = clamp(currentMin, 0, TOTAL_MIN);
 
   handle.style.left = `${fraction * 100}%`;
   tooltip.style.left = `${fraction * 100}%`;
@@ -216,6 +251,11 @@ function setProgress(fraction) {
   }
   tooltipTxt.textContent = fmtMin(currentMin);
 
+  // Sync current-minutes input
+  const inCur = document.getElementById('input-current');
+  if (inCur && document.activeElement !== inCur)
+    inCur.value = Number(currentMin.toFixed(2));
+
   // Update main bar segments
   for (let i = 0; i < TOTAL_DAYS; i++) {
     const segStart = i * MIN_PER_DAY;
@@ -226,10 +266,11 @@ function setProgress(fraction) {
     document.getElementById(`segfill-${i}`).style.width = `${pct}%`;
   }
 
-  // Update chapters, buildings, features
+  // Update all sections
   updateChapters();
   updateBuildings();
   updateFeatures();
+  updateBldgDetail();
 }
 
 function fractionFromEvent(e) {
@@ -274,8 +315,13 @@ function updateChapters() {
     const stageEl = document.getElementById(`chstage-${ch.id}`);
     const title = card.querySelector('.ch-title');
 
-    // Total stages in this chapter (10 sec each)
-    const totalStages = Math.floor((ch.end - ch.start) * 60 / 10);
+    // 5 waves/level, 10 sec/wave
+    const waveLabel = (elapsedSec) => {
+      const waveIdx = Math.floor(Math.max(0, elapsedSec) / 10);
+      const level = Math.floor(waveIdx / 5) + 1;
+      const waveInLevel = (waveIdx % 5) + 1;
+      return `关卡：${ch.id}-${level}（第${waveInLevel}波）`;
+    };
 
     if (currentMin < ch.start) {
       dispFill.style.width = '0%';
@@ -293,19 +339,19 @@ function updateChapters() {
       badge.textContent = '完成 ✓';
       badge.style.color = ch.color;
       title.style.color = ch.color;
-      stageEl.textContent = `${ch.id}-${totalStages}`;
+      stageEl.textContent = waveLabel((ch.end - ch.start) * 60 - 10);
       stageEl.style.color = ch.color;
       card.classList.remove('ch-locked');
       card.classList.add('ch-card-active');
     } else {
       const pct = Math.round((currentMin - ch.start) / dur * 100);
-      const curStage = Math.max(1, Math.floor((currentMin - ch.start) * 6));
+      const elapsedSec = (currentMin - ch.start) * 60;
       dispFill.style.width = `${pct}%`;
       bar.style.width = `${pct}%`;
       badge.textContent = `已完成 ${pct}%`;
       badge.style.color = ch.color;
       title.style.color = ch.color;
-      stageEl.textContent = `${ch.id}-${curStage}`;
+      stageEl.textContent = waveLabel(elapsedSec);
       stageEl.style.color = ch.color;
       card.classList.remove('ch-locked');
       card.classList.add('ch-card-active');
@@ -316,10 +362,11 @@ function updateChapters() {
 // ── Build building cards ───────────────────────────────────────────────
 const buildingRowsEl = document.getElementById('building-rows');
 BUILDINGS.forEach(b => {
+  const color = b.id === 'town_hall' ? TOWN_HALL_COLOR : b.noLevel ? NO_LVL_COLOR : BLDG_COLOR;
   const card = document.createElement('div');
   card.id = `brow-${b.id}`;
   card.className = 'bldg-card glass rounded-xl p-4 bldg-locked';
-  card.style.borderColor = `${BLDG_COLOR}20`;
+  card.style.borderColor = `${color}20`;
   card.innerHTML = `
     <div class="flex items-center justify-between mb-2">
       <span class="font-bold text-sm bldg-name">${b.name}</span>
@@ -328,17 +375,15 @@ BUILDINGS.forEach(b => {
     <p class="text-white/30 text-xs mb-3">${b.unlockLabel}</p>
     <div class="h-1 rounded-full bg-white/5 overflow-hidden">
       <div id="bbar-${b.id}" class="h-full rounded-full transition-all duration-300"
-           style="width:0%;background:${BLDG_COLOR};"></div>
+           style="width:0%;background:${color};"></div>
     </div>
   `;
   buildingRowsEl.appendChild(card);
 });
 
 // ── Chapter-interpolated building level ───────────────────────────────
-// Returns the level that any building should be at right now,
-// based on chapter progress: hits exactly N×10 when Ch.(N+1) opens.
 function getBuildingLevel() {
-  const chIdx = CHAPTERS.filter(ch => currentMin >= ch.start).length - 1; // 0-based
+  const chIdx = CHAPTERS.filter(ch => currentMin >= ch.start).length - 1;
   const ch = CHAPTERS[chIdx];
   const dur = ch.end - ch.start;
   const pct = dur > 0 ? Math.min((currentMin - ch.start) / dur, 1) : 1;
@@ -348,18 +393,20 @@ function getBuildingLevel() {
 // ── Update building cards ───────────────────────────────────────────────
 function updateBuildings() {
   const townHallLevel = CHAPTERS.filter(ch => currentMin >= ch.start).length;
-  const curLevel = getBuildingLevel(); // same for all non-townhall buildings
+  const curLevel = getBuildingLevel();
 
   BUILDINGS.forEach(b => {
     const badge = document.getElementById(`bbadge-${b.id}`);
     const bar = document.getElementById(`bbar-${b.id}`);
     const card = document.getElementById(`brow-${b.id}`);
     const name = card.querySelector('.bldg-name');
+    const color = b.id === 'town_hall' ? TOWN_HALL_COLOR : b.noLevel ? NO_LVL_COLOR : BLDG_COLOR;
 
     if (currentMin < b.unlockAt) {
       card.classList.add('bldg-locked');
       card.classList.remove('bldg-active');
       badge.textContent = '🔒';
+      badge.style.color = '';
       name.style.color = '';
       bar.style.width = '0%';
       return;
@@ -367,18 +414,22 @@ function updateBuildings() {
 
     card.classList.remove('bldg-locked');
     card.classList.add('bldg-active');
-    name.style.color = BLDG_COLOR;
+    name.style.color = color;
+    bar.style.background = color;
 
-    if (b.id === 'town_hall') {
-      // 市政厅: level = chapter count, no max displayed
+    if (b.noLevel) {
+      badge.textContent = '✔';
+      badge.style.color = color;
+      bar.style.width = '100%';
+    } else if (b.id === 'town_hall') {
       badge.textContent = `Lv.${townHallLevel}`;
-      badge.style.color = BLDG_COLOR;
+      badge.style.color = color;
       bar.style.width = `${Math.round(townHallLevel / CHAPTERS.length * 100)}%`;
     } else {
       const maxLevel = townHallLevel * 10;
-      const cappedLevel = Math.min(curLevel, maxLevel);
+      const cappedLevel = Math.min(Math.max(1, curLevel), maxLevel);
       badge.textContent = `Lv.${cappedLevel}/${maxLevel}`;
-      badge.style.color = BLDG_COLOR;
+      badge.style.color = color;
       bar.style.width = maxLevel > 0 ? `${Math.round(cappedLevel / maxLevel * 100)}%` : '0%';
     }
   });
@@ -424,14 +475,11 @@ function updateFeatures() {
   });
 }
 
-// ── Init (called after all DOM elements are built) ────────────────────
-
-// Rebuild segments + axis when TOTAL_DAYS or MIN_PER_DAY changes
+// ── Rebuild segments + axis ────────────────────────────────────────────
 function rebuildBar() {
   TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY;
   handle.setAttribute('aria-valuemax', TOTAL_MIN);
 
-  // Regenerate segments
   const segContainer = document.getElementById('seg-container');
   segContainer.innerHTML = Array.from({ length: TOTAL_DAYS }, (_, i) => `
     <div class="seg" id="seg-${i}">
@@ -439,26 +487,25 @@ function rebuildBar() {
       ${buildTicks(23)}
     </div>`).join('');
 
-  // Regenerate axis labels
   const axisContainer = document.getElementById('axis-container');
   axisContainer.innerHTML = Array.from({ length: TOTAL_DAYS }, (_, i) => {
     const pct = ((i + 1) / TOTAL_DAYS * 100).toFixed(2);
     const cumH = (i + 1) * MIN_PER_DAY / 60;
     return `<div class="axis-label" style="left:${pct}%">
-      <span class="axis-main">\u7b2c ${i + 1} \u5929</span>
-      <span class="axis-sub">${cumH}h \u00b7 ${(i + 1) * MIN_PER_DAY} min</span>
+      <span class="axis-main">第 ${i + 1} 天</span>
+      <span class="axis-sub">${cumH}h · ${(i + 1) * MIN_PER_DAY} min</span>
     </div>`;
   }).join('');
 
-  // Clamp and refresh current position
   const frac = TOTAL_MIN > 0 ? clamp(currentMin / TOTAL_MIN, 0, 1) : 0;
   setProgress(frac);
 }
 
-// Wire config inputs
+// ── Wire config inputs ────────────────────────────────────────────────
 function setupInputs() {
   const inDays = document.getElementById('input-days');
   const inMpd = document.getElementById('input-mpd');
+  const inCur = document.getElementById('input-current');
 
   inDays.addEventListener('input', () => {
     const v = parseInt(inDays.value);
@@ -468,7 +515,104 @@ function setupInputs() {
     const v = parseInt(inMpd.value);
     if (!isNaN(v) && v >= 1) { MIN_PER_DAY = v; rebuildBar(); }
   });
+  inCur.addEventListener('input', () => {
+    const v = parseFloat(inCur.value);
+    if (!isNaN(v) && v >= 0) setProgress(v / TOTAL_MIN);
+  });
 }
 
 rebuildBar();
 setupInputs();
+
+// ── Tab switching ─────────────────────────────────────────────────────
+window.switchTab = function (id) {
+  const ovEl = document.getElementById('tab-overview');
+  const blEl = document.getElementById('tab-buildings');
+  ovEl.style.display = id === 'overview' ? 'flex' : 'none';
+  blEl.style.display = id === 'buildings' ? 'flex' : 'none';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+  document.getElementById(`tab-btn-${id}`).classList.add('tab-active');
+};
+
+// ── Build building detail cards ───────────────────────────────────────
+const bldgDetailEl = document.getElementById('bldg-detail-list');
+BUILDINGS.forEach(b => {
+  const color = b.id === 'town_hall' ? TOWN_HALL_COLOR : b.noLevel ? NO_LVL_COLOR : BLDG_COLOR;
+  const typeLabel = b.id === 'town_hall' ? '市政厅' : b.noLevel ? '无等级' : '升级建筑';
+
+  const row = document.createElement('div');
+  row.id = `bdetail-${b.id}`;
+  row.className = 'bldg-detail-row glass rounded-xl p-5';
+  row.style.borderLeft = `4px solid ${color}`;
+  row.innerHTML = `
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <p class="font-bold text-base" style="color:${color}">${b.name}
+          <span class="text-xs font-normal text-white/30 ml-2">${typeLabel}</span>
+        </p>
+        <p class="text-white/30 text-xs mt-1">解锁：${b.unlockLabel}</p>
+      </div>
+      <span class="bldg-badge text-base" id="bdetail-badge-${b.id}">🔒</span>
+    </div>
+    <div class="mt-3" id="bdetail-body-${b.id}"></div>
+    <div class="h-1.5 rounded-full bg-white/5 overflow-hidden mt-3">
+      <div id="bdetail-bar-${b.id}" class="h-full rounded-full transition-all duration-300" style="width:0%;background:${color}"></div>
+    </div>
+  `;
+  bldgDetailEl.appendChild(row);
+});
+
+// ── Update building detail tab ────────────────────────────────────────
+function updateBldgDetail() {
+  if (!document.getElementById('bdetail-badge-town_hall')) return;
+  const townHallLevel = CHAPTERS.filter(ch => currentMin >= ch.start).length;
+  const curLevel = getBuildingLevel();
+
+  BUILDINGS.forEach(b => {
+    const badge = document.getElementById(`bdetail-badge-${b.id}`);
+    const body = document.getElementById(`bdetail-body-${b.id}`);
+    const bar = document.getElementById(`bdetail-bar-${b.id}`);
+    const color = b.id === 'town_hall' ? TOWN_HALL_COLOR : b.noLevel ? NO_LVL_COLOR : BLDG_COLOR;
+
+    if (currentMin < b.unlockAt) {
+      badge.textContent = '🔒';
+      badge.style.color = '';
+      bar.style.width = '0%';
+      body.innerHTML = `<p class="text-white/25 text-sm">尚未解锁 — ${b.unlockLabel}</p>`;
+      return;
+    }
+
+    badge.style.color = color;
+
+    if (b.noLevel) {
+      badge.textContent = '✔';
+      bar.style.width = '100%';
+      body.innerHTML = `<p class="text-sm" style="color:${color}">已解锁，无等级系统</p>`;
+    } else if (b.id === 'town_hall') {
+      badge.textContent = `Lv.${townHallLevel}`;
+      bar.style.width = `${Math.round(townHallLevel / CHAPTERS.length * 100)}%`;
+      const nextCh = CHAPTERS[townHallLevel];
+      body.innerHTML = `
+        <p class="text-sm mb-1" style="color:${color}"><b>当前等级：Lv.${townHallLevel}</b> / ${CHAPTERS.length}</p>
+        <p class="text-white/40 text-xs">等级 = 已解锁章节数</p>
+        ${nextCh
+          ? `<p class="text-white/30 text-xs mt-1">下次升级：解锁 ${nextCh.label}（${fmtUnlock(nextCh.start)}）</p>`
+          : '<p class="text-white/30 text-xs mt-1">已达最高等级</p>'}
+      `;
+    } else {
+      const maxLevel = townHallLevel * 10;
+      const cappedLevel = Math.min(Math.max(1, curLevel), maxLevel);
+      badge.textContent = `Lv.${cappedLevel}/${maxLevel}`;
+      bar.style.width = maxLevel > 0 ? `${Math.round(cappedLevel / maxLevel * 100)}%` : '0%';
+      const nextCh = CHAPTERS[townHallLevel];
+      const isCapped = cappedLevel >= maxLevel;
+      body.innerHTML = `
+        <p class="text-sm mb-1" style="color:${color}"><b>当前等级：Lv.${cappedLevel}</b> / ${maxLevel}</p>
+        <p class="text-white/40 text-xs">上限 = 市政厅 Lv.${townHallLevel} × 10&emsp;·&emsp;每章节 +10 级</p>
+        ${isCapped && nextCh
+          ? `<p class="text-white/30 text-xs mt-1">已达当前上限，等待解锁 ${nextCh.label}（${fmtUnlock(nextCh.start)}）</p>`
+          : ''}
+      `;
+    }
+  });
+}
