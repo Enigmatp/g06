@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/g05_discovery/',
+  base: '/g05_progress/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
