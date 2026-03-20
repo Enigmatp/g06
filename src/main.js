@@ -287,7 +287,7 @@ document.getElementById('app').innerHTML = `
         </div>
         <div class="text-center">
           <p class="text-white/40 text-xs">成本公比</p>
-          <input type="number" id="eco-cost-multi" value="1.15" step="0.01" min="1.01" class="config-input" style="width:5.5rem;font-size:1.2rem">
+          <input type="number" id="eco-cost-multi" value="1.10" step="0.01" min="1.01" class="config-input" style="width:5.5rem;font-size:1.2rem">
         </div>
         <div class="text-center">
           <p class="text-white/40 text-xs">加速/级 (%)</p>
@@ -295,19 +295,19 @@ document.getElementById('app').innerHTML = `
         </div>
         <div class="text-center">
           <p class="text-white/40 text-xs" style="color:#84cc16">医馆基价</p>
-          <input type="number" id="eco-base-med" value="5" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
+          <input type="number" id="eco-base-med" value="10" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
         </div>
         <div class="text-center">
           <p class="text-white/40 text-xs" style="color:#60a5fa">熔铸所基价</p>
-          <input type="number" id="eco-base-foundry" value="10" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
+          <input type="number" id="eco-base-foundry" value="20" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
         </div>
         <div class="text-center">
           <p class="text-white/40 text-xs" style="color:#a78bfa">製皮厂基价</p>
-          <input type="number" id="eco-base-tannery" value="25" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
+          <input type="number" id="eco-base-tannery" value="20" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
         </div>
         <div class="text-center">
           <p class="text-white/40 text-xs" style="color:#f472b6">晶石矿场基价</p>
-          <input type="number" id="eco-base-crystal" value="60" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
+          <input type="number" id="eco-base-crystal" value="40" min="1" class="config-input" style="width:5.5rem;font-size:1.2rem">
         </div>
       </div>
     </section>
@@ -824,13 +824,13 @@ const ECO_LABELS = { med: '医馆', foundry: '熔铸所', tannery: '製皮厂', 
 function getEcoParams() {
   return {
     goldBase: parseFloat(document.getElementById('eco-gold-base')?.value) || 10,
-    costMulti: parseFloat(document.getElementById('eco-cost-multi')?.value) || 1.15,
+    costMulti: parseFloat(document.getElementById('eco-cost-multi')?.value) || 1.10,
     accelPerLv: (parseFloat(document.getElementById('eco-accel')?.value) || 5) / 100,
     base: {
-      med: parseFloat(document.getElementById('eco-base-med')?.value) || 5,
-      foundry: parseFloat(document.getElementById('eco-base-foundry')?.value) || 10,
-      tannery: parseFloat(document.getElementById('eco-base-tannery')?.value) || 25,
-      crystal: parseFloat(document.getElementById('eco-base-crystal')?.value) || 60,
+      med: parseFloat(document.getElementById('eco-base-med')?.value) || 10,
+      foundry: parseFloat(document.getElementById('eco-base-foundry')?.value) || 20,
+      tannery: parseFloat(document.getElementById('eco-base-tannery')?.value) || 20,
+      crystal: parseFloat(document.getElementById('eco-base-crystal')?.value) || 40,
     },
   };
 }
