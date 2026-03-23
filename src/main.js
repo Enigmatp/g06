@@ -1,4 +1,4 @@
-import './style.css';
+﻿import './style.css';
 import * as XLSX from 'xlsx';
 
 // ── Main bar config (editable) ──────────────────────────────
@@ -533,12 +533,10 @@ document.getElementById('app').innerHTML = `
     <div id="tab-analysis" style="display:none;flex-direction:column;gap:1.5rem;width:100%;align-items:center">
       <section class="glass rounded-2xl p-5 w-full animate-fade-up" style="max-width:128rem">
         <div class="analysis-content" style="color:rgba(255,255,255,0.85);line-height:1.8;font-size:14px">
-
           <h2 style="color:#fbbf24;font-size:1.5rem;margin-bottom:1rem;font-weight:700">📊 G05 数值系统分析</h2>
 
-          <!-- Section 1: Chapters -->
           <h3 style="color:#10b981;margin:1.5rem 0 0.8rem;font-size:1.1rem">1. 时间节奏 — 章节系统</h3>
-          <p style="color:rgba(255,255,255,0.5);margin-bottom:0.8rem">10 × Fibonacci 递进: 10, 20, 30, 50, 80, 130, 210, 340, 550, 890</p>
+          <p style="color:rgba(255,255,255,0.5);margin-bottom:0.8rem">10 × Fibonacci: 10, 20, 30, 50, 80, 130, 210, 340, 550, 890</p>
           <table class="analysis-table">
             <thead><tr><th>章节</th><th>持续(min)</th><th>累计(min)</th><th>按60min/天</th><th>节奏定位</th></tr></thead>
             <tbody>
@@ -547,122 +545,92 @@ document.getElementById('app').innerHTML = `
               <tr><td>3</td><td>30</td><td>60</td><td>1天</td><td>系统全解锁</td></tr>
               <tr><td>4</td><td>50</td><td>110</td><td>1.8天</td><td style="color:#f59e0b">中期拐点(break-even)</td></tr>
               <tr><td>5</td><td>80</td><td>190</td><td>3.2天</td><td>养成深度</td></tr>
-              <tr><td>6</td><td>130</td><td>320</td><td>5.3天</td><td>中后期</td></tr>
-              <tr><td>7</td><td>210</td><td>530</td><td>8.8天</td><td>长线</td></tr>
-              <tr><td>8</td><td>340</td><td>870</td><td>14.5天</td><td>半月期</td></tr>
-              <tr><td>9</td><td>550</td><td>1420</td><td>23.7天</td><td>月度周期</td></tr>
-              <tr><td>10</td><td>890</td><td>2310</td><td>38.5天</td><td>终局</td></tr>
+              <tr><td>6-10</td><td>130-890</td><td>320-2310</td><td>5-39天</td><td>长线留存</td></tr>
             </tbody>
           </table>
 
-          <!-- Section 2: Building Level -->
           <h3 style="color:#a78bfa;margin:1.5rem 0 0.8rem;font-size:1.1rem">2. 建筑等级系统</h3>
           <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:12px;padding:1rem;margin-bottom:1rem">
-            <p style="margin:0"><b>总等级公式:</b> <code style="color:#a78bfa">overallLevel = chapterIndex × 10 + floor(chapterProgress × 10)</code></p>
-            <p style="margin:0.5rem 0 0">10章 × 10级/章 = 最高 <b>Lv.100</b></p>
-          </div>
-          <p><b>追赶机制:</b> 后解锁建筑在解锁章内加速赶上总等级，避免“永远追不上”的挫败感。</p>
-          <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:0.8rem;font-family:monospace;font-size:13px;margin:0.5rem 0 1rem">
-            製皮厂(unlock=Lv.21): overallLv=25 → effectiveLv=15 (加速3×)<br>
-            製皮厂(unlock=Lv.21): overallLv=35 → effectiveLv=35 (1:1跟随)
+            <p style="margin:0"><b>总等级</b> = chapterIndex × 10 + floor(progress × 10)，最高 Lv.100</p>
+            <p style="margin:0.3rem 0 0"><b>追赶机制</b>：后解锁建筑在解锁章内加速追赶，章末追平总等级</p>
           </div>
 
-          <!-- Section 3: Gold Economy -->
           <h3 style="color:#fbbf24;margin:1.5rem 0 0.8rem;font-size:1.1rem">3. 金币经济 — 以消耗定产出</h3>
-          <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:12px;padding:1rem;margin-bottom:1rem">
-            <p style="margin:0">核心设计: <b>金币产出 = 建筑升级消耗的反推值</b></p>
-            <p style="margin:0.3rem 0 0;color:rgba(255,255,255,0.5)">系统先算每关需要多少金币升级，再倒推每关给多少金币</p>
-          </div>
+          <p style="color:rgba(255,255,255,0.5);margin-bottom:0.5rem">升级公式: <code>base × (1 + lv × multi)</code> | 初始金币=1000 | 收支平衡=第4章</p>
           <table class="analysis-table">
-            <thead><tr><th>建筑</th><th>基础消耗</th><th>Lv.1</th><th>Lv.50</th><th>Lv.100</th></tr></thead>
+            <thead><tr><th>建筑</th><th>base</th><th>multi</th><th>Lv.1</th><th>Lv.50</th><th>Lv.100</th></tr></thead>
             <tbody>
-              <tr><td>医馆</td><td>10</td><td>11</td><td>60</td><td>110</td></tr>
-              <tr><td>熔铸所</td><td>20</td><td>22</td><td>120</td><td>220</td></tr>
-              <tr><td>製皮厂</td><td>20</td><td>22</td><td>120</td><td>220</td></tr>
-              <tr><td>晶石矿场</td><td>40</td><td>44</td><td>240</td><td>440</td></tr>
+              <tr><td style="color:#84cc16">医馆</td><td>10</td><td>0.10</td><td>11</td><td>60</td><td>110</td></tr>
+              <tr><td style="color:#60a5fa">熔铸所</td><td>20</td><td>0.10</td><td>22</td><td>120</td><td>220</td></tr>
+              <tr><td style="color:#a78bfa">製皮厂</td><td>20</td><td>0.12</td><td>22</td><td>140</td><td>260</td></tr>
+              <tr><td style="color:#f472b6">晶石矿场</td><td>40</td><td>0.15</td><td>46</td><td>340</td><td>640</td></tr>
             </tbody>
           </table>
-          <p style="color:rgba(255,255,255,0.5)">升级消耗公式: <code>base × (1 + lv × 0.1)</code></p>
-          <p>金币/秒: Lv.1 ≈ <b>0.63</b>/s → Lv.50 ≈ <b>10.8</b>/s → Lv.100 ≈ <b>19.8</b>/s</p>
-          <p><b>Break-even:</b> 第4章时累计产出 = 累计消耗，前3章靠初始金币(1000)支撑</p>
 
-          <!-- Section 4: Material Economy -->
           <h3 style="color:#60a5fa;margin:1.5rem 0 0.8rem;font-size:1.1rem">4. 材料经济 — 产消自平衡</h3>
-          <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:12px;padding:1rem;margin-bottom:1rem">
-            <p style="margin:0">精钢/皮革/晶石的<b>产出和消耗用同一个公式</b>，天然平衡。</p>
-          </div>
           <table class="analysis-table">
-            <thead><tr><th>资源</th><th>产出建筑</th><th>产出base</th><th>消耗建筑</th><th>消耗base</th><th>解锁</th></tr></thead>
+            <thead><tr><th>资源</th><th>产出建筑</th><th>消耗建筑</th><th>消耗base</th><th>multi</th><th>解锁</th></tr></thead>
             <tbody>
-              <tr><td style="color:#60a5fa">精钢</td><td>熔铸所</td><td>5</td><td>武器店(÷4部位)</td><td>200</td><td>Lv.1</td></tr>
-              <tr><td style="color:#a78bfa">皮革</td><td>製皮厂</td><td>5</td><td>护甲店</td><td>250</td><td>Lv.21</td></tr>
-              <tr><td style="color:#f472b6">晶石</td><td>晶石矿场</td><td>3</td><td>祝福圣殿</td><td>300</td><td>Lv.31</td></tr>
+              <tr><td style="color:#60a5fa">精钢</td><td>熔铸所</td><td>武器店(÷4)</td><td>200</td><td>0.10</td><td>Lv.1</td></tr>
+              <tr><td style="color:#a78bfa">皮革</td><td>製皮厂</td><td>护甲店</td><td>250</td><td>0.08</td><td>Lv.21</td></tr>
+              <tr><td style="color:#f472b6">晶石</td><td>晶石矿场</td><td>祝福圣殿</td><td>300</td><td>0.15</td><td>Lv.31</td></tr>
             </tbody>
           </table>
 
-          <!-- Section 5: Combat Power -->
           <h3 style="color:#ef4444;margin:1.5rem 0 0.8rem;font-size:1.1rem">5. 战力系统</h3>
-          <p><b>单操作战力</b> = atk × atkSplit × atkRatio(5) + hp × hpRatio(1)</p>
+          <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:1rem;margin-bottom:1rem">
+            <p style="margin:0"><b>单操作战力</b> = atk × parts × atkRatio(5) + hp × hpRatio(1)</p>
+            <p style="margin:0.3rem 0 0"><b>突破加成</b> = 1 + floor(lv/10) × 20%（可配置，在建筑Tab战力配置卡片）</p>
+          </div>
           <table class="analysis-table">
-            <thead><tr><th>建筑</th><th>攻击/操作</th><th>部位</th><th>生命/操作</th><th>单操作战力</th></tr></thead>
+            <thead><tr><th>建筑</th><th>攻/操作</th><th>部位</th><th>生命/操作</th><th>战力/操作</th></tr></thead>
             <tbody>
               <tr><td style="color:#f59e0b">武器店</td><td>5</td><td>×4</td><td>-</td><td><b>100</b></td></tr>
               <tr><td style="color:#22d3ee">护甲店</td><td>-</td><td>×1</td><td>100</td><td><b>100</b></td></tr>
               <tr><td style="color:#c084fc">祝福圣殿</td><td>-</td><td>×1</td><td>100</td><td><b>100</b></td></tr>
+              <tr style="border-top:1px solid rgba(255,255,255,0.15)"><td><b>合计</b></td><td></td><td></td><td></td><td><b>300/操作</b></td></tr>
             </tbody>
           </table>
+
+          <h4 style="color:rgba(255,255,255,0.6);margin:1.2rem 0 0.5rem">召唤系统</h4>
+          <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:0.8rem;margin-bottom:1rem;font-size:13px">
+            初始10次（免费10连抽）| +5次/章 | 最大100次<br>
+            期望战力: <b>300 + 50×章节</b> × 突破加成 × 人数
+          </div>
 
           <h4 style="color:rgba(255,255,255,0.6);margin:1rem 0 0.5rem">关卡总战力构成</h4>
-          <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:0.8rem;font-family:monospace;font-size:12px;margin:0.5rem 0 1rem">
-            建筑战力 = 操作次 × 单操作战力 × 突破加成 × 队伍人数<br>
-            召唤战力 = 召唤次 × (基础期望 + 章节×递增) × 突破加成 × 队伍人数<br>
-            <span style="color:rgba(255,255,255,0.4)">召唤战力随章节增长（期望+50/章），占比逐渐提升</span>
-          </div>
-          <p style="color:rgba(255,255,255,0.5);margin-bottom:0.5rem">召唤配置: 初始10次, +5/章, 最大100; 期望300+50/章; 突破加成+20%/10级</p></p>
           <table class="analysis-table">
-            <thead><tr><th>章节</th><th>操作次</th><th>英雄数</th><th>召唤次</th><th>建筑战力</th><th>召唤战力</th><th>总战力</th><th>召唤占比</th></tr></thead>
+            <thead><tr><th>章</th><th>操作</th><th>突破</th><th>人数</th><th>召唤次</th><th>召唤期望</th><th>建筑战力</th><th>召唤战力</th><th>召唤%</th></tr></thead>
             <tbody>
-              <tr><td>1</td><td>10</td><td>4</td><td>10</td><td>4,000</td><td>40,000</td><td>44,000</td><td style="color:#ef4444">91%</td></tr>
-              <tr><td>3</td><td>30</td><td>6</td><td>20</td><td>72,000</td><td>120,000</td><td>192,000</td><td>63%</td></tr>
-              <tr><td>5</td><td>50</td><td>8</td><td>30</td><td>160,000</td><td>240,000</td><td>400,000</td><td>60%</td></tr>
-              <tr><td>10</td><td>100</td><td>13</td><td>55</td><td>520,000</td><td>715,000</td><td>1,235,000</td><td>58%</td></tr>
+              <tr><td>1</td><td>10</td><td>1.0×</td><td>4</td><td>10</td><td>300</td><td>12,000</td><td>12,000</td><td>50%</td></tr>
+              <tr><td>3</td><td>30</td><td>1.4×</td><td>6</td><td>20</td><td>400</td><td>75,600</td><td>67,200</td><td>47%</td></tr>
+              <tr><td>5</td><td>50</td><td>2.0×</td><td>8</td><td>30</td><td>500</td><td>240,000</td><td>240,000</td><td>50%</td></tr>
+              <tr><td>10</td><td>100</td><td>3.0×</td><td>13</td><td>55</td><td>750</td><td>1,170,000</td><td>1,608,750</td><td style="color:#10b981"><b>58%</b></td></tr>
             </tbody>
           </table>
+          <p style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:0.3rem">召唤占比从50%逐步提升至58%，后期召唤越来越重要</p>
 
-          <!-- Section 6: Key Insights -->
-          <h3 style="color:#ec4899;margin:1.5rem 0 0.8rem;font-size:1.1rem">6. 数值策划关注点</h3>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <h3 style="color:#ec4899;margin:1.5rem 0 0.8rem;font-size:1.1rem">6. 设计亮点</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
             <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:1rem">
-              <p style="margin:0;color:#10b981;font-weight:700">✅ 精巧设计</p>
-              <ul style="margin:0.5rem 0 0;padding-left:1.2rem;color:rgba(255,255,255,0.6)">
-                <li>金币以消耗定产出，经济天然自洽</li>
+              <p style="margin:0;color:#10b981;font-weight:700">✅ 经济系统</p>
+              <ul style="margin:0.5rem 0 0;padding-left:1.2rem;color:rgba(255,255,255,0.6);font-size:13px">
+                <li>金币以消耗定产出，天然自洽</li>
                 <li>材料产消同公式，无需分别调优</li>
-                <li>Fibonacci章节避免线性无聊和指数绝望</li>
-                <li>追赶机制让后解锁建筑不会落后</li>
+                <li>不同建筑不同multi，有差异化</li>
+                <li>Break-even第4章</li>
               </ul>
             </div>
-            <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:1rem">
-              <p style="margin:0;color:#ef4444;font-weight:700">⚠️ 待关注</p>
-              <ul style="margin:0.5rem 0 0;padding-left:1.2rem;color:rgba(255,255,255,0.6)">
-                <li>召唤前期占比91%，建筑感弱</li>
-                <li>建筑战力线性增长，缺突破感</li>
-                <li>章7-10每章3.5~14.8天</li>
-                <li>所有建筑同公式，缺差异化</li>
+            <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:1rem">
+              <p style="margin:0;color:#8b5cf6;font-weight:700">✅ 战力系统</p>
+              <ul style="margin:0.5rem 0 0;padding-left:1.2rem;color:rgba(255,255,255,0.6);font-size:13px">
+                <li>三建筑单操作统一(100)</li>
+                <li>突破+20%/10级，可配置</li>
+                <li>召唤期望随章节递增</li>
+                <li>召唤50%→58%，逐步提升</li>
               </ul>
             </div>
           </div>
-
-          <h4 style="color:rgba(255,255,255,0.6);margin:1rem 0 0.5rem">可调参数建议</h4>
-          <table class="analysis-table">
-            <thead><tr><th>目标</th><th>调整方向</th><th>具体操作</th></tr></thead>
-            <tbody>
-              <tr><td>降召唤占比</td><td>降初始/期望战力</td><td>初始10→5 或 期望1000→500</td></tr>
-              <tr><td>增建筑感</td><td>提高单操作战力</td><td>武器店 atk 5→10</td></tr>
-              <tr><td>突破里程碑</td><td>每10级倍率突破</td><td>Lv.10/20/30 攻击×1.5</td></tr>
-              <tr><td>缓解后期</td><td>加速机制</td><td>章6+扫荡/自动推进</td></tr>
-            </tbody>
-          </table>
 
         </div>
       </section>
