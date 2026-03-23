@@ -1966,20 +1966,18 @@ function drawCPChart() {
   const bldgData = CP_BUILDINGS.map(b => {
     const atk = b.atkInput ? (parseFloat(document.getElementById(b.atkInput)?.value) || 0) : 0;
     const hp = b.hpInput ? (parseFloat(document.getElementById(b.hpInput)?.value) || 0) : 0;
-    const powerPerOp = atk * atkRatio + hp * hpRatio; // single-part (for individual curve)
-    const totalPowerPerOp = atk * (b.atkSplit || 1) * atkRatio + hp * hpRatio; // with ×4 (for total)
-    return { ...b, atk, hp, powerPerOp, totalPowerPerOp };
+    const totalPowerPerOp = atk * (b.atkSplit || 1) * atkRatio + hp * hpRatio;
+    return { ...b, atk, hp, totalPowerPerOp };
   });
 
-  // Cumulative power per building (individual curves - single part, unlock-aware)
+  // Cumulative power per building (individual curves, unlock-aware)
   const cumPower = bldgData.map(b => {
     const arr = [];
-    // Find matching consumer for unlock level
     const consumerMatch = RES_CONSUMERS.find(c => c.id === b.id || (b.id === 'bless' && c.id === 'blessing'));
     const consumerUnlock = consumerMatch ? consumerMatch.unlock : 1;
     for (let op = 1; op <= maxOps; op++) {
       const effOps = effectiveConsumerLv(op, consumerUnlock);
-      arr.push(effOps * b.powerPerOp * milestoneBonus(op));
+      arr.push(effOps * b.totalPowerPerOp * milestoneBonus(op));
     }
     return arr;
   });
