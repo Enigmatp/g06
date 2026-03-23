@@ -276,6 +276,10 @@ document.getElementById('app').innerHTML = `
                   <span class="bmc-label">1生命 = 战力</span>
                   <input type="number" id="cp-hp-ratio" value="1" min="1" step="1" class="config-input bmc-input">
                 </div>
+                <div class="bmc-input-row">
+                  <span class="bmc-label">每10级突破加成(%)</span>
+                  <input type="number" id="cp-milestone" value="20" min="0" step="5" class="config-input bmc-input">
+                </div>
               </div>
               <!-- Weapon shop -->
               <div class="bldg-mod-card glass rounded-xl">
@@ -309,7 +313,7 @@ document.getElementById('app').innerHTML = `
                 </div>
                 <div class="bmc-input-row">
                   <span class="bmc-label">每次操作 +生命/攻击</span>
-                  <input type="number" id="cp-bless-hp" value="300" min="0" class="config-input bmc-input">
+                  <input type="number" id="cp-bless-hp" value="200" min="0" class="config-input bmc-input">
                 </div>
               </div>
             </div>
@@ -1277,9 +1281,10 @@ function effectiveBldgLv(overallLv, unlockLv) {
   return catchUpEnd + (overallLv - catchUpEnd); // 1:1 after catch-up
 }
 
-// Milestone bonus: +20% combat power per 10-level milestone (breakthrough feel)
+// Milestone bonus: configurable breakthrough per 10 levels
 function milestoneBonus(overallLv) {
-  return 1 + Math.floor(overallLv / 10) * 0.2;
+  const pct = parseFloat(document.getElementById('cp-milestone')?.value) || 0;
+  return 1 + Math.floor(overallLv / 10) * (pct / 100);
 }
 
 // Effective consumer level: 0 before unlock, catch up by end of unlock chapter
@@ -2412,7 +2417,7 @@ injectInfoButtons();
 
 // Combat power inputs + init
 drawCPChart();
-['cp-atk-ratio', 'cp-hp-ratio', 'cp-weapon-atk', 'cp-armor-hp', 'cp-bless-hp'].forEach(id => {
+['cp-atk-ratio', 'cp-hp-ratio', 'cp-milestone', 'cp-weapon-atk', 'cp-armor-hp', 'cp-bless-hp'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', () => { drawCPChart(); drawLevelCPChart(); });
 });
