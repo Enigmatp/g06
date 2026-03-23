@@ -302,7 +302,7 @@ document.getElementById('app').innerHTML = `
                 </div>
                 <div class="bmc-input-row">
                   <span class="bmc-label">每次操作 +生命</span>
-                  <input type="number" id="cp-armor-hp" value="150" min="1" class="config-input bmc-input">
+                  <input type="number" id="cp-armor-hp" value="100" min="1" class="config-input bmc-input">
                 </div>
               </div>
               <!-- Blessing temple -->
@@ -313,7 +313,7 @@ document.getElementById('app').innerHTML = `
                 </div>
                 <div class="bmc-input-row">
                   <span class="bmc-label">每次操作 +生命/攻击</span>
-                  <input type="number" id="cp-bless-hp" value="200" min="0" class="config-input bmc-input">
+                  <input type="number" id="cp-bless-hp" value="100" min="0" class="config-input bmc-input">
                 </div>
               </div>
             </div>
@@ -596,7 +596,7 @@ document.getElementById('app').innerHTML = `
             <tbody>
               <tr><td style="color:#60a5fa">精钢</td><td>熔铸所</td><td>5</td><td>武器店(÷4部位)</td><td>200</td><td>Lv.1</td></tr>
               <tr><td style="color:#a78bfa">皮革</td><td>製皮厂</td><td>5</td><td>护甲店</td><td>250</td><td>Lv.21</td></tr>
-              <tr><td style="color:#f472b6">晶石</td><td>晶石矿场</td><td>3</td><td>祝福圣殿</td><td>500</td><td>Lv.31</td></tr>
+              <tr><td style="color:#f472b6">晶石</td><td>晶石矿场</td><td>3</td><td>祝福圣殿</td><td>300</td><td>Lv.31</td></tr>
             </tbody>
           </table>
 
@@ -607,8 +607,8 @@ document.getElementById('app').innerHTML = `
             <thead><tr><th>建筑</th><th>攻击/操作</th><th>部位</th><th>生命/操作</th><th>单操作战力</th></tr></thead>
             <tbody>
               <tr><td style="color:#f59e0b">武器店</td><td>5</td><td>×4</td><td>-</td><td><b>100</b></td></tr>
-              <tr><td style="color:#22d3ee">护甲店</td><td>-</td><td>×1</td><td>150</td><td><b>150</b></td></tr>
-              <tr><td style="color:#c084fc">祝福圣殿</td><td>-</td><td>×1</td><td>200</td><td><b>200</b></td></tr>
+              <tr><td style="color:#22d3ee">护甲店</td><td>-</td><td>×1</td><td>100</td><td><b>100</b></td></tr>
+              <tr><td style="color:#c084fc">祝福圣殿</td><td>-</td><td>×1</td><td>100</td><td><b>100</b></td></tr>
             </tbody>
           </table>
 
@@ -1263,8 +1263,8 @@ window.switchTab = function (id) {
 // ── Building Module ──────────────────────────────────────────────────
 const BLDG_MODULE = [
   { id: 'med', name: '医馆', color: '#84cc16', defaultBase: 10, defaultMulti: 0.10, unlock: 1, resource: '金币', resBase: 10 },
-  { id: 'foundry', name: '熔铸所', color: '#60a5fa', defaultBase: 20, defaultMulti: 0.12, unlock: 1, resource: '精钢', resBase: 5 },
-  { id: 'tannery', name: '製皮厂', color: '#a78bfa', defaultBase: 20, defaultMulti: 0.08, unlock: 21, resource: '皮革', resBase: 5 },
+  { id: 'foundry', name: '熔铸所', color: '#60a5fa', defaultBase: 20, defaultMulti: 0.10, unlock: 1, resource: '精钢', resBase: 5 },
+  { id: 'tannery', name: '製皮厂', color: '#a78bfa', defaultBase: 20, defaultMulti: 0.12, unlock: 21, resource: '皮革', resBase: 5 },
   { id: 'crystal', name: '晶石矿场', color: '#f472b6', defaultBase: 40, defaultMulti: 0.15, unlock: 31, resource: '晶石', resBase: 3 },
 ];
 const RESOURCE_BLDGS = BLDG_MODULE.filter(b => b.resource);
@@ -1273,7 +1273,7 @@ const RESOURCE_BLDGS = BLDG_MODULE.filter(b => b.resource);
 const RES_CONSUMERS = [
   { id: 'weapon', name: '武器店(4部位)', color: '#f59e0b', consumes: '精钢', consumeBase: 200, defaultMulti: 0.10, unlock: 1, levelSplit: 4 },
   { id: 'armor', name: '护甲店', color: '#22d3ee', consumes: '皮革', consumeBase: 250, defaultMulti: 0.08, unlock: 21 },
-  { id: 'blessing', name: '祝福圣殿', color: '#c084fc', consumes: '晶石', consumeBase: 500, defaultMulti: 0.15, unlock: 31 },
+  { id: 'blessing', name: '祝福圣殿', color: '#c084fc', consumes: '晶石', consumeBase: 300, defaultMulti: 0.15, unlock: 31 },
 ];
 const STAGE_COLOR = '#fbbf24';
 const TOTAL_COST_COLOR = '#ffffff';
