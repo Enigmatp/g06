@@ -1,5 +1,6 @@
 ﻿import './style.css';
 import * as XLSX from 'xlsx';
+import * as echarts from 'echarts';
 
 // ── Main bar config (editable) ──────────────────────────────
 let TOTAL_DAYS = 3;
@@ -111,10 +112,12 @@ document.getElementById('app').innerHTML = `
   <div class="blob" style="width:520px;height:520px;top:-120px;left:-80px;background:rgba(61,90,254,0.15);"></div>
   <div class="blob" style="width:420px;height:420px;bottom:-100px;right:-60px;background:rgba(168,85,247,0.12);"></div>
 
-  <div class="relative z-10 min-h-screen flex flex-col items-center justify-start px-8 py-4 gap-4">
+  <div class="relative z-10 min-h-screen flex w-full">
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col items-center justify-start px-8 py-4 gap-4 h-screen overflow-y-auto" id="main-scroll-area">
 
-    <!-- Header -->
-    <header class="text-center animate-fade-up">
+      <!-- Header -->
+      <header class="text-center animate-fade-up">
       <h1 class="font-display font-bold text-3xl md:text-4xl text-shimmer">G05 游戏数值 v0.2.0</h1>
     </header>
 
@@ -123,6 +126,8 @@ document.getElementById('app').innerHTML = `
       <button class="tab-btn tab-active" onclick="switchTab('overview')" id="tab-btn-overview">总览</button>
       <button class="tab-btn" onclick="switchTab('resources')" id="tab-btn-resources">循环</button>
       <button class="tab-btn" onclick="switchTab('buildings')" id="tab-btn-buildings">建筑</button>
+      <button class="tab-btn" onclick="switchTab('unlock')" id="tab-btn-unlock">解锁</button>
+      <button class="tab-btn" onclick="switchTab('simulation')" id="tab-btn-simulation">数值</button>
       <button class="tab-btn" onclick="switchTab('analysis')" id="tab-btn-analysis">分析</button>
     </nav>
 
@@ -221,6 +226,8 @@ document.getElementById('app').innerHTML = `
 
     <!-- ── BUILDINGS TAB ── -->
     <div id="tab-buildings" style="display:none;flex-direction:column;gap:1.5rem;width:100%;align-items:center">
+
+      
 
       <!-- Town Hall detail (on top) -->
       <section class="glass rounded-2xl p-5 w-full animate-fade-up" style="max-width:128rem">
@@ -529,6 +536,32 @@ document.getElementById('app').innerHTML = `
       </section>
     </div><!-- /tab-resources -->
 
+    <!-- ── UNLOCK TAB ── -->
+    <div id="tab-unlock" class="flex-col xl:flex-row gap-6 w-full items-start" style="display:none; max-width: 128rem;">
+      <!-- Left: Editors -->
+      <section class="flex-1 xl:flex-[3] flex flex-col gap-6 animate-fade-up w-full">
+        <div class="glass flex items-center justify-between p-5 rounded-2xl w-full">
+          <div class="flex items-center gap-3">
+            <span class="p-2 rounded-lg" style="background:rgba(251,191,36,0.15);color:#fbbf24;font-size:1.2rem">⚙️</span>
+            <h2 class="text-xl font-bold text-white tracking-widest">解锁节点配置</h2>
+          </div>
+          <button class="px-4 py-1.5 rounded-lg text-xs font-bold tracking-widest bg-white/10 text-white/60 hover:bg-white/20 hover:text-white border border-white/5 transition-colors" onclick="window.restoreDefaultUnlocks()">恢复默认</button>
+        </div>
+        <div id="unlock-editors" class="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full"></div>
+      </section>
+
+      <!-- Right: Overall List -->
+      <section class="flex-1 xl:flex-[2] flex flex-col xl:items-center animate-fade-up w-full" style="animation-delay:0.1s">
+        <div class="glass flex flex-col w-full max-w-[650px] rounded-2xl p-6 shadow-xl">
+          <div class="flex items-center gap-3 mb-5 border-b border-white/10 pb-4">
+            <span class="p-2 rounded-lg" style="background:rgba(255,255,255,0.1);color:#fff;font-size:1.2rem">📋</span>
+            <h2 class="text-lg font-bold text-white tracking-widest">综合解锁阶段预测</h2>
+          </div>
+          <div id="unlock-overall-list" class="flex flex-col gap-1 w-full"></div>
+        </div>
+      </section>
+    </div><!-- /tab-unlock -->
+
     <!-- ── ANALYSIS TAB ── -->
     <div id="tab-analysis" style="display:none;flex-direction:column;gap:1.5rem;width:100%;align-items:center">
       <section class="glass rounded-2xl p-5 w-full animate-fade-up" style="max-width:128rem">
@@ -636,8 +669,158 @@ document.getElementById('app').innerHTML = `
       </section>
     </div><!-- /tab-analysis -->
 
+    <!-- ── SIMULATION TAB ── -->
+    <div id="tab-simulation" style="display:none;flex-direction:column;gap:1.5rem;width:100%;align-items:center;">
+      <section class="glass flex flex-col xl:flex-row gap-6 rounded-2xl p-6 w-full animate-fade-up shadow-2xl" style="max-width:128rem;animation-delay:0.1s">
+        <!-- Left: Config inputs -->
+        <div class="flex flex-col gap-5 w-full xl:w-[350px] shrink-0">
+          <div class="flex items-center gap-3 mb-2 pb-3 border-b border-white/10">
+            <span class="text-2xl p-2 rounded-lg" style="background:rgba(236,72,153,0.15);color:#ec4899">📊</span>
+            <div class="flex flex-col">
+              <h2 class="font-bold text-lg tracking-widest text-white">模型核心参数</h2>
+              <span class="text-[10px] text-white/40 uppercase tracking-widest">Simulation Parameters</span>
+            </div>
+          </div>
+          <div id="sim-configs-list" class="flex flex-col gap-3 overflow-y-auto pr-2" style="max-height: 600px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;"></div>
+        </div>
+        
+        <!-- Right: Chart -->
+        <div class="flex-1 w-full bg-black/30 rounded-xl border border-white/5 relative flex items-center justify-center p-3 shadow-inner" style="min-height: 700px;">
+          <div id="sim-chart" class="w-full h-full absolute inset-0 rounded-lg"></div>
+        </div>
+      </section>
+    </div><!-- /tab-simulation -->
+
+    </div><!-- /main-scroll-area -->
+    
+    <!-- Right Sidebar for Save Manager -->
+    <div id="save-manager-container" class="w-[360px] h-screen bg-black/40 border-l border-white/10 flex flex-col shrink-0"></div>
   </div>
 `;
+
+// ── Unlock Config Render (Building Tab) ──────────────────────────────
+window.defaultUnlockData = {
+  buildings: [
+    { name: "市政厅", level: 0 }, { name: "医馆", level: 0 }, { name: "兵营", level: 0 },
+    { name: "武器店", level: 1 }, { name: "熔铸所", level: 3 }, { name: "护甲店", level: 10 },
+    { name: "製皮厂", level: 14 }, { name: "祝福圣殿", level: 24 }, { name: "晶石矿场", level: 30 }
+  ],
+  functions: [
+    { name: "任务", level: 0 }, { name: "挂机奖励", level: 5 },
+    { name: "召唤", level: 6 }, { name: "挑战-远征", level: 18 }
+  ],
+  slots: [
+    { name: "slot1", level: 0 }, { name: "slot2", level: 2 }, { name: "slot3", level: 4 },
+    { name: "slot4", level: 8 }, { name: "slot5", level: 12 }, { name: "slot6", level: 16 },
+    { name: "slot7", level: 21 }, { name: "slot8", level: 27 }, { name: "slot9", level: 33 },
+    { name: "slot10", level: 45 }, { name: "slot11", level: 54 }, { name: "slot12", level: 63 },
+    { name: "slot13", level: 72 }, { name: "slot14", level: 81 }, { name: "slot15", level: 90 }
+  ]
+};
+
+window.unlockData = JSON.parse(JSON.stringify(window.defaultUnlockData));
+
+window.restoreDefaultUnlocks = function () {
+  window.unlockData = JSON.parse(JSON.stringify(window.defaultUnlockData));
+  window.renderUnlockUI();
+};
+
+window.updateUnlockLevel = function (category, index, val) {
+  const v = parseInt(val);
+  if (!isNaN(v)) {
+    window.unlockData[category][index].level = v;
+    window.renderUnlockUI();
+  }
+};
+
+window.renderUnlockUI = function () {
+  const edEl = document.getElementById('unlock-editors');
+  const ovEl = document.getElementById('unlock-overall-list');
+  if (!edEl || !ovEl) return;
+
+  function renderCategory(catKey, title, color, icon) {
+    const items = window.unlockData[catKey];
+    const itemCards = items.map((item, idx) => `
+      <div class="flex items-center gap-2 py-1.5 px-3 rounded-lg transition-colors hover:bg-white/10 shadow-sm" style="background:rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08)">
+        <span class="text-white/90 text-sm font-medium whitespace-nowrap">${item.name}</span>
+        <div class="w-[1px] h-4 bg-white/10 mx-1"></div>
+        <span class="text-white/30 text-[10px] uppercase">关卡</span>
+        <input type="number" min="0" value="${item.level}" oninput="window.updateUnlockLevel('${catKey}', ${idx}, this.value)"
+               class="bg-black/30 border border-white/10 text-white rounded text-center focus:outline-none focus:border-white/30 transition-colors"
+               style="width:3.5rem; padding: 2px; font-size:12px; font-family:var(--font-mono)">
+      </div>
+    `).join('');
+
+    return `
+      <div class="glass rounded-2xl p-5 border-t border-${color}/30" style="background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.2) 100%);">
+        <div class="flex items-center gap-3 mb-5 pb-3 border-b border-white/5">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-inner" style="background:${color}20; border: 1px solid ${color}40; font-size:1.1rem">${icon}</div>
+          <h3 class="font-bold text-lg tracking-wide" style="color:${color}">${title}</h3>
+          <span class="ml-auto text-xs px-2.5 py-1 rounded-md font-mono" style="background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.5)">${items.length} 项</span>
+        </div>
+        <div class="flex flex-col gap-2">
+          ${itemCards}
+        </div>
+      </div>
+    `;
+  }
+
+  edEl.innerHTML =
+    renderCategory('buildings', '建筑解锁', '#a78bfa', '🏰') +
+    renderCategory('functions', '功能系统', '#fbbf24', '⚡') +
+    renderCategory('slots', '英雄槽位', '#22d3ee', '👤');
+
+  const overall = {};
+  const allItems = [
+    ...window.unlockData.buildings.map(x => ({ ...x, color: '#a78bfa' })),
+    ...window.unlockData.functions.map(x => ({ ...x, color: '#fbbf24' })),
+    ...window.unlockData.slots.map(x => ({ ...x, color: '#22d3ee' }))
+  ];
+
+  allItems.forEach(item => {
+    if (!overall[item.level]) overall[item.level] = [];
+    overall[item.level].push(item);
+  });
+
+  const sortedLvls = Object.keys(overall).map(Number).sort((a, b) => a - b);
+
+  const overallRows = sortedLvls.map(lv => {
+    let chName = '未定章节';
+    let chColor = '#aaaaaa';
+    for (let i = CHAPTERS.length - 1; i >= 0; i--) {
+      if (lv >= CHAPTERS[i].start) {
+        chName = CHAPTERS[i].label;
+        chColor = CHAPTERS[i].color;
+        break;
+      }
+    }
+
+    const badges = overall[lv].map(i => `
+      <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg shadow-sm" style="background:${i.color}15; border: 1px solid ${i.color}30">
+        <span class="w-1.5 h-1.5 rounded-full" style="background:${i.color}"></span>
+        <span class="font-bold text-sm" style="color:${i.color}">${i.name}</span>
+      </div>
+    `).join('');
+
+    return `
+      <div class="flex items-center gap-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] px-2 transition-colors">
+        <div class="flex items-center bg-white/5 rounded-lg border border-white/10 px-3 py-1.5 shrink-0 shadow-inner relative overflow-hidden pl-5">
+          <div class="absolute left-0 top-0 w-1.5 h-full" style="background:${chColor}"></div>
+          <span class="text-xs font-bold mr-3 whitespace-nowrap" style="color:${chColor}">${chName}</span>
+          <span class="text-white/30 text-[9px] uppercase font-bold tracking-wider mr-1.5">Lv.</span>
+          <span class="text-white/90 font-mono text-base font-black">${lv}</span>
+        </div>
+        <div class="flex-1 flex flex-wrap gap-2 items-center">
+          ${badges}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  ovEl.innerHTML = overallRows || '<div class="text-center text-white/30 text-sm py-4">无解锁内容</div>';
+};
+
+window.renderUnlockUI();
 
 // ── Build chapter cards ───────────────────────────────────────────────
 const cardsEl = document.getElementById('chapter-cards');
@@ -1206,10 +1389,15 @@ function setupInputs() {
 
 // ── Tab switching ─────────────────────────────────────────────────────
 window.switchTab = function (id) {
-  ['overview', 'buildings', 'resources', 'analysis'].forEach(tab => {
+  ['overview', 'buildings', 'resources', 'analysis', 'unlock', 'simulation'].forEach(tab => {
     const el = document.getElementById(`tab-${tab}`);
     if (el) el.style.display = id === tab ? 'flex' : 'none';
   });
+  if (id === 'simulation') {
+    requestAnimationFrame(() => {
+      if (typeof window.renderSimulationChart === 'function') window.renderSimulationChart();
+    });
+  }
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
   const btn = document.getElementById(`tab-btn-${id}`);
   if (btn) btn.classList.add('tab-active');
@@ -2870,6 +3058,146 @@ function setupThBar() {
 
   setThProgress();
 }
+// ── Global Save / Load System (Embedded Sidebar) ──────────────────────────
+window.initSaveManager = function () {
+  const panelHtml = `
+    <div id="save-manager-panel" class="flex flex-col h-full w-full">
+      <div id="save-manager-header" class="flex justify-between items-center p-5 bg-white/5 border-b border-white/10">
+        <div class="flex items-center gap-2">
+          <span style="font-size:1.3rem">📦</span>
+          <span class="font-bold text-white tracking-widest text-sm">配置存档管理器</span>
+        </div>
+        <button onclick="window.showCustomSaveModal()" class="text-xs font-bold tracking-widest bg-emerald-500/20 text-emerald-300 px-4 py-2 rounded hover:bg-emerald-500/40 border border-emerald-500/30 transition-colors shadow-none">
+          💾 储存
+        </button>
+      </div>
+      <div id="save-manager-list" class="flex-1 overflow-y-auto p-5 flex flex-col gap-4" style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;">
+      </div>
+    </div>
+    
+    <div id="custom-save-modal" class="popup-overlay" style="display:none; position:fixed; inset:0; z-index:10000; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px)">
+      <div class="glass p-10 rounded-2xl w-[95%] max-w-[700px] border border-white/10 shadow-2xl animate-fade-up">
+        <h3 class="text-white font-bold text-2xl mb-3 flex items-center gap-3"><span class="text-emerald-400">💾</span> 保存新存档</h3>
+        <p class="text-white/40 text-[15px] mb-6">保存当前的全部界面自定义参数以及解锁配置。支持同名文件多次保存，以时间区分。</p>
+        <div class="flex flex-col gap-3 mb-8">
+          <label class="text-white/60 text-sm font-bold tracking-widest">请输入长存档名称或备注：</label>
+          <input type="text" id="custom-save-input" style="width: 100%; min-width: 600px; display: block;" class="bg-black/30 text-white rounded-xl border border-white/20 focus:border-emerald-500/50 outline-none text-xl px-5 py-4 transition-colors" placeholder="备份存档名称...">
+        </div>
+        <div class="flex justify-end gap-3">
+          <button class="px-6 py-3 rounded-xl bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-colors text-sm font-bold" onclick="document.getElementById('custom-save-modal').style.display='none'">取消</button>
+          <button class="px-6 py-3 rounded-xl bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/40 border border-emerald-500/30 transition-colors text-sm font-bold shadow-md" onclick="window.confirmCustomSave()">确认保存</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('save-manager-container').innerHTML = panelHtml;
+  window.renderSaveManagerList();
+};
+
+window.showCustomSaveModal = function () {
+  const modal = document.getElementById('custom-save-modal');
+  const inp = document.getElementById('custom-save-input');
+  inp.value = "存档_" + new Date().toLocaleTimeString();
+  modal.style.display = 'flex';
+  inp.focus();
+};
+
+window.confirmCustomSave = function () {
+  const inp = document.getElementById('custom-save-input');
+  const name = inp.value.trim() || '未命名存档';
+
+  // Generate unique ID based on timestamp and randomness to allow same-name files
+  const profile = {
+    id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+    name: name,
+    timestamp: Date.now(),
+    inputs: {},
+    unlockData: window.unlockData
+  };
+
+  document.querySelectorAll('input.config-input, input[type="number"]').forEach(el => {
+    if (el.id && el.id !== 'custom-save-input') profile.inputs[el.id] = el.value;
+  });
+
+  let savedList = [];
+  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v2') || '[]'); } catch (e) { }
+  savedList.push(profile);
+  localStorage.setItem('g05_saves_v2', JSON.stringify(savedList));
+
+  document.getElementById('custom-save-modal').style.display = 'none';
+  window.renderSaveManagerList();
+};
+
+window.renderSaveManagerList = function () {
+  const listEl = document.getElementById('save-manager-list');
+  if (!listEl) return;
+
+  let savedList = [];
+  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v2') || '[]'); } catch (e) { }
+
+  // Sort descending by timestamp
+  savedList.sort((a, b) => b.timestamp - a.timestamp);
+
+  if (savedList.length === 0) {
+    listEl.innerHTML = '<div class="text-center text-white/30 py-8 text-sm flex flex-col items-center gap-2"><span class="text-2xl">📭</span>还没有任何存档记录</div>';
+    return;
+  }
+
+  listEl.innerHTML = savedList.map(p => {
+    const d = new Date(p.timestamp);
+    const dateStr = d.toLocaleDateString();
+    const timeStr = d.toLocaleTimeString();
+    return `
+      <div class="glass p-3.5 rounded-xl flex flex-col gap-2 border border-white/5 hover:border-white/20 transition-colors group relative bg-black/10 shadow-sm hover:shadow-md">
+        <div class="flex justify-between items-start mb-1">
+          <div class="text-white font-bold text-sm tracking-wide">${p.name}</div>
+        </div>
+        <div class="text-white/40 text-[10px] font-mono leading-tight flex items-center gap-1.5 selection:bg-transparent">
+          <span class="bg-white/10 px-1.5 py-0.5 rounded text-white/70">🕒 ${timeStr}</span>
+          <span class="text-white/30">${dateStr}</span>
+        </div>
+        <div class="flex justify-between items-center mt-3 border-t border-white/5 pt-3">
+          <button class="text-[11px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-1.5 rounded hover:bg-red-500/30 opacity-0 group-hover:opacity-100 transition-all" onclick="window.delCustomSave('${p.id}')">删除</button>
+          <button class="text-xs font-bold tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30 px-5 py-2 rounded shadow-inner hover:bg-blue-500/40 hover:text-blue-200 transition-colors ml-auto" onclick="window.loadCustomSave('${p.id}')">📂 加载</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+
+window.delCustomSave = function (id) {
+  if (!confirm('确定永久删除该备份存档吗？')) return;
+  let savedList = [];
+  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v2') || '[]'); } catch (e) { }
+  savedList = savedList.filter(p => p.id !== id);
+  localStorage.setItem('g05_saves_v2', JSON.stringify(savedList));
+  window.renderSaveManagerList();
+};
+
+window.loadCustomSave = function (id) {
+  let savedList = [];
+  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v2') || '[]'); } catch (e) { }
+  const p = savedList.find(x => x.id === id);
+  if (!p) return;
+
+  if (p.unlockData) {
+    window.unlockData = p.unlockData;
+    if (typeof window.renderUnlockUI === 'function') window.renderUnlockUI();
+  }
+
+  if (p.inputs) {
+    for (const [inpId, val] of Object.entries(p.inputs)) {
+      const el = document.getElementById(inpId);
+      if (el) {
+        el.value = val;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+  }
+};
+
+window.addEventListener('DOMContentLoaded', () => { setTimeout(() => { window.initSaveManager(); }, 100); });
 
 
 setupThBar();
@@ -2877,3 +3205,237 @@ setupThBar();
 rebuildBar();
 setupInputs();
 
+// ==========================================
+// SIMULATION MODULE
+// ==========================================
+
+window.GameConfig = {
+  enemyBaseHP: 110,
+  enemyScale: 1.10,
+  dailyStages: 5,
+
+  day1FreeSummons: 10,
+  dailySummons: 36,
+  heroesPerQuality: 5,
+
+  buildingBaseAtk: 90,
+  buildingScale: 1.30,
+
+  qualities: [
+    { name: 'Q2', rate: 0.50, baseAtk: 4 },
+    { name: 'Q3', rate: 0.25, baseAtk: 8 },
+    { name: 'Q4', rate: 0.14, baseAtk: 14 },
+    { name: 'Q5', rate: 0.07, baseAtk: 22 },
+    { name: 'Q6', rate: 0.03, baseAtk: 34 },
+    { name: 'Q7', rate: 0.01, baseAtk: 50 }
+  ],
+
+  ascensionCosts: [
+    1, 1, 1, 1, 1,
+    2, 2, 2, 2, 2,
+    3, 3, 3, 3, 3,
+    5, 5, 5, 5, 5,
+    8, 8, 8, 8, 8,
+    12, 12, 12, 12, 12
+  ]
+};
+
+function calculateAscensions(copies) {
+  if (copies < 1) return 0;
+  let shards = copies - 1;
+  let ascensions = 0;
+  for (let cost of window.GameConfig.ascensionCosts) {
+    if (shards >= cost) {
+      shards -= cost;
+      ascensions++;
+    } else {
+      ascensions += (shards / cost);
+      break;
+    }
+  }
+  return Math.min(ascensions, 30);
+}
+
+function getTopHeroesATK(totalSummons, slotsUnlk) {
+  let allHeroesEV = [];
+  for (let q of window.GameConfig.qualities) {
+    let expectedCopies = totalSummons * (q.rate / window.GameConfig.heroesPerQuality);
+    let ascLevel = calculateAscensions(expectedCopies);
+    let expectedAtk = q.baseAtk * (1 + (0.10 * ascLevel));
+    for (let i = 0; i < window.GameConfig.heroesPerQuality; i++) {
+      allHeroesEV.push(expectedAtk);
+    }
+  }
+  allHeroesEV.push(2); // Q1 base
+  allHeroesEV.sort((a, b) => b - a);
+
+  let teamAtk = 0;
+  for (let i = 0; i < slotsUnlk; i++) {
+    if (allHeroesEV[i]) teamAtk += allHeroesEV[i];
+  }
+  return teamAtk;
+}
+
+function generateSimulationData(daysToSimulate = 30) {
+  let chartData = [];
+
+  for (let day = 1; day <= daysToSimulate; day++) {
+    let totalSummons = window.GameConfig.day1FreeSummons + (day * window.GameConfig.dailySummons);
+
+    // 强制指定每日推关数，而不是依赖无限循环模拟测试
+    let currentStage = Math.floor(day * (window.GameConfig.dailyStages || 1));
+    if (currentStage < 1) currentStage = 1;
+
+    // 怪物血量 = 基础血量 * scale^(层数-1). 设定要求战力等于怪物血量
+    let requiredATK = window.GameConfig.enemyBaseHP * Math.pow(window.GameConfig.enemyScale, currentStage - 1);
+
+    let slots = currentStage < 4 ? 1 : 1 + Math.floor(currentStage / 4);
+    if (slots > 15) slots = 15;
+
+    let heroATK = getTopHeroesATK(totalSummons, slots);
+    let buildingATK = window.GameConfig.buildingBaseAtk * Math.pow(window.GameConfig.buildingScale, currentStage - 1);
+
+    let totalPlayerATK = heroATK + buildingATK;
+
+    chartData.push({
+      day: day,
+      maxStageCleared: currentStage,
+      reqAtk: requiredATK,
+      heroAtk: heroATK,
+      buildAtk: buildingATK,
+      totalAtk: totalPlayerATK
+    });
+  }
+  return chartData;
+}
+
+window.renderSimulationConfigUI = function () {
+  const container = document.getElementById('sim-configs-list');
+  if (!container) return;
+
+  const cfgFields = [
+    { key: 'enemyBaseHP', label: '初级怪物基础血量' },
+    { key: 'enemyScale', label: '每关血量提升倍率', step: 0.01 },
+    { key: 'dailyStages', label: '每日预期推关数(层)' },
+    { key: 'day1FreeSummons', label: '首日系统免费资源抽数' },
+    { key: 'dailySummons', label: '日常每日获取挂机资源' },
+    { key: 'heroesPerQuality', label: '各个品质池内同卡分布' },
+    { key: 'buildingBaseAtk', label: '开局自带基础建筑算力' },
+    { key: 'buildingScale', label: '通关后建筑每关提升版率', step: 0.01 }
+  ];
+
+  container.innerHTML = cfgFields.map(f => `
+    <div class="glass py-2.5 px-4 rounded-xl flex justify-between items-center transition-all hover:bg-white/5 border border-white/5 shadow-sm">
+      <span class="text-sm tracking-wide text-white/80 font-bold">${f.label}</span>
+      <input type="number" 
+             value="${window.GameConfig[f.key]}" 
+             step="${f.step || 1}" 
+             oninput="window.GameConfig['${f.key}'] = parseFloat(this.value); window.renderSimulationChart();"
+             class="bg-black/40 border border-white/10 text-white rounded-lg text-center focus:outline-none focus:border-emerald-500/50 transition-colors shadow-inner font-mono text-base font-bold"
+             style="width: 5.5rem; padding: 6px;">
+    </div>
+  `).join('');
+}
+
+let simChartInstance = null;
+window.renderSimulationChart = function () {
+  const el = document.getElementById('sim-chart');
+  if (!el) return;
+  if (!simChartInstance) {
+    simChartInstance = echarts.init(el, 'dark');
+    const ro = new ResizeObserver(() => simChartInstance.resize());
+    ro.observe(el);
+  }
+
+  const data = generateSimulationData(30);
+
+  const option = {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' }
+    },
+    legend: {
+      data: ['推关进度 (Stage)', '需求战力 (Requirement)', '队伍战力 (Heroes)', '建筑战力 (Buildings)'],
+      textStyle: { color: '#ccc' },
+      bottom: 0
+    },
+    grid: { left: '3%', right: '5%', bottom: '10%', top: '8%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      name: '天数 (Day)',
+      boundaryGap: false,
+      data: data.map(d => `第 ${d.day} 天`),
+      axisLabel: { color: '#888' }
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: '推进关卡层数',
+        position: 'left',
+        axisLine: { show: true, lineStyle: { color: '#ec4899' } },
+        splitLine: { show: true, lineStyle: { color: 'rgba(255,255,255,0.05)' } }
+      },
+      {
+        type: 'log',
+        logBase: 10,
+        name: '战力阈值范围 (Log10)',
+        position: 'right',
+        axisLine: { show: true, lineStyle: { color: '#22d3ee' } },
+        splitLine: { show: false }
+      }
+    ],
+    series: [
+      {
+        name: '推关进度 (Stage)',
+        type: 'bar',
+        yAxisIndex: 0,
+        data: data.map(d => d.maxStageCleared),
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(236,72,153,0.8)' },
+            { offset: 1, color: 'rgba(236,72,153,0.1)' }
+          ]),
+          borderRadius: [4, 4, 0, 0]
+        }
+      },
+      {
+        name: '需求战力 (Requirement)',
+        type: 'line',
+        yAxisIndex: 1,
+        smooth: true,
+        data: data.map(d => d.reqAtk),
+        lineStyle: { color: '#ef4444', width: 2, type: 'dashed' },
+        itemStyle: { color: '#ef4444' }
+      },
+      {
+        name: '队伍战力 (Heroes)',
+        type: 'line',
+        yAxisIndex: 1,
+        smooth: true,
+        data: data.map(d => d.heroAtk),
+        lineStyle: { color: '#3b82f6', width: 3 },
+        itemStyle: { color: '#3b82f6' },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(59,130,246,0.3)' },
+            { offset: 1, color: 'rgba(59,130,246,0.01)' }
+          ])
+        }
+      },
+      {
+        name: '建筑战力 (Buildings)',
+        type: 'line',
+        yAxisIndex: 1,
+        smooth: true,
+        data: data.map(d => d.buildAtk),
+        lineStyle: { color: '#10b981', width: 2 },
+        itemStyle: { color: '#10b981' }
+      }
+    ]
+  };
+
+  simChartInstance.setOption(option);
+};
+
+window.addEventListener('DOMContentLoaded', () => { setTimeout(() => { window.renderSimulationConfigUI(); }, 200); });
