@@ -2027,34 +2027,39 @@ function drawCPChart() {
   ctx.fillText('操作次数', pad.left + plotW / 2, H - 4);
 
   // Draw curve helper
-  function drawCurve(data, color, lineWidth) {
+  function drawCurve(data, color, lineWidth, dash) {
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth;
     ctx.shadowColor = color;
     ctx.shadowBlur = 6;
+    ctx.setLineDash(dash || []);
     ctx.beginPath();
+    let started = false;
     data.forEach((val, i) => {
+      if (val === 0 && !started) return;
       const x = xPx(i), y = yPx(val);
-      if (i === 0) ctx.moveTo(x, y);
+      if (!started) { ctx.moveTo(x, y); started = true; }
       else ctx.lineTo(x, y);
     });
-    ctx.stroke();
+    if (started) ctx.stroke();
     ctx.shadowBlur = 0;
+    ctx.setLineDash([]);
   }
 
-  // Per-building curves
+  // Per-building curves (different dash patterns)
+  const dashPatterns = [[], [8, 4], [3, 3]];
   bldgData.forEach((b, idx) => {
-    if (b.powerPerOp > 0) drawCurve(cumPower[idx], b.color, 2);
+    if (b.totalPowerPerOp > 0) drawCurve(cumPower[idx], b.color, 2.5, dashPatterns[idx]);
   });
 
-  // Total curve (white)
+  // Total curve (white, solid)
   drawCurve(totalPower, '#ffffff', 3);
 
   // Legend
   const legendEl = document.getElementById('cp-chart-legend');
   if (legendEl) {
     let html = `<div class="bcl-item"><span class="bcl-dot" style="background:#fff"></span><span class="bcl-label">\u5efa\u7b51\u603b\u6218\u529b</span></div>`;
-    html += bldgData.filter(b => b.powerPerOp > 0).map(b =>
+    html += bldgData.filter(b => b.totalPowerPerOp > 0).map(b =>
       `<div class="bcl-item"><span class="bcl-dot" style="background:${b.color}"></span><span class="bcl-label">${b.name}</span></div>`
     ).join('');
     legendEl.innerHTML = html;
