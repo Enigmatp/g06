@@ -1960,7 +1960,7 @@ function drawCPChart() {
 
   const atkRatio = parseFloat(document.getElementById('cp-atk-ratio')?.value) || 5;
   const hpRatio = parseFloat(document.getElementById('cp-hp-ratio')?.value) || 1;
-  const maxOps = 20;
+  const maxOps = 100;
 
   // Get per-op stats for each building
   const bldgData = CP_BUILDINGS.map(b => {
