@@ -108,6 +108,7 @@
       <button class="tab-btn tab-active" onclick="switchTab('overview')" id="tab-btn-overview">总览</button>
       <button class="tab-btn" onclick="switchTab('resources')" id="tab-btn-resources">循环</button>
       <button class="tab-btn" onclick="switchTab('buildings')" id="tab-btn-buildings">建筑</button>
+      <button class="tab-btn" onclick="switchTab('analysis')" id="tab-btn-analysis">分析</button>
     </nav>
 
     <!-- ── OVERVIEW TAB ── -->
@@ -502,6 +503,140 @@
       </section>
     </div><!-- /tab-resources -->
 
+    <!-- ── ANALYSIS TAB ── -->
+    <div id="tab-analysis" style="display:none;flex-direction:column;gap:1.5rem;width:100%;align-items:center">
+      <section class="glass rounded-2xl p-5 w-full animate-fade-up" style="max-width:128rem">
+        <div class="analysis-content" style="color:rgba(255,255,255,0.85);line-height:1.8;font-size:14px">
+
+          <h2 style="color:#fbbf24;font-size:1.5rem;margin-bottom:1rem;font-weight:700">📊 G05 数值系统分析</h2>
+
+          <!-- Section 1: Chapters -->
+          <h3 style="color:#10b981;margin:1.5rem 0 0.8rem;font-size:1.1rem">1. 时间节奏 — 章节系统</h3>
+          <p style="color:rgba(255,255,255,0.5);margin-bottom:0.8rem">10 × Fibonacci 递进: 10, 20, 30, 50, 80, 130, 210, 340, 550, 890</p>
+          <table class="analysis-table">
+            <thead><tr><th>章节</th><th>持续(min)</th><th>累计(min)</th><th>按60min/天</th><th>节奏定位</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>10</td><td>10</td><td>0.2天</td><td>教学/爽感期</td></tr>
+              <tr><td>2</td><td>20</td><td>30</td><td>0.5天</td><td>核心玩法展开</td></tr>
+              <tr><td>3</td><td>30</td><td>60</td><td>1天</td><td>系统全解锁</td></tr>
+              <tr><td>4</td><td>50</td><td>110</td><td>1.8天</td><td style="color:#f59e0b">中期拐点(break-even)</td></tr>
+              <tr><td>5</td><td>80</td><td>190</td><td>3.2天</td><td>养成深度</td></tr>
+              <tr><td>6</td><td>130</td><td>320</td><td>5.3天</td><td>中后期</td></tr>
+              <tr><td>7</td><td>210</td><td>530</td><td>8.8天</td><td>长线</td></tr>
+              <tr><td>8</td><td>340</td><td>870</td><td>14.5天</td><td>半月期</td></tr>
+              <tr><td>9</td><td>550</td><td>1420</td><td>23.7天</td><td>月度周期</td></tr>
+              <tr><td>10</td><td>890</td><td>2310</td><td>38.5天</td><td>终局</td></tr>
+            </tbody>
+          </table>
+
+          <!-- Section 2: Building Level -->
+          <h3 style="color:#a78bfa;margin:1.5rem 0 0.8rem;font-size:1.1rem">2. 建筑等级系统</h3>
+          <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:12px;padding:1rem;margin-bottom:1rem">
+            <p style="margin:0"><b>总等级公式:</b> <code style="color:#a78bfa">overallLevel = chapterIndex × 10 + floor(chapterProgress × 10)</code></p>
+            <p style="margin:0.5rem 0 0">10章 × 10级/章 = 最高 <b>Lv.100</b></p>
+          </div>
+          <p><b>追赶机制:</b> 后解锁建筑在解锁章内加速赶上总等级，避免“永远追不上”的挫败感。</p>
+          <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:0.8rem;font-family:monospace;font-size:13px;margin:0.5rem 0 1rem">
+            製皮厂(unlock=Lv.21): overallLv=25 → effectiveLv=15 (加速3×)<br>
+            製皮厂(unlock=Lv.21): overallLv=35 → effectiveLv=35 (1:1跟随)
+          </div>
+
+          <!-- Section 3: Gold Economy -->
+          <h3 style="color:#fbbf24;margin:1.5rem 0 0.8rem;font-size:1.1rem">3. 金币经济 — 以消耗定产出</h3>
+          <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:12px;padding:1rem;margin-bottom:1rem">
+            <p style="margin:0">核心设计: <b>金币产出 = 建筑升级消耗的反推值</b></p>
+            <p style="margin:0.3rem 0 0;color:rgba(255,255,255,0.5)">系统先算每关需要多少金币升级，再倒推每关给多少金币</p>
+          </div>
+          <table class="analysis-table">
+            <thead><tr><th>建筑</th><th>基础消耗</th><th>Lv.1</th><th>Lv.50</th><th>Lv.100</th></tr></thead>
+            <tbody>
+              <tr><td>医馆</td><td>10</td><td>11</td><td>60</td><td>110</td></tr>
+              <tr><td>熔铸所</td><td>20</td><td>22</td><td>120</td><td>220</td></tr>
+              <tr><td>製皮厂</td><td>20</td><td>22</td><td>120</td><td>220</td></tr>
+              <tr><td>晶石矿场</td><td>40</td><td>44</td><td>240</td><td>440</td></tr>
+            </tbody>
+          </table>
+          <p style="color:rgba(255,255,255,0.5)">升级消耗公式: <code>base × (1 + lv × 0.1)</code></p>
+          <p>金币/秒: Lv.1 ≈ <b>0.63</b>/s → Lv.50 ≈ <b>10.8</b>/s → Lv.100 ≈ <b>19.8</b>/s</p>
+          <p><b>Break-even:</b> 第4章时累计产出 = 累计消耗，前3章靠初始金币(1000)支撑</p>
+
+          <!-- Section 4: Material Economy -->
+          <h3 style="color:#60a5fa;margin:1.5rem 0 0.8rem;font-size:1.1rem">4. 材料经济 — 产消自平衡</h3>
+          <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:12px;padding:1rem;margin-bottom:1rem">
+            <p style="margin:0">精钢/皮革/晶石的<b>产出和消耗用同一个公式</b>，天然平衡。</p>
+          </div>
+          <table class="analysis-table">
+            <thead><tr><th>资源</th><th>产出建筑</th><th>产出base</th><th>消耗建筑</th><th>消耗base</th><th>解锁</th></tr></thead>
+            <tbody>
+              <tr><td style="color:#60a5fa">精钢</td><td>熔铸所</td><td>5</td><td>武器店(÷4部位)</td><td>200</td><td>Lv.1</td></tr>
+              <tr><td style="color:#a78bfa">皮革</td><td>製皮厂</td><td>5</td><td>护甲店</td><td>300</td><td>Lv.21</td></tr>
+              <tr><td style="color:#f472b6">晶石</td><td>晶石矿场</td><td>3</td><td>祝福圣殿</td><td>400</td><td>Lv.31</td></tr>
+            </tbody>
+          </table>
+
+          <!-- Section 5: Combat Power -->
+          <h3 style="color:#ef4444;margin:1.5rem 0 0.8rem;font-size:1.1rem">5. 战力系统</h3>
+          <p><b>单操作战力</b> = atk × atkSplit × atkRatio(5) + hp × hpRatio(1)</p>
+          <table class="analysis-table">
+            <thead><tr><th>建筑</th><th>攻击/操作</th><th>部位</th><th>生命/操作</th><th>单操作战力</th></tr></thead>
+            <tbody>
+              <tr><td style="color:#f59e0b">武器店</td><td>5</td><td>×4</td><td>-</td><td><b>100</b></td></tr>
+              <tr><td style="color:#22d3ee">护甲店</td><td>-</td><td>×1</td><td>100</td><td><b>100</b></td></tr>
+              <tr><td style="color:#c084fc">祝福圣殿</td><td>-</td><td>×1</td><td>200</td><td><b>200</b></td></tr>
+            </tbody>
+          </table>
+
+          <h4 style="color:rgba(255,255,255,0.6);margin:1rem 0 0.5rem">关卡总战力构成</h4>
+          <p style="color:rgba(255,255,255,0.5);margin-bottom:0.5rem">关卡总战力 = (单英雄建筑战力 × 队伍人数) + (召唤次数 × 单次期望战力 × 队伍人数)</p>
+          <table class="analysis-table">
+            <thead><tr><th>章节</th><th>操作次</th><th>英雄数</th><th>召唤次</th><th>建筑战力</th><th>召唤战力</th><th>总战力</th><th>召唤占比</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>10</td><td>4</td><td>10</td><td>4,000</td><td>40,000</td><td>44,000</td><td style="color:#ef4444">91%</td></tr>
+              <tr><td>3</td><td>30</td><td>6</td><td>20</td><td>72,000</td><td>120,000</td><td>192,000</td><td>63%</td></tr>
+              <tr><td>5</td><td>50</td><td>8</td><td>30</td><td>160,000</td><td>240,000</td><td>400,000</td><td>60%</td></tr>
+              <tr><td>10</td><td>100</td><td>13</td><td>55</td><td>520,000</td><td>715,000</td><td>1,235,000</td><td>58%</td></tr>
+            </tbody>
+          </table>
+
+          <!-- Section 6: Key Insights -->
+          <h3 style="color:#ec4899;margin:1.5rem 0 0.8rem;font-size:1.1rem">6. 数值策划关注点</h3>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+            <div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:1rem">
+              <p style="margin:0;color:#10b981;font-weight:700">✅ 精巧设计</p>
+              <ul style="margin:0.5rem 0 0;padding-left:1.2rem;color:rgba(255,255,255,0.6)">
+                <li>金币以消耗定产出，经济天然自洽</li>
+                <li>材料产消同公式，无需分别调优</li>
+                <li>Fibonacci章节避免线性无聊和指数绝望</li>
+                <li>追赶机制让后解锁建筑不会落后</li>
+              </ul>
+            </div>
+            <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:1rem">
+              <p style="margin:0;color:#ef4444;font-weight:700">⚠️ 待关注</p>
+              <ul style="margin:0.5rem 0 0;padding-left:1.2rem;color:rgba(255,255,255,0.6)">
+                <li>召唤前期占比91%，建筑感弱</li>
+                <li>建筑战力线性增长，缺突破感</li>
+                <li>章7-10每章3.5~14.8天</li>
+                <li>所有建筑同公式，缺差异化</li>
+              </ul>
+            </div>
+          </div>
+
+          <h4 style="color:rgba(255,255,255,0.6);margin:1rem 0 0.5rem">可调参数建议</h4>
+          <table class="analysis-table">
+            <thead><tr><th>目标</th><th>调整方向</th><th>具体操作</th></tr></thead>
+            <tbody>
+              <tr><td>降召唤占比</td><td>降初始/期望战力</td><td>初始10→5 或 期望1000→500</td></tr>
+              <tr><td>增建筑感</td><td>提高单操作战力</td><td>武器店 atk 5→10</td></tr>
+              <tr><td>突破里程碑</td><td>每10级倍率突破</td><td>Lv.10/20/30 攻击×1.5</td></tr>
+              <tr><td>缓解后期</td><td>加速机制</td><td>章6+扫荡/自动推进</td></tr>
+            </tbody>
+          </table>
+
+        </div>
+      </section>
+    </div><!-- /tab-analysis -->
+
   </div>
 `;var qf=document.getElementById(`chapter-cards`);Z.forEach(e=>{let t=document.createElement(`div`);t.id=`card-${e.id}`,t.className=`ch-card glass rounded-xl p-4 ch-locked`,t.style.setProperty(`--ch-color`,e.color),t.innerHTML=`
     <div class="flex items-center justify-between mb-2">
@@ -538,7 +673,7 @@
       </div>`).join(``),n.innerHTML=Array.from({length:jf},(e,t)=>{let n=((t+1)/jf*100).toFixed(2),r=(t+1)*Mf/60;return`<div class="axis-label" style="left:${n}%">
         <span class="axis-main">${t+1} </span>
         <span class="axis-sub">${r}h · ${(t+1)*Mf} min</span>
-      </div>`}).join(``))}),Qf(Nf>0?Vf(Q/Nf,0,1):0)}function lp(){let e=document.getElementById(`input-days`),t=document.getElementById(`input-mpd`),n=document.getElementById(`input-current`),r=document.getElementById(`input-days-loop`),i=document.getElementById(`input-mpd-loop`),a=document.getElementById(`input-current-loop`);function o(t){e&&document.activeElement!==e&&(e.value=t),r&&document.activeElement!==r&&(r.value=t)}function s(e){t&&document.activeElement!==t&&(t.value=e),i&&document.activeElement!==i&&(i.value=e)}function c(e){let t=parseInt(e.value);!isNaN(t)&&t>=1&&(jf=t,o(t),cp())}function l(e){let t=parseInt(e.value);!isNaN(t)&&t>=1&&(Mf=t,s(t),cp())}function u(e){let t=parseFloat(e.value);!isNaN(t)&&t>=0&&Qf(t/Nf)}e.addEventListener(`input`,()=>c(e)),t.addEventListener(`input`,()=>l(t)),n.addEventListener(`input`,()=>u(n)),r&&r.addEventListener(`input`,()=>c(r)),i&&i.addEventListener(`input`,()=>l(i)),a&&a.addEventListener(`input`,()=>u(a))}window.switchTab=function(e){[`overview`,`buildings`,`resources`].forEach(t=>{let n=document.getElementById(`tab-${t}`);n&&(n.style.display=e===t?`flex`:`none`)}),document.querySelectorAll(`.tab-btn`).forEach(e=>e.classList.remove(`tab-active`));let t=document.getElementById(`tab-btn-${e}`);t&&t.classList.add(`tab-active`),e===`buildings`&&requestAnimationFrame(()=>{typeof Sp==`function`&&Sp(),typeof Ep==`function`&&Ep(),typeof kp==`function`&&kp(),typeof Lp==`function`&&Lp()}),e===`resources`&&typeof $f==`function`&&$f()};var up=[{id:`med`,name:`医馆`,color:`#84cc16`,defaultBase:10,unlock:1,resource:`金币`,resBase:10},{id:`foundry`,name:`熔铸所`,color:`#60a5fa`,defaultBase:20,unlock:1,resource:`精钢`,resBase:5},{id:`tannery`,name:`製皮厂`,color:`#a78bfa`,defaultBase:20,unlock:21,resource:`皮革`,resBase:5},{id:`crystal`,name:`晶石矿场`,color:`#f472b6`,defaultBase:40,unlock:31,resource:`晶石`,resBase:3}],dp=up.filter(e=>e.resource),fp=[{id:`weapon`,name:`武器店(4部位)`,color:`#f59e0b`,consumes:`精钢`,consumeBase:200,unlock:1,levelSplit:4},{id:`armor`,name:`护甲店`,color:`#22d3ee`,consumes:`皮革`,consumeBase:300,unlock:21},{id:`blessing`,name:`祝福圣殿`,color:`#c084fc`,consumes:`晶石`,consumeBase:400,unlock:31}],pp=`#fbbf24`,mp=100;function hp(e,t){if(e<t)return 0;let n=Math.ceil(t/10)*10,r=n/(n-t+1);return e<=n?Math.round((e-t+1)*r):n+(e-n)}function gp(e,t){if(e<t)return 0;if(t<=1)return e;let n=Math.ceil(t/10)*10,r=n/(n-t+1);return e<=n?Math.round((e-t+1)*r):n+(e-n)}function _p(){return(parseFloat(document.getElementById(`cfg-waves`)?.value)||5)*(parseFloat(document.getElementById(`cfg-wave-sec`)?.value)||10)}function vp(e,t,n){return e*(1+t*n)}function yp(e){let t=parseFloat(document.getElementById(`bmc-base-${e.id}`)?.value)||e.defaultBase,n=parseFloat(document.getElementById(`bmc-multi-${e.id}`)?.value);return{base:t,multi:isNaN(n)?.1:n}}function bp(){let e=document.getElementById(`bldg-module-cards`);if(!e)return;e.innerHTML=``;let t=document.createElement(`div`);t.className=`bldg-col`;let n=document.createElement(`div`);n.className=`bldg-col`;let r=document.createElement(`div`);r.className=`bldg-mod-card glass rounded-xl`,r.style.setProperty(`--bmc-color`,pp),r.innerHTML=`
+      </div>`}).join(``))}),Qf(Nf>0?Vf(Q/Nf,0,1):0)}function lp(){let e=document.getElementById(`input-days`),t=document.getElementById(`input-mpd`),n=document.getElementById(`input-current`),r=document.getElementById(`input-days-loop`),i=document.getElementById(`input-mpd-loop`),a=document.getElementById(`input-current-loop`);function o(t){e&&document.activeElement!==e&&(e.value=t),r&&document.activeElement!==r&&(r.value=t)}function s(e){t&&document.activeElement!==t&&(t.value=e),i&&document.activeElement!==i&&(i.value=e)}function c(e){let t=parseInt(e.value);!isNaN(t)&&t>=1&&(jf=t,o(t),cp())}function l(e){let t=parseInt(e.value);!isNaN(t)&&t>=1&&(Mf=t,s(t),cp())}function u(e){let t=parseFloat(e.value);!isNaN(t)&&t>=0&&Qf(t/Nf)}e.addEventListener(`input`,()=>c(e)),t.addEventListener(`input`,()=>l(t)),n.addEventListener(`input`,()=>u(n)),r&&r.addEventListener(`input`,()=>c(r)),i&&i.addEventListener(`input`,()=>l(i)),a&&a.addEventListener(`input`,()=>u(a))}window.switchTab=function(e){[`overview`,`buildings`,`resources`,`analysis`].forEach(t=>{let n=document.getElementById(`tab-${t}`);n&&(n.style.display=e===t?`flex`:`none`)}),document.querySelectorAll(`.tab-btn`).forEach(e=>e.classList.remove(`tab-active`));let t=document.getElementById(`tab-btn-${e}`);t&&t.classList.add(`tab-active`),e===`buildings`&&requestAnimationFrame(()=>{typeof Sp==`function`&&Sp(),typeof Ep==`function`&&Ep(),typeof kp==`function`&&kp(),typeof Lp==`function`&&Lp()}),e===`resources`&&typeof $f==`function`&&$f()};var up=[{id:`med`,name:`医馆`,color:`#84cc16`,defaultBase:10,unlock:1,resource:`金币`,resBase:10},{id:`foundry`,name:`熔铸所`,color:`#60a5fa`,defaultBase:20,unlock:1,resource:`精钢`,resBase:5},{id:`tannery`,name:`製皮厂`,color:`#a78bfa`,defaultBase:20,unlock:21,resource:`皮革`,resBase:5},{id:`crystal`,name:`晶石矿场`,color:`#f472b6`,defaultBase:40,unlock:31,resource:`晶石`,resBase:3}],dp=up.filter(e=>e.resource),fp=[{id:`weapon`,name:`武器店(4部位)`,color:`#f59e0b`,consumes:`精钢`,consumeBase:200,unlock:1,levelSplit:4},{id:`armor`,name:`护甲店`,color:`#22d3ee`,consumes:`皮革`,consumeBase:300,unlock:21},{id:`blessing`,name:`祝福圣殿`,color:`#c084fc`,consumes:`晶石`,consumeBase:400,unlock:31}],pp=`#fbbf24`,mp=100;function hp(e,t){if(e<t)return 0;let n=Math.ceil(t/10)*10,r=n/(n-t+1);return e<=n?Math.round((e-t+1)*r):n+(e-n)}function gp(e,t){if(e<t)return 0;if(t<=1)return e;let n=Math.ceil(t/10)*10,r=n/(n-t+1);return e<=n?Math.round((e-t+1)*r):n+(e-n)}function _p(){return(parseFloat(document.getElementById(`cfg-waves`)?.value)||5)*(parseFloat(document.getElementById(`cfg-wave-sec`)?.value)||10)}function vp(e,t,n){return e*(1+t*n)}function yp(e){let t=parseFloat(document.getElementById(`bmc-base-${e.id}`)?.value)||e.defaultBase,n=parseFloat(document.getElementById(`bmc-multi-${e.id}`)?.value);return{base:t,multi:isNaN(n)?.1:n}}function bp(){let e=document.getElementById(`bldg-module-cards`);if(!e)return;e.innerHTML=``;let t=document.createElement(`div`);t.className=`bldg-col`;let n=document.createElement(`div`);n.className=`bldg-col`;let r=document.createElement(`div`);r.className=`bldg-mod-card glass rounded-xl`,r.style.setProperty(`--bmc-color`,pp),r.innerHTML=`
     <div class="bmc-header">
       <span class="bmc-dot" style="background:${pp}"></span>
       <span class="bmc-name" style="color:${pp}">关卡（产出）— 自动计算</span>
