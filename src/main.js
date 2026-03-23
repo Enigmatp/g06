@@ -298,7 +298,7 @@ document.getElementById('app').innerHTML = `
                 </div>
                 <div class="bmc-input-row">
                   <span class="bmc-label">每次操作 +生命</span>
-                  <input type="number" id="cp-armor-hp" value="100" min="1" class="config-input bmc-input">
+                  <input type="number" id="cp-armor-hp" value="150" min="1" class="config-input bmc-input">
                 </div>
               </div>
               <!-- Blessing temple -->
@@ -309,7 +309,7 @@ document.getElementById('app').innerHTML = `
                 </div>
                 <div class="bmc-input-row">
                   <span class="bmc-label">每次操作 +生命/攻击</span>
-                  <input type="number" id="cp-bless-hp" value="200" min="0" class="config-input bmc-input">
+                  <input type="number" id="cp-bless-hp" value="300" min="0" class="config-input bmc-input">
                 </div>
               </div>
             </div>
@@ -364,7 +364,7 @@ document.getElementById('app').innerHTML = `
                 </div>
                 <div class="bmc-input-row">
                   <span class="bmc-label">\u5355\u6b21\u53ec\u5524\u671f\u671b\u6218\u529b</span>
-                  <input type="number" id="lcp-summon-power" value="1000" min="0" class="config-input bmc-input">
+                  <input type="number" id="lcp-summon-power" value="300" min="0" class="config-input bmc-input">
                 </div>
               </div>
             </div>
@@ -871,7 +871,7 @@ function updateLoopValues() {
       const consumerMatch = RES_CONSUMERS.find(c => c.id === b.id || (b.id === 'bless' && c.id === 'blessing'));
       const consumerUnlock = consumerMatch ? consumerMatch.unlock : 1;
       const ops = effectiveConsumerLv(overallLv, consumerUnlock);
-      tp += ops * totalPowerPerOp;
+      tp += ops * totalPowerPerOp * milestoneBonus(overallLv);
     });
   }
   // Summon power
@@ -1247,18 +1247,18 @@ window.switchTab = function (id) {
 
 // ── Building Module ──────────────────────────────────────────────────
 const BLDG_MODULE = [
-  { id: 'med', name: '医馆', color: '#84cc16', defaultBase: 10, unlock: 1, resource: '金币', resBase: 10 },
-  { id: 'foundry', name: '熔铸所', color: '#60a5fa', defaultBase: 20, unlock: 1, resource: '精钢', resBase: 5 },
-  { id: 'tannery', name: '製皮厂', color: '#a78bfa', defaultBase: 20, unlock: 21, resource: '皮革', resBase: 5 },
-  { id: 'crystal', name: '晶石矿场', color: '#f472b6', defaultBase: 40, unlock: 31, resource: '晶石', resBase: 3 },
+  { id: 'med', name: '医馆', color: '#84cc16', defaultBase: 10, defaultMulti: 0.10, unlock: 1, resource: '金币', resBase: 10 },
+  { id: 'foundry', name: '熔铸所', color: '#60a5fa', defaultBase: 20, defaultMulti: 0.12, unlock: 1, resource: '精钢', resBase: 5 },
+  { id: 'tannery', name: '製皮厂', color: '#a78bfa', defaultBase: 20, defaultMulti: 0.08, unlock: 21, resource: '皮革', resBase: 5 },
+  { id: 'crystal', name: '晶石矿场', color: '#f472b6', defaultBase: 40, defaultMulti: 0.15, unlock: 31, resource: '晶石', resBase: 3 },
 ];
 const RESOURCE_BLDGS = BLDG_MODULE.filter(b => b.resource);
 
 // Resource consumers: buildings that spend resources
 const RES_CONSUMERS = [
-  { id: 'weapon', name: '武器店(4部位)', color: '#f59e0b', consumes: '精钢', consumeBase: 200, unlock: 1, levelSplit: 4 },
-  { id: 'armor', name: '护甲店', color: '#22d3ee', consumes: '皮革', consumeBase: 300, unlock: 21 },
-  { id: 'blessing', name: '祝福圣殿', color: '#c084fc', consumes: '晶石', consumeBase: 400, unlock: 31 },
+  { id: 'weapon', name: '武器店(4部位)', color: '#f59e0b', consumes: '精钢', consumeBase: 200, defaultMulti: 0.10, unlock: 1, levelSplit: 4 },
+  { id: 'armor', name: '护甲店', color: '#22d3ee', consumes: '皮革', consumeBase: 250, defaultMulti: 0.08, unlock: 21 },
+  { id: 'blessing', name: '祝福圣殿', color: '#c084fc', consumes: '晶石', consumeBase: 500, defaultMulti: 0.15, unlock: 31 },
 ];
 const STAGE_COLOR = '#fbbf24';
 const TOTAL_COST_COLOR = '#ffffff';
@@ -1275,6 +1275,11 @@ function effectiveBldgLv(overallLv, unlockLv) {
     return Math.round((overallLv - unlockLv + 1) * catchUpRate);
   }
   return catchUpEnd + (overallLv - catchUpEnd); // 1:1 after catch-up
+}
+
+// Milestone bonus: +20% combat power per 10-level milestone (breakthrough feel)
+function milestoneBonus(overallLv) {
+  return 1 + Math.floor(overallLv / 10) * 0.2;
 }
 
 // Effective consumer level: 0 before unlock, catch up by end of unlock chapter
@@ -1303,7 +1308,7 @@ function bldgCostFormula(base, level, multiplier) {
 function getBldgParams(b) {
   const base = parseFloat(document.getElementById(`bmc-base-${b.id}`)?.value) || b.defaultBase;
   const multi = parseFloat(document.getElementById(`bmc-multi-${b.id}`)?.value);
-  return { base, multi: isNaN(multi) ? 0.1 : multi };
+  return { base, multi: isNaN(multi) ? (b.defaultMulti || 0.1) : multi };
 }
 
 // ── Compute stage 'building level mapping ───────────────────────────
@@ -1471,7 +1476,7 @@ function buildBldgModuleCards() {
       <div class="bmc-formula">
         <span class="bmc-formula-label">升级价格公式</span>
         <code class="bmc-formula-code">基础价格 × (1 + 等级 ×
-          <input type="number" id="bmc-multi-${b.id}" value="0.1" step="0.01" min="0"
+          <input type="number" id="bmc-multi-${b.id}" value="${b.defaultMulti || 0.1}" step="0.01" min="0"
                  class="config-input bmc-param-input"> )</code>
       </div>
     `;
@@ -1723,7 +1728,7 @@ function resConsumeFormula(base, level, multi) {
 function getConsumerParams(c) {
   const base = parseFloat(document.getElementById(`resc-base-${c.id}`)?.value) || c.consumeBase;
   const multi = parseFloat(document.getElementById(`resc-multi-${c.id}`)?.value);
-  return { base, multi: isNaN(multi) ? 0.1 : multi };
+  return { base, multi: isNaN(multi) ? (c.defaultMulti || 0.1) : multi };
 }
 
 function buildResModuleCards() {
@@ -1958,7 +1963,7 @@ function drawCPChart() {
     const consumerUnlock = consumerMatch ? consumerMatch.unlock : 1;
     for (let op = 1; op <= maxOps; op++) {
       const effOps = effectiveConsumerLv(op, consumerUnlock);
-      arr.push(effOps * b.powerPerOp);
+      arr.push(effOps * b.powerPerOp * milestoneBonus(op));
     }
     return arr;
   });
@@ -1971,7 +1976,7 @@ function drawCPChart() {
       const consumerMatch = RES_CONSUMERS.find(c => c.id === b.id || (b.id === 'bless' && c.id === 'blessing'));
       const consumerUnlock = consumerMatch ? consumerMatch.unlock : 1;
       const effOps = effectiveConsumerLv(op, consumerUnlock);
-      total += effOps * b.totalPowerPerOp;
+      total += effOps * b.totalPowerPerOp * milestoneBonus(op);
     });
     totalPower.push(total);
   }
@@ -2463,7 +2468,7 @@ function drawLevelCPChart() {
   const chData = [];
   for (let ch = 1; ch <= numChapters; ch++) {
     const cumulativeOps = ch * opsPerCh;
-    const singleHeroPower = cumulativeOps * buildingPowerPerOp;
+    const singleHeroPower = cumulativeOps * buildingPowerPerOp * milestoneBonus(cumulativeOps);
     const slots = Math.min(teamMax, teamInit + (ch - 1) * teamPerCh);
     // Summon count: ramp from init toward max
     const summonCount = Math.min(summonMax, summonInit + (ch - 1) * summonStep);
