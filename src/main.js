@@ -370,6 +370,10 @@ document.getElementById('app').innerHTML = `
                   <span class="bmc-label">\u5355\u6b21\u53ec\u5524\u671f\u671b\u6218\u529b</span>
                   <input type="number" id="lcp-summon-power" value="300" min="0" class="config-input bmc-input">
                 </div>
+                <div class="bmc-input-row">
+                  <span class="bmc-label">\u6bcf\u7ae0\u8282\u671f\u671b\u9012\u589e</span>
+                  <input type="number" id="lcp-summon-power-step" value="50" min="0" class="config-input bmc-input">
+                </div>
               </div>
             </div>
           </div>
@@ -591,8 +595,8 @@ document.getElementById('app').innerHTML = `
             <thead><tr><th>资源</th><th>产出建筑</th><th>产出base</th><th>消耗建筑</th><th>消耗base</th><th>解锁</th></tr></thead>
             <tbody>
               <tr><td style="color:#60a5fa">精钢</td><td>熔铸所</td><td>5</td><td>武器店(÷4部位)</td><td>200</td><td>Lv.1</td></tr>
-              <tr><td style="color:#a78bfa">皮革</td><td>製皮厂</td><td>5</td><td>护甲店</td><td>300</td><td>Lv.21</td></tr>
-              <tr><td style="color:#f472b6">晶石</td><td>晶石矿场</td><td>3</td><td>祝福圣殿</td><td>400</td><td>Lv.31</td></tr>
+              <tr><td style="color:#a78bfa">皮革</td><td>製皮厂</td><td>5</td><td>护甲店</td><td>250</td><td>Lv.21</td></tr>
+              <tr><td style="color:#f472b6">晶石</td><td>晶石矿场</td><td>3</td><td>祝福圣殿</td><td>500</td><td>Lv.31</td></tr>
             </tbody>
           </table>
 
@@ -603,13 +607,18 @@ document.getElementById('app').innerHTML = `
             <thead><tr><th>建筑</th><th>攻击/操作</th><th>部位</th><th>生命/操作</th><th>单操作战力</th></tr></thead>
             <tbody>
               <tr><td style="color:#f59e0b">武器店</td><td>5</td><td>×4</td><td>-</td><td><b>100</b></td></tr>
-              <tr><td style="color:#22d3ee">护甲店</td><td>-</td><td>×1</td><td>100</td><td><b>100</b></td></tr>
+              <tr><td style="color:#22d3ee">护甲店</td><td>-</td><td>×1</td><td>150</td><td><b>150</b></td></tr>
               <tr><td style="color:#c084fc">祝福圣殿</td><td>-</td><td>×1</td><td>200</td><td><b>200</b></td></tr>
             </tbody>
           </table>
 
           <h4 style="color:rgba(255,255,255,0.6);margin:1rem 0 0.5rem">关卡总战力构成</h4>
-          <p style="color:rgba(255,255,255,0.5);margin-bottom:0.5rem">关卡总战力 = (单英雄建筑战力 × 队伍人数) + (召唤次数 × 单次期望战力 × 队伍人数)</p>
+          <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:0.8rem;font-family:monospace;font-size:12px;margin:0.5rem 0 1rem">
+            建筑战力 = 操作次 × 单操作战力 × 突破加成 × 队伍人数<br>
+            召唤战力 = 召唤次 × (基础期望 + 章节×递增) × 突破加成 × 队伍人数<br>
+            <span style="color:rgba(255,255,255,0.4)">召唤战力随章节增长（期望+50/章），占比逐渐提升</span>
+          </div>
+          <p style="color:rgba(255,255,255,0.5);margin-bottom:0.5rem">召唤配置: 初始10次, +5/章, 最大100; 期望300+50/章; 突破加成+20%/10级</p></p>
           <table class="analysis-table">
             <thead><tr><th>章节</th><th>操作次</th><th>英雄数</th><th>召唤次</th><th>建筑战力</th><th>召唤战力</th><th>总战力</th><th>召唤占比</th></tr></thead>
             <tbody>
@@ -897,7 +906,9 @@ function updateLoopValues() {
     }
     const summonCount = Math.min(sMax, sInit + baseSummons + partialSummons);
     const slots = Math.min(teamConfig.max, teamConfig.base + completedCh * teamConfig.inc);
-    tp += summonCount * sPower * slots;
+    const sPowerStep = parseFloat(document.getElementById('lcp-summon-power-step')?.value) || 0;
+    const actualSPower = (sPower + completedCh * sPowerStep) * milestoneBonus(overallLv);
+    tp += summonCount * actualSPower * slots;
   }
 
   const tP = document.getElementById('total-power');
@@ -2458,6 +2469,7 @@ function drawLevelCPChart() {
   const summonMax = parseInt(document.getElementById('lcp-summon-max')?.value) || 0;
   const summonStep = parseInt(document.getElementById('lcp-summon-step')?.value) || 0;
   const summonPowerPerCall = parseFloat(document.getElementById('lcp-summon-power')?.value) || 0;
+  const summonPowerStep = parseFloat(document.getElementById('lcp-summon-power-step')?.value) || 0;
 
   // Read team slot config
   const teamInit = parseInt(document.getElementById('team-init')?.value) || 4;
@@ -2478,7 +2490,9 @@ function drawLevelCPChart() {
     // Summon count: ramp from init toward max
     const summonCount = Math.min(summonMax, summonInit + (ch - 1) * summonStep);
     const buildingPower = singleHeroPower * slots;
-    const summonPower = summonCount * summonPowerPerCall * slots;
+    // Summon power scales with chapter growth and milestone bonus
+    const actualSummonPower = (summonPowerPerCall + (ch - 1) * summonPowerStep) * milestoneBonus(cumulativeOps);
+    const summonPower = summonCount * actualSummonPower * slots;
     const totalPower = buildingPower + summonPower;
     chData.push({ ch, cumulativeOps, singleHeroPower, slots, summonCount, buildingPower, summonPower, totalPower });
   }
@@ -2646,7 +2660,7 @@ function showLCPDataPopup() {
 
 // Level CP inputs + init
 drawLevelCPChart();
-['lcp-ops-per-ch', 'lcp-max-ch', 'lcp-summon-init', 'lcp-summon-max', 'lcp-summon-step', 'lcp-summon-power'].forEach(id => {
+['lcp-ops-per-ch', 'lcp-max-ch', 'lcp-summon-init', 'lcp-summon-max', 'lcp-summon-step', 'lcp-summon-power', 'lcp-summon-power-step'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', drawLevelCPChart);
 });
