@@ -76,6 +76,24 @@ function fmtUnlock(min) {
   return min === 0 ? '立即' : fmtMin(min);
 }
 
+// ── Building configurations for Loop tab ─────────────────────────────
+// Only leveled buildings (those with upgrade intervals)
+const bldgConfigs = {
+  med: { start: 0, interval: BLDG_LEVEL_INTERVAL },
+  foundry: { start: 150 / 60, interval: BLDG_LEVEL_INTERVAL },
+  tannery: { start: 700 / 60, interval: BLDG_LEVEL_INTERVAL },
+  crystal: { start: 25, interval: BLDG_LEVEL_INTERVAL },
+};
+// Non-leveled buildings: unlock time only (noLevel: true)
+const noLevelConfigs = {
+  weapon: { unlockAt: 50 / 60 },
+  armor: { unlockAt: 500 / 60 },
+  temple: { unlockAt: 20 },
+  summon: { unlockAt: 15 },
+};
+// Team slot config
+const teamConfig = { base: 4, inc: 1, max: 15 };
+
 // ── State ────────────────────────────────────────────────────────────
 let currentMin = 0;
 let isDragging = false;
@@ -326,23 +344,26 @@ document.getElementById('app').innerHTML = `
                   <input type="number" id="lcp-max-ch" value="20" min="1" max="50" class="config-input bmc-input">
                 </div>
               </div>
-              <!-- Summon ratio config -->
               <div class="bldg-mod-card glass rounded-xl">
                 <div class="bmc-header">
                   <span class="bmc-dot" style="background:#8b5cf6"></span>
-                  <span class="bmc-name" style="color:#8b5cf6">\u53ec\u5524\u5360\u6bd4</span>
+                  <span class="bmc-name" style="color:#8b5cf6">\u53ec\u5524\u914d\u7f6e</span>
                 </div>
                 <div class="bmc-input-row">
-                  <span class="bmc-label">\u521d\u59cb\u5360\u6bd4 (%)</span>
-                  <input type="number" id="lcp-summon-init" value="0" min="0" max="100" class="config-input bmc-input">
+                  <span class="bmc-label">\u521d\u59cb\u6b21\u6570</span>
+                  <input type="number" id="lcp-summon-init" value="10" min="0" class="config-input bmc-input">
                 </div>
                 <div class="bmc-input-row">
-                  <span class="bmc-label">\u6700\u5927\u5360\u6bd4 (%)</span>
-                  <input type="number" id="lcp-summon-max" value="80" min="0" max="100" class="config-input bmc-input">
+                  <span class="bmc-label">\u6700\u5927\u6b21\u6570</span>
+                  <input type="number" id="lcp-summon-max" value="100" min="0" class="config-input bmc-input">
                 </div>
                 <div class="bmc-input-row">
-                  <span class="bmc-label">\u6bcf\u7ae0\u8282\u9012\u589e (%)</span>
-                  <input type="number" id="lcp-summon-step" value="5" min="0" max="100" class="config-input bmc-input">
+                  <span class="bmc-label">\u6bcf\u7ae0\u8282\u9012\u589e\u6b21\u6570</span>
+                  <input type="number" id="lcp-summon-step" value="5" min="0" class="config-input bmc-input">
+                </div>
+                <div class="bmc-input-row">
+                  <span class="bmc-label">\u5355\u6b21\u53ec\u5524\u671f\u671b\u6218\u529b</span>
+                  <input type="number" id="lcp-summon-power" value="1000" min="0" class="config-input bmc-input">
                 </div>
               </div>
             </div>
@@ -361,21 +382,71 @@ document.getElementById('app').innerHTML = `
     <!-- ── RESOURCES TAB ── -->
     <div id="tab-resources" style="display:none;flex-direction:column;gap:1.5rem;width:100%;align-items:center">
       <section class="glass rounded-2xl p-5 w-full" style="max-width:128rem">
-        <p class="text-white/30 text-sm uppercase tracking-widest mb-5 font-semibold">主循环</p>
+        <div class="flex items-end justify-between mb-5 gap-6">
+          <div>
+            <p class="text-white/40 text-xs uppercase tracking-widest mb-1">主循环与资源增长</p>
+            <div id="time-display-loop" class="font-display font-bold text-3xl text-white">未开始</div>
+          </div>
+          <div class="flex gap-4 items-end">
+            <div class="text-center">
+              <p class="text-white/40 text-xs uppercase tracking-widest mb-1">当前（分钟）</p>
+              <input type="number" id="input-current-loop" value="0" min="0" class="config-input" style="width:7rem">
+            </div>
+            <div class="text-center">
+              <p class="text-white/40 text-xs uppercase tracking-widest mb-1">总时长（天）</p>
+              <input type="number" id="input-days-loop" value="3" min="1" max="60" class="config-input">
+            </div>
+            <div class="text-center">
+              <p class="text-white/40 text-xs uppercase tracking-widest mb-1">每日时长（分钟）</p>
+              <input type="number" id="input-mpd-loop" value="60" min="1" max="480" class="config-input">
+            </div>
+          </div>
+        </div>
+
+        <!-- Ported Progress Bar -->
+        <div class="relative mb-8" id="bar-root-loop">
+          <div class="seg-track" id="track-loop">
+            <div id="seg-container-loop" style="display:contents"></div>
+            <div class="seg-overlay" id="overlay-loop"></div>
+            <div class="seg-handle" id="handle-loop" style="left:0%" role="slider"></div>
+          </div>
+          <div class="relative mt-3 day-axis" id="axis-container-loop"></div>
+        </div>
 
         <div style="position:relative;width:1090px;height:540px;margin:0 auto">
           <!-- Top row: 医馆 关卡 熔铸所 製皮厂 晶石矿场 -->
-          <div class="rc-box" style="position:absolute;left:30px;top:60px;border-style:dashed;color:#84cc16;border-color:rgba(132,204,22,0.3);background:rgba(132,204,22,0.06)">医馆</div>
-          <div class="rc-box rc-green" style="position:absolute;left:370px;top:60px">关卡</div>
-          <div class="rc-box rc-blue" style="position:absolute;left:550px;top:60px">熔铸所</div>
-          <div class="rc-box rc-purple" style="position:absolute;left:730px;top:60px">製皮厂</div>
-          <div class="rc-box rc-pink" style="position:absolute;left:910px;top:60px">晶石矿场</div>
+          <div id="rc-clinic" class="rc-box" style="position:absolute;left:30px;top:60px;border-style:dashed;color:#84cc16;border-color:rgba(132,204,22,0.3);background:rgba(132,204,22,0.06)">
+            医馆<div id="val-clinic" class="rc-val">Lv.0</div>
+          </div>
+          <div id="rc-stage" class="rc-box rc-green" style="position:absolute;left:370px;top:60px">
+            关卡<div id="val-stage" class="rc-val">第1波</div>
+          </div>
+          <div id="rc-foundry" class="rc-box rc-blue" style="position:absolute;left:550px;top:60px">
+            熔铸所<div id="val-foundry" class="rc-val">Lv.0</div>
+          </div>
+          <div id="rc-tanner" class="rc-box rc-purple" style="position:absolute;left:730px;top:60px">
+            製皮厂<div id="val-tanner" class="rc-val">Lv.0</div>
+          </div>
+          <div id="rc-mine" class="rc-box rc-pink" style="position:absolute;left:910px;top:60px">
+            晶石矿场<div id="val-mine" class="rc-val">Lv.0</div>
+          </div>
           <!-- Bottom row: 召唤 队伍 武器店 护甲店 祝福圣殿 -->
-          <div class="rc-box" style="position:absolute;left:30px;top:320px;border-color:rgba(139,92,246,0.5);color:#8b5cf6">召唤</div>
-          <div class="rc-box rc-amber" style="position:absolute;left:370px;top:320px">队伍</div>
-          <div class="rc-box rc-blue" style="position:absolute;left:550px;top:320px">武器店</div>
-          <div class="rc-box rc-purple" style="position:absolute;left:730px;top:320px">护甲店</div>
-          <div class="rc-box rc-pink" style="position:absolute;left:910px;top:320px">祝福圣殿</div>
+          <div id="rc-summon" class="rc-box" style="position:absolute;left:30px;top:320px;border-color:rgba(139,92,246,0.5);color:#8b5cf6">
+            召唤<div id="val-summon" class="rc-val">🔒</div>
+          </div>
+          <div id="rc-team" class="rc-box rc-amber" style="position:absolute;left:370px;top:320px">
+            队伍<div id="val-team" class="rc-val">0/0</div>
+          </div>
+          <div id="rc-weapon" class="rc-box rc-blue" style="position:absolute;left:550px;top:320px">
+            武器店<div id="val-weapon" class="rc-val">🔒</div>
+          </div>
+          <div id="rc-armor" class="rc-box rc-purple" style="position:absolute;left:730px;top:320px">
+            护甲店<div id="val-armor" class="rc-val">🔒</div>
+          </div>
+          <div id="rc-temple" class="rc-box rc-pink" style="position:absolute;left:910px;top:320px">
+            祝福圣殿<div id="val-temple" class="rc-val">🔒</div>
+          </div>
+
           <svg style="position:absolute;left:0;top:0;width:1090px;height:540px;pointer-events:none" viewBox="0 0 1090 540">
             <!-- GOLD: unified bar y=35 from 医馆(110) to 晶石矿场(990) -->
             <path d="M110,35 H990" fill="none" stroke="rgba(251,191,36,0.3)" stroke-width="2.5"/>
@@ -385,36 +456,44 @@ document.getElementById('app').innerHTML = `
             <path d="M810,35 V60" fill="none" stroke="rgba(251,191,36,0.3)" stroke-width="2.5"/>
             <path d="M990,35 V60" fill="none" stroke="rgba(251,191,36,0.3)" stroke-width="2.5"/>
             <text x="540" y="28" fill="#fbbf24" font-size="14" font-weight="700" opacity="0.7">金币</text>
-            <!-- Gold dots to RIGHT buildings -->
+            <text id="rate-gold" x="540" y="52" fill="#fbbf24" font-size="12" font-weight="600" text-anchor="middle" opacity="0.9">0/s</text>
+
+            <!-- Gold dots... -->
             <circle r="4" fill="#fbbf24"><animateMotion dur="1.6s" repeatCount="indefinite" path="M450,60 V35 H630 V60"/></circle>
             <circle r="4" fill="#fbbf24"><animateMotion dur="1.6s" repeatCount="indefinite" path="M450,60 V35 H630 V60" begin="0.5s"/></circle>
             <circle r="4" fill="#fbbf24"><animateMotion dur="2s" repeatCount="indefinite" path="M450,60 V35 H810 V60"/></circle>
             <circle r="4" fill="#fbbf24"><animateMotion dur="2s" repeatCount="indefinite" path="M450,60 V35 H810 V60" begin="0.6s"/></circle>
             <circle r="4" fill="#fbbf24"><animateMotion dur="2.4s" repeatCount="indefinite" path="M450,60 V35 H990 V60"/></circle>
             <circle r="4" fill="#fbbf24"><animateMotion dur="2.4s" repeatCount="indefinite" path="M450,60 V35 H990 V60" begin="0.7s"/></circle>
-            <!-- Gold dots to 医馆 (same bar-and-drop style, going left) -->
             <circle r="4" fill="#fbbf24"><animateMotion dur="1.6s" repeatCount="indefinite" path="M450,60 V35 H110 V60"/></circle>
             <circle r="4" fill="#fbbf24"><animateMotion dur="1.6s" repeatCount="indefinite" path="M450,60 V35 H110 V60" begin="0.5s"/></circle>
+
             <!-- 加速 医馆RIGHT(190,140) '关卡LEFT(370,140) -->
             <path d="M190,140 H370" fill="none" stroke="rgba(132,204,22,0.3)" stroke-width="2.5"/>
-            <text x="240" y="132" fill="#84cc16" font-size="14" font-weight="700" opacity="0.7">加</text>
+            <text x="280" y="132" fill="#84cc16" font-size="14" font-weight="700" opacity="0.7">加</text>
             <circle r="3" fill="#84cc16"><animateMotion dur="1.4s" repeatCount="indefinite" path="M190,140 H370"/></circle>
             <circle r="3" fill="#84cc16"><animateMotion dur="1.4s" repeatCount="indefinite" path="M190,140 H370" begin="0.7s"/></circle>
-            <!-- MATERIALS: vertical (same format) -->
+
+            <!-- MATERIALS: vertical -->
             <path d="M630,220 V320" fill="none" stroke="rgba(96,165,250,0.3)" stroke-width="2.5"/>
             <path d="M810,220 V320" fill="none" stroke="rgba(167,139,250,0.3)" stroke-width="2.5"/>
             <path d="M990,220 V320" fill="none" stroke="rgba(244,114,182,0.3)" stroke-width="2.5"/>
-            <text x="636" y="275" fill="#60a5fa" font-size="14" font-weight="700" opacity="0.7">精钢</text>
-            <text x="816" y="275" fill="#a78bfa" font-size="14" font-weight="700" opacity="0.7">皮革</text>
-            <text x="996" y="275" fill="#f472b6" font-size="14" font-weight="700" opacity="0.7">晶石</text>
+            <text x="636" y="265" fill="#60a5fa" font-size="13" font-weight="700" opacity="0.7">精钢</text>
+            <text id="rate-steel" x="636" y="285" fill="#60a5fa" font-size="11" font-weight="600" opacity="0.9">0/s</text>
+            <text x="816" y="265" fill="#a78bfa" font-size="13" font-weight="700" opacity="0.7">皮革</text>
+            <text id="rate-leather" x="816" y="285" fill="#a78bfa" font-size="11" font-weight="600" opacity="0.9">0/s</text>
+            <text x="996" y="265" fill="#f472b6" font-size="13" font-weight="700" opacity="0.7">晶石</text>
+            <text id="rate-gem" x="996" y="285" fill="#f472b6" font-size="11" font-weight="600" opacity="0.9">0/s</text>
             <circle r="3" fill="#60a5fa"><animateMotion dur="1.4s" repeatCount="indefinite" path="M630,220 V320"/></circle>
             <circle r="3" fill="#a78bfa"><animateMotion dur="1.4s" repeatCount="indefinite" path="M810,220 V320" begin="0.5s"/></circle>
             <circle r="3" fill="#f472b6"><animateMotion dur="1.4s" repeatCount="indefinite" path="M990,220 V320" begin="1s"/></circle>
+
             <!-- 通关: 队伍TOP(450,320) 'UP to 关卡BOTTOM(450,220) -->
             <path d="M450,220 V320" fill="none" stroke="rgba(16,185,129,0.3)" stroke-width="2.5"/>
             <text x="456" y="275" fill="#10b981" font-size="14" font-weight="700" opacity="0.7">通关</text>
             <circle r="3" fill="#10b981"><animateMotion dur="1.4s" repeatCount="indefinite" path="M450,320 V220"/></circle>
             <circle r="3" fill="#10b981"><animateMotion dur="1.4s" repeatCount="indefinite" path="M450,320 V220" begin="0.7s"/></circle>
+
             <!-- POWER: merged horizontal bar at y=505 + vertical rises -->
             <path d="M450,505 H990" fill="none" stroke="rgba(34,211,238,0.3)" stroke-width="2.5"/>
             <path d="M450,480 V505" fill="none" stroke="rgba(34,211,238,0.3)" stroke-width="2.5"/>
@@ -422,7 +501,9 @@ document.getElementById('app').innerHTML = `
             <path d="M810,480 V505" fill="none" stroke="rgba(34,211,238,0.3)" stroke-width="2.5"/>
             <path d="M990,480 V505" fill="none" stroke="rgba(34,211,238,0.3)" stroke-width="2.5"/>
             <text x="600" y="520" fill="#22d3ee" font-size="14" font-weight="700" opacity="0.7">战力</text>
-            <!-- Power dots: each combat→down→bar→left→up to 队伍 -->
+            <text id="total-power" x="650" y="520" fill="#22d3ee" font-size="12" font-weight="600" opacity="0.9">0</text>
+
+            <!-- Power dots -->
             <circle r="4" fill="#22d3ee"><animateMotion dur="1.6s" repeatCount="indefinite" path="M630,480 V505 H450 V480"/></circle>
             <circle r="4" fill="#22d3ee"><animateMotion dur="1.6s" repeatCount="indefinite" path="M630,480 V505 H450 V480" begin="0.5s"/></circle>
             <circle r="4" fill="#22d3ee"><animateMotion dur="2s" repeatCount="indefinite" path="M810,480 V505 H450 V480"/></circle>
@@ -436,9 +517,7 @@ document.getElementById('app').innerHTML = `
             <circle r="3" fill="#8b5cf6"><animateMotion dur="1.4s" repeatCount="indefinite" path="M190,400 H370"/></circle>
           </svg>
         </div>
-
       </section>
-
     </div><!-- /tab-resources -->
 
   </div>
@@ -480,20 +559,26 @@ function setProgress(fraction) {
   currentMin = Math.round((fraction * TOTAL_MIN) / WAVE_STEP) * WAVE_STEP;
   currentMin = clamp(currentMin, 0, TOTAL_MIN);
 
-  handle.style.left = `${fraction * 100}%`;
+  // Sync both bars
+  ['', '-loop'].forEach(sfx => {
+    const h = document.getElementById(`handle${sfx}`);
+    const d = document.getElementById(`time-display${sfx}`);
+    if (h) h.style.left = `${fraction * 100}%`;
+    if (d) {
+      if (currentMin === 0) {
+        d.textContent = '未开始';
+      } else {
+        const day = Math.floor(currentMin / MIN_PER_DAY) + 1;
+        const minInDay = currentMin % MIN_PER_DAY;
+        d.textContent = minInDay === 0
+          ? `${Math.floor(currentMin / MIN_PER_DAY)} 天`
+          : `${day} 天 ${fmtMin(minInDay)}`;
+      }
+    }
+  });
+
   tooltip.style.left = `${fraction * 100}%`;
   handle.setAttribute('aria-valuenow', currentMin);
-
-  // Day display
-  if (currentMin === 0) {
-    timeDisp.textContent = '未开始';
-  } else {
-    const day = Math.floor(currentMin / MIN_PER_DAY) + 1;
-    const minInDay = currentMin % MIN_PER_DAY;
-    timeDisp.textContent = minInDay === 0
-      ? `${Math.floor(currentMin / MIN_PER_DAY)} 天`
-      : `${day} '· ${fmtMin(minInDay)}`;
-  }
   tooltipTxt.textContent = fmtMin(currentMin);
 
   // Sync current-minutes input
@@ -501,27 +586,186 @@ function setProgress(fraction) {
   if (inCur && document.activeElement !== inCur)
     inCur.value = Number(currentMin.toFixed(2));
 
-  // Update main bar segments
+  // Update main bar segments for both
   for (let i = 0; i < TOTAL_DAYS; i++) {
     const segStart = i * MIN_PER_DAY;
     const segEnd = (i + 1) * MIN_PER_DAY;
     let pct = 0;
     if (currentMin >= segEnd) pct = 100;
     else if (currentMin > segStart) pct = (currentMin - segStart) / MIN_PER_DAY * 100;
-    document.getElementById(`segfill-${i}`).style.width = `${pct}%`;
+
+    const fill = document.getElementById(`segfill-${i}`);
+    if (fill) fill.style.width = `${pct}%`;
+    const fillLoop = document.getElementById(`segfill-loop-${i}`);
+    if (fillLoop) fillLoop.style.width = `${pct}%`;
   }
 
   // Update all sections
   updateChapters();
   updateBuildings();
   updateFeatures();
+  updateLoopValues();
 }
 
-function fractionFromEvent(e) {
-  const rect = overlay.getBoundingClientRect();
-  const cx = e.touches ? e.touches[0].clientX : e.clientX;
-  return clamp((cx - rect.left) / rect.width, 0, 1);
+function updateLoopValues() {
+  const loopTab = document.getElementById('tab-resources');
+  if (!loopTab || loopTab.style.display === 'none') return;
+
+  // Sync loop tab inputs with current values
+  const inCurLoop = document.getElementById('input-current-loop');
+  if (inCurLoop && document.activeElement !== inCurLoop)
+    inCurLoop.value = Number(currentMin.toFixed(2));
+  const inDaysLoop = document.getElementById('input-days-loop');
+  if (inDaysLoop && document.activeElement !== inDaysLoop)
+    inDaysLoop.value = TOTAL_DAYS;
+  const inMpdLoop = document.getElementById('input-mpd-loop');
+  if (inMpdLoop && document.activeElement !== inMpdLoop)
+    inMpdLoop.value = MIN_PER_DAY;
+
+  // Use the same overall building level as the Overview tab
+  const overallLv = getBuildingLevel();
+
+  // Helper: set locked/unlocked visual state on rc-box
+  function setBoxLocked(rcId, locked) {
+    const box = document.getElementById(rcId);
+    if (!box) return;
+    if (locked) {
+      box.style.filter = 'grayscale(1)';
+      box.style.opacity = '0.35';
+    } else {
+      box.style.filter = '';
+      box.style.opacity = '';
+    }
+  }
+
+  // Leveled buildings (use effectiveBldgLv matching Overview logic)
+  const leveledBuildings = [
+    { domId: 'clinic', rcId: 'rc-clinic', unlockLv: 1, unlockAt: 0 },
+    { domId: 'foundry', rcId: 'rc-foundry', unlockLv: 1, unlockAt: 150 / 60 },
+    { domId: 'tanner', rcId: 'rc-tanner', unlockLv: 21, unlockAt: 700 / 60 },
+    { domId: 'mine', rcId: 'rc-mine', unlockLv: 31, unlockAt: 25 },
+  ];
+  leveledBuildings.forEach(b => {
+    const locked = currentMin < b.unlockAt;
+    const el = document.getElementById(`val-${b.domId}`);
+    const lvl = locked ? 0 : effectiveBldgLv(overallLv, b.unlockLv);
+    if (el) el.textContent = locked ? '\ud83d\udd12' : `Lv.${lvl}`;
+    setBoxLocked(b.rcId, locked);
+  });
+
+  // Non-leveled buildings: show unlocked or locked, gray out if locked
+  const noLevelBuildings = [
+    { domId: 'weapon', rcId: 'rc-weapon', unlockAt: 50 / 60 },
+    { domId: 'armor', rcId: 'rc-armor', unlockAt: 500 / 60 },
+    { domId: 'temple', rcId: 'rc-temple', unlockAt: 20 },
+    { domId: 'summon', rcId: 'rc-summon', unlockAt: 15 },
+  ];
+  noLevelBuildings.forEach(b => {
+    const locked = currentMin < b.unlockAt;
+    const el = document.getElementById(`val-${b.domId}`);
+    if (b.domId === 'summon') {
+      // Summon shows count based on gradual progression within chapters
+      if (locked) {
+        if (el) el.textContent = '\ud83d\udd12';
+      } else {
+        const sInit = parseInt(document.getElementById('lcp-summon-init')?.value) || 0;
+        const sMax = parseInt(document.getElementById('lcp-summon-max')?.value) || 0;
+        const sStep = parseInt(document.getElementById('lcp-summon-step')?.value) || 0;
+        // Completed chapters contribute full step each
+        const completedCh = CHAPTERS.filter(c => currentMin >= c.end).length;
+        const baseSummons = completedCh * sStep;
+        // Current chapter: spread sStep summons one-by-one within it
+        const curCh = CHAPTERS.find(c => currentMin >= c.start && currentMin < c.end);
+        let partialSummons = 0;
+        if (curCh && sStep > 0) {
+          const chDur = curCh.end - curCh.start;
+          const elapsed = currentMin - curCh.start;
+          const pct = chDur > 0 ? elapsed / chDur : 0;
+          partialSummons = Math.floor(pct * sStep);
+        }
+        const summonCount = Math.min(sMax, sInit + baseSummons + partialSummons);
+        if (el) el.textContent = `${summonCount}\u6b21`;
+      }
+    } else {
+      if (el) el.textContent = locked ? '\ud83d\udd12' : '\u5df2\u89e3\u9501';
+    }
+    setBoxLocked(b.rcId, locked);
+  });
+
+  // Stage wave calculation
+  const ch = CHAPTERS.find(c => currentMin >= c.start && currentMin < c.end) || CHAPTERS[CHAPTERS.length - 1];
+  const cfgWaves = parseFloat(document.getElementById('cfg-waves')?.value) || 5;
+  const cfgWaveSec = parseFloat(document.getElementById('cfg-wave-sec')?.value) || 10;
+  const elapsedSecInCh = (currentMin - ch.start) * 60;
+  const waveIdx = Math.floor(Math.max(0, elapsedSecInCh) / cfgWaveSec);
+  const waveInLevel = (waveIdx % cfgWaves) + 1;
+  const levelInCh = Math.floor(waveIdx / cfgWaves) + 1;
+  const valStage = document.getElementById('val-stage');
+  if (valStage) valStage.textContent = `${ch.id}-${levelInCh} (${waveInLevel}\u6ce2)`;
+
+  // Team slots calculation
+  const activeCh = CHAPTERS.filter(c => currentMin >= c.end).length;
+  const tSlots = Math.min(teamConfig.max, teamConfig.base + activeCh * teamConfig.inc);
+  const valTeam = document.getElementById('val-team');
+  if (valTeam) valTeam.textContent = `${tSlots}\u4f4d`;
+
+  // Resource Rates calculation (use effectiveBldgLv for accurate rates)
+  const getRate = (resId) => {
+    let r = 0;
+    BLDG_MODULE.forEach(b => {
+      const bLvl = effectiveBldgLv(overallLv, b.unlock);
+      if (b.resource === resId) r += b.resBase * bLvl;
+    });
+    return r;
+  };
+  const gR = document.getElementById('rate-gold'); if (gR) gR.textContent = `${Math.round(getRate('\u91d1\u5e01'))}/s`;
+  const sR = document.getElementById('rate-steel'); if (sR) sR.textContent = `${Math.round(getRate('\u7cbe\u94a2'))}/s`;
+  const lR = document.getElementById('rate-leather'); if (lR) lR.textContent = `${Math.round(getRate('\u76ae\u9769'))}/s`;
+  const crR = document.getElementById('rate-gem'); if (crR) crR.textContent = `${Math.round(getRate('\u6676\u77f3'))}/s`;
+
+  // Total Combat Power (uses the same CP chart formula + summon power)
+  const atkRatio = parseFloat(document.getElementById('cp-atk-ratio')?.value) || 5;
+  const hpRatio = parseFloat(document.getElementById('cp-hp-ratio')?.value) || 1;
+  let tp = 0;
+  // Building power from combat buildings
+  if (typeof CP_BUILDINGS !== 'undefined') {
+    CP_BUILDINGS.forEach(b => {
+      const atk = b.atkInput ? (parseFloat(document.getElementById(b.atkInput)?.value) || 0) : 0;
+      const hp = b.hpInput ? (parseFloat(document.getElementById(b.hpInput)?.value) || 0) : 0;
+      const totalPowerPerOp = atk * (b.atkSplit || 1) * atkRatio + hp * hpRatio;
+      const consumerMatch = RES_CONSUMERS.find(c => c.id === b.id || (b.id === 'bless' && c.id === 'blessing'));
+      const consumerUnlock = consumerMatch ? consumerMatch.unlock : 1;
+      const ops = effectiveConsumerLv(overallLv, consumerUnlock);
+      tp += ops * totalPowerPerOp;
+    });
+  }
+  // Summon power
+  const sInit = parseInt(document.getElementById('lcp-summon-init')?.value) || 0;
+  const sMax = parseInt(document.getElementById('lcp-summon-max')?.value) || 0;
+  const sStep = parseInt(document.getElementById('lcp-summon-step')?.value) || 0;
+  const sPower = parseFloat(document.getElementById('lcp-summon-power')?.value) || 0;
+  const summonUnlocked = currentMin >= 15; // summon unlocks at 15min
+  if (summonUnlocked) {
+    const completedCh = CHAPTERS.filter(c => currentMin >= c.end).length;
+    const baseSummons = completedCh * sStep;
+    const curCh = CHAPTERS.find(c => currentMin >= c.start && currentMin < c.end);
+    let partialSummons = 0;
+    if (curCh && sStep > 0) {
+      const chDur = curCh.end - curCh.start;
+      const elapsed = currentMin - curCh.start;
+      const pct = chDur > 0 ? elapsed / chDur : 0;
+      partialSummons = Math.floor(pct * sStep);
+    }
+    const summonCount = Math.min(sMax, sInit + baseSummons + partialSummons);
+    const slots = Math.min(teamConfig.max, teamConfig.base + completedCh * teamConfig.inc);
+    tp += summonCount * sPower * slots;
+  }
+
+  const tP = document.getElementById('total-power');
+  if (tP) tP.textContent = Math.round(tp).toLocaleString();
 }
+
+
 
 overlay.addEventListener('mousedown', e => {
   isDragging = true; handle.classList.add('dragging');
@@ -532,13 +776,47 @@ overlay.addEventListener('touchstart', e => {
   tooltip.style.display = 'block'; setProgress(fractionFromEvent(e)); e.preventDefault();
 }, { passive: false });
 
-document.addEventListener('mousemove', e => { if (isDragging) setProgress(fractionFromEvent(e)); });
-document.addEventListener('touchmove', e => { if (isDragging) { setProgress(fractionFromEvent(e)); e.preventDefault(); } }, { passive: false });
-document.addEventListener('mouseup', () => { if (!isDragging) return; isDragging = false; handle.classList.remove('dragging'); tooltip.style.display = 'none'; });
-document.addEventListener('touchend', () => { if (!isDragging) return; isDragging = false; handle.classList.remove('dragging'); tooltip.style.display = 'none'; });
+document.addEventListener('mousemove', e => {
+  if (isDragging) setProgress(fractionFromEvent(e, isDragging === 'loop' ? 'loop' : ''));
+});
+document.addEventListener('touchmove', e => {
+  if (isDragging) { setProgress(fractionFromEvent(e, isDragging === 'loop' ? 'loop' : '')); e.preventDefault(); }
+}, { passive: false });
+document.addEventListener('mouseup', () => {
+  if (!isDragging) return;
+  if (isDragging === true) handle.classList.remove('dragging');
+  else if (isDragging === 'loop') document.getElementById('handle-loop').classList.remove('dragging');
+  isDragging = false;
+  tooltip.style.display = 'none';
+});
+document.addEventListener('touchend', () => {
+  if (!isDragging) return;
+  if (isDragging === true) handle.classList.remove('dragging');
+  else if (isDragging === 'loop') document.getElementById('handle-loop').classList.remove('dragging');
+  isDragging = false;
+  tooltip.style.display = 'none';
+});
 
-handle.addEventListener('mouseenter', () => tooltip.style.display = 'block');
-handle.addEventListener('mouseleave', () => { if (!isDragging) tooltip.style.display = 'none'; });
+function setupLoopBar() {
+  const ovr = document.getElementById('overlay-loop');
+  const hnd = document.getElementById('handle-loop');
+  ovr.addEventListener('mousedown', e => {
+    isDragging = 'loop'; hnd.classList.add('dragging');
+    setProgress(fractionFromEvent(e, 'loop')); e.preventDefault();
+  });
+  ovr.addEventListener('touchstart', e => {
+    isDragging = 'loop'; hnd.classList.add('dragging');
+    setProgress(fractionFromEvent(e, 'loop')); e.preventDefault();
+  }, { passive: false });
+}
+setupLoopBar();
+
+function fractionFromEvent(e, type) {
+  const el = type === 'loop' ? document.getElementById('overlay-loop') : overlay;
+  const rect = el.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  return clamp((cx - rect.left) / rect.width, 0, 1);
+}
 handle.addEventListener('keydown', e => {
   const step = 1 / TOTAL_MIN;
   const cur = currentMin / TOTAL_MIN;
@@ -726,22 +1004,26 @@ function rebuildBar() {
   TOTAL_MIN = TOTAL_DAYS * MIN_PER_DAY;
   handle.setAttribute('aria-valuemax', TOTAL_MIN);
 
-  const segContainer = document.getElementById('seg-container');
-  segContainer.innerHTML = Array.from({ length: TOTAL_DAYS }, (_, i) => `
-    <div class="seg" id="seg-${i}">
-      <div class="seg-fill" id="segfill-${i}" style="width:0%"></div>
-      ${buildTicks(23)}
-    </div>`).join('');
+  ['', '-loop'].forEach(sfx => {
+    const sc = document.getElementById(`seg-container${sfx}`);
+    const ac = document.getElementById(`axis-container${sfx}`);
+    if (!sc || !ac) return;
 
-  const axisContainer = document.getElementById('axis-container');
-  axisContainer.innerHTML = Array.from({ length: TOTAL_DAYS }, (_, i) => {
-    const pct = ((i + 1) / TOTAL_DAYS * 100).toFixed(2);
-    const cumH = (i + 1) * MIN_PER_DAY / 60;
-    return `<div class="axis-label" style="left:${pct}%">
-      <span class="axis-main">${i + 1} </span>
-      <span class="axis-sub">${cumH}h · ${(i + 1) * MIN_PER_DAY} min</span>
-    </div>`;
-  }).join('');
+    sc.innerHTML = Array.from({ length: TOTAL_DAYS }, (_, i) => `
+      <div class="seg" id="seg${sfx}-${i}">
+        <div class="seg-fill" id="segfill${sfx}-${i}" style="width:0%"></div>
+        ${buildTicks(23)}
+      </div>`).join('');
+
+    ac.innerHTML = Array.from({ length: TOTAL_DAYS }, (_, i) => {
+      const pct = ((i + 1) / TOTAL_DAYS * 100).toFixed(2);
+      const cumH = (i + 1) * MIN_PER_DAY / 60;
+      return `<div class="axis-label" style="left:${pct}%">
+        <span class="axis-main">${i + 1} </span>
+        <span class="axis-sub">${cumH}h · ${(i + 1) * MIN_PER_DAY} min</span>
+      </div>`;
+    }).join('');
+  });
 
   const frac = TOTAL_MIN > 0 ? clamp(currentMin / TOTAL_MIN, 0, 1) : 0;
   setProgress(frac);
@@ -752,41 +1034,85 @@ function setupInputs() {
   const inDays = document.getElementById('input-days');
   const inMpd = document.getElementById('input-mpd');
   const inCur = document.getElementById('input-current');
+  const inDaysLoop = document.getElementById('input-days-loop');
+  const inMpdLoop = document.getElementById('input-mpd-loop');
+  const inCurLoop = document.getElementById('input-current-loop');
 
-  inDays.addEventListener('input', () => {
-    const v = parseInt(inDays.value);
-    if (!isNaN(v) && v >= 1) { TOTAL_DAYS = v; rebuildBar(); }
-  });
-  inMpd.addEventListener('input', () => {
-    const v = parseInt(inMpd.value);
-    if (!isNaN(v) && v >= 1) { MIN_PER_DAY = v; rebuildBar(); }
-  });
-  inCur.addEventListener('input', () => {
-    const v = parseFloat(inCur.value);
+  // Sync helper: update all sibling inputs
+  function syncDaysInputs(v) {
+    if (inDays && document.activeElement !== inDays) inDays.value = v;
+    if (inDaysLoop && document.activeElement !== inDaysLoop) inDaysLoop.value = v;
+  }
+  function syncMpdInputs(v) {
+    if (inMpd && document.activeElement !== inMpd) inMpd.value = v;
+    if (inMpdLoop && document.activeElement !== inMpdLoop) inMpdLoop.value = v;
+  }
+
+  // Days change handler
+  function onDaysChange(el) {
+    const v = parseInt(el.value);
+    if (!isNaN(v) && v >= 1) {
+      TOTAL_DAYS = v;
+      syncDaysInputs(v);
+      rebuildBar();
+    }
+  }
+  // MPD change handler
+  function onMpdChange(el) {
+    const v = parseInt(el.value);
+    if (!isNaN(v) && v >= 1) {
+      MIN_PER_DAY = v;
+      syncMpdInputs(v);
+      rebuildBar();
+    }
+  }
+  // Current time change handler
+  function onCurChange(el) {
+    const v = parseFloat(el.value);
     if (!isNaN(v) && v >= 0) setProgress(v / TOTAL_MIN);
-  });
+  }
+
+  // Overview tab listeners
+  inDays.addEventListener('input', () => onDaysChange(inDays));
+  inMpd.addEventListener('input', () => onMpdChange(inMpd));
+  inCur.addEventListener('input', () => onCurChange(inCur));
+
+  // Loop tab listeners
+  if (inDaysLoop) inDaysLoop.addEventListener('input', () => onDaysChange(inDaysLoop));
+  if (inMpdLoop) inMpdLoop.addEventListener('input', () => onMpdChange(inMpdLoop));
+  if (inCurLoop) inCurLoop.addEventListener('input', () => onCurChange(inCurLoop));
 }
 
-rebuildBar();
-setupInputs();
+
+// ── Initialization ──────────────────────────────────────────────────
 
 // ── Tab switching ─────────────────────────────────────────────────────
 window.switchTab = function (id) {
   ['overview', 'buildings', 'resources'].forEach(tab => {
     const el = document.getElementById(`tab-${tab}`);
-    el.style.display = id === tab ? 'flex' : 'none';
+    if (el) el.style.display = id === tab ? 'flex' : 'none';
   });
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
-  document.getElementById(`tab-btn-${id}`).classList.add('tab-active');
-  // Redraw charts when buildings tab becomes visible (canvas needs dimensions)
+  const btn = document.getElementById(`tab-btn-${id}`);
+  if (btn) btn.classList.add('tab-active');
+
+  // Redraw charts when buildings tab becomes visible
   if (id === 'buildings') {
-    requestAnimationFrame(() => { drawBldgChart(); drawResChart(); drawCPChart(); drawLevelCPChart(); });
+    requestAnimationFrame(() => {
+      if (typeof drawBldgChart === 'function') drawBldgChart();
+      if (typeof drawResChart === 'function') drawResChart();
+      if (typeof drawCPChart === 'function') drawCPChart();
+      if (typeof drawLevelCPChart === 'function') drawLevelCPChart();
+    });
+  }
+  if (id === 'resources') {
+    if (typeof updateLoopValues === 'function') updateLoopValues();
   }
 };
 
 // ── Building Module ──────────────────────────────────────────────────
 const BLDG_MODULE = [
-  { id: 'med', name: '医馆', color: '#84cc16', defaultBase: 10, unlock: 1 },
+  { id: 'med', name: '医馆', color: '#84cc16', defaultBase: 10, unlock: 1, resource: '金币', resBase: 10 },
   { id: 'foundry', name: '熔铸所', color: '#60a5fa', defaultBase: 20, unlock: 1, resource: '精钢', resBase: 5 },
   { id: 'tannery', name: '製皮厂', color: '#a78bfa', defaultBase: 20, unlock: 21, resource: '皮革', resBase: 5 },
   { id: 'crystal', name: '晶石矿场', color: '#f472b6', defaultBase: 40, unlock: 31, resource: '晶石', resBase: 3 },
@@ -1478,7 +1804,7 @@ function drawCPChart() {
 
   const atkRatio = parseFloat(document.getElementById('cp-atk-ratio')?.value) || 5;
   const hpRatio = parseFloat(document.getElementById('cp-hp-ratio')?.value) || 1;
-  const maxOps = 100;
+  const maxOps = 20;
 
   // Get per-op stats for each building
   const bldgData = CP_BUILDINGS.map(b => {
@@ -1489,18 +1815,29 @@ function drawCPChart() {
     return { ...b, atk, hp, powerPerOp, totalPowerPerOp };
   });
 
-  // Cumulative power per building (individual curves 'single part)
+  // Cumulative power per building (individual curves - single part, unlock-aware)
   const cumPower = bldgData.map(b => {
     const arr = [];
-    for (let op = 1; op <= maxOps; op++) arr.push(op * b.powerPerOp);
+    // Find matching consumer for unlock level
+    const consumerMatch = RES_CONSUMERS.find(c => c.id === b.id || (b.id === 'bless' && c.id === 'blessing'));
+    const consumerUnlock = consumerMatch ? consumerMatch.unlock : 1;
+    for (let op = 1; op <= maxOps; op++) {
+      const effOps = effectiveConsumerLv(op, consumerUnlock);
+      arr.push(effOps * b.powerPerOp);
+    }
     return arr;
   });
 
-  // Total cumulative (uses totalPowerPerOp with ×4)
+  // Total cumulative (uses totalPowerPerOp with ×4, unlock-aware)
   const totalPower = [];
   for (let op = 1; op <= maxOps; op++) {
     let total = 0;
-    bldgData.forEach(b => total += op * b.totalPowerPerOp);
+    bldgData.forEach(b => {
+      const consumerMatch = RES_CONSUMERS.find(c => c.id === b.id || (b.id === 'bless' && c.id === 'blessing'));
+      const consumerUnlock = consumerMatch ? consumerMatch.unlock : 1;
+      const effOps = effectiveConsumerLv(op, consumerUnlock);
+      total += effOps * b.totalPowerPerOp;
+    });
     totalPower.push(total);
   }
 
@@ -1972,9 +2309,10 @@ function drawLevelCPChart() {
   // Read level CP config
   const opsPerCh = parseInt(document.getElementById('lcp-ops-per-ch')?.value) || 10;
   const maxCh = parseInt(document.getElementById('lcp-max-ch')?.value) || 20;
-  const summonInit = (parseFloat(document.getElementById('lcp-summon-init')?.value) || 0) / 100;
-  const summonMax = (parseFloat(document.getElementById('lcp-summon-max')?.value) || 0) / 100;
-  const summonStep = (parseFloat(document.getElementById('lcp-summon-step')?.value) || 0) / 100;
+  const summonInit = parseInt(document.getElementById('lcp-summon-init')?.value) || 0;
+  const summonMax = parseInt(document.getElementById('lcp-summon-max')?.value) || 0;
+  const summonStep = parseInt(document.getElementById('lcp-summon-step')?.value) || 0;
+  const summonPowerPerCall = parseFloat(document.getElementById('lcp-summon-power')?.value) || 0;
 
   // Read team slot config
   const teamInit = parseInt(document.getElementById('team-init')?.value) || 4;
@@ -1992,18 +2330,12 @@ function drawLevelCPChart() {
     const cumulativeOps = ch * opsPerCh;
     const singleHeroPower = cumulativeOps * buildingPowerPerOp;
     const slots = Math.min(teamMax, teamInit + (ch - 1) * teamPerCh);
-    // Summon ratio: ramp from init toward max
-    let summonRatio;
-    if (summonMax >= summonInit) {
-      summonRatio = Math.min(summonMax, summonInit + (ch - 1) * summonStep);
-    } else {
-      summonRatio = Math.max(summonMax, summonInit - (ch - 1) * summonStep);
-    }
-    summonRatio = Math.max(0, Math.min(1, summonRatio));
+    // Summon count: ramp from init toward max
+    const summonCount = Math.min(summonMax, summonInit + (ch - 1) * summonStep);
     const buildingPower = singleHeroPower * slots;
-    const summonPower = buildingPower * summonRatio;
+    const summonPower = summonCount * summonPowerPerCall * slots;
     const totalPower = buildingPower + summonPower;
-    chData.push({ ch, cumulativeOps, singleHeroPower, slots, summonRatio, buildingPower, summonPower, totalPower });
+    chData.push({ ch, cumulativeOps, singleHeroPower, slots, summonCount, buildingPower, summonPower, totalPower });
   }
   _lcpChData = chData;
 
@@ -2169,7 +2501,7 @@ function showLCPDataPopup() {
 
 // Level CP inputs + init
 drawLevelCPChart();
-['lcp-ops-per-ch', 'lcp-max-ch', 'lcp-summon-init', 'lcp-summon-max', 'lcp-summon-step'].forEach(id => {
+['lcp-ops-per-ch', 'lcp-max-ch', 'lcp-summon-init', 'lcp-summon-max', 'lcp-summon-step', 'lcp-summon-power'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', drawLevelCPChart);
 });
@@ -2409,5 +2741,9 @@ function setupThBar() {
   setThProgress();
 }
 
+
 setupThBar();
+
+rebuildBar();
+setupInputs();
 
