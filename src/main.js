@@ -3234,7 +3234,7 @@ rebuildBar();
 setupInputs();
 
 // ==========================================
-// SIMULATION MODULE (v0.3.4)
+// SIMULATION MODULE (v0.3.5 — Combat Power)
 // ==========================================
 
 window.SimState = {
@@ -3250,6 +3250,7 @@ window.SimState = {
     enemyBaseAtk: 20,
     enemyHpScale: 1.10,
     enemyAtkScale: 1.10,
+    eliteMultiplier: 4.0,
     bossMultiplier: 5.0,
 
     // Module 3: 召唤系统
@@ -3264,8 +3265,6 @@ window.SimState = {
     armorShopHpScale: 1.08,
 };
 
-// Hardcoded game data
-const SIM_ELITE_MULTIPLIER = 5.0;
 const SIM_QUALITIES = [
     { rate: 0.00, atk: 400, hp: 2000 },
     { rate: 0.50, atk: 800, hp: 4000 },
@@ -3312,25 +3311,27 @@ function generateChartData() {
         if (isBossStage) {
             currentMultiplier = S.bossMultiplier;
             currentCount = 1;
-            stageType = 'Boss x1';
+            stageType = '章节Boss';
         } else if (isEliteStage) {
-            currentMultiplier = SIM_ELITE_MULTIPLIER;
+            currentMultiplier = S.eliteMultiplier;
             currentCount = 1;
-            stageType = '精英 x1';
+            stageType = '精英怪';
         } else {
-            stageType = '小怪 x' + S.minionCount;
+            stageType = '普通小怪';
         }
 
         const individualHp = S.enemyBaseHp * Math.pow(S.enemyHpScale, stepIndex) * currentMultiplier;
         const individualAtk = S.enemyBaseAtk * Math.pow(S.enemyAtkScale, stepIndex) * currentMultiplier;
-        const teamTotalEnemyHp = individualHp * currentCount;
+
+        // RED LINE: Enemy Team CP = (HP + ATK * 5) * Count
+        const enemyTeamCP = (individualHp + individualAtk * 5) * currentCount;
 
         // --- Hero power (recalc only when day changes) ---
         if (currentDay !== cachedDay) {
             cachedDay = currentDay;
             const summons = S.day1ExtraPulls + currentDay * S.dailyPulls;
             cachedHeroesEV = [];
-            cachedHeroesEV.push(SIM_QUALITIES[0].atk); // Base Q1
+            cachedHeroesEV.push({ atk: SIM_QUALITIES[0].atk, hp: SIM_QUALITIES[0].hp });
 
             for (let i = 1; i < SIM_QUALITIES.length; i++) {
                 const q = SIM_QUALITIES[i];
@@ -3344,29 +3345,37 @@ function generateChartData() {
                 ascensions = Math.min(ascensions, 30);
                 const expMulti = (1 + 0.10 * ascensions) * Math.pow(1.05, ascensions);
                 const heroATK = q.atk * expMulti;
+                const heroHP = q.hp * expMulti;
                 for (let j = 0; j < S.heroesPerQuality; j++) {
-                    cachedHeroesEV.push(heroATK);
+                    cachedHeroesEV.push({ atk: heroATK, hp: heroHP });
                 }
             }
-            cachedHeroesEV.sort((a, b) => b - a);
+            cachedHeroesEV.sort((a, b) => b.atk - a.atk);
         }
 
-        let totalBaseHeroATK = 0;
+        let totalBaseHeroATK = 0, totalBaseHeroHP = 0;
         for (let i = 0; i < slots && i < cachedHeroesEV.length; i++) {
-            totalBaseHeroATK += cachedHeroesEV[i];
+            totalBaseHeroATK += cachedHeroesEV[i].atk;
+            totalBaseHeroHP += cachedHeroesEV[i].hp;
         }
 
+        // Apply Buildings
         const buildingATK = S.weaponShopBaseAtk * Math.pow(S.weaponShopAtkScale, stepIndex);
         const playerTotalATK = totalBaseHeroATK + buildingATK;
+        const playerTotalHP = totalBaseHeroHP * (S.armorShopBaseHpMultiplier * Math.pow(S.armorShopHpScale, stepIndex));
+
+        // GREEN LINE: Player Team CP = Total HP + Total ATK * 5
+        const playerTeamCP = playerTotalHP + (playerTotalATK * 5);
 
         result.push({
             stage, day: currentDay, stepIndex, slots,
             isBoss: isBossStage, isElite: isEliteStage,
             stageType, enemyCount: currentCount,
             individualHp, individualAtk,
-            reqAtk: teamTotalEnemyHp,
-            totalAtk: playerTotalATK,
-            totalBaseHeroATK, buildingATK
+            enemyCP: enemyTeamCP,
+            playerCP: playerTeamCP,
+            playerHp: playerTotalHP,
+            playerAtk: playerTotalATK
         });
     }
     return result;
@@ -3389,6 +3398,7 @@ const SIM_MODULES = [
             { key: 'enemyBaseAtk', label: '怪物基础ATK', step: 5 },
             { key: 'enemyHpScale', label: 'HP缩放/5关', step: 0.01 },
             { key: 'enemyAtkScale', label: 'ATK缩放/5关', step: 0.01 },
+            { key: 'eliteMultiplier', label: '精英倍率', step: 0.5 },
             { key: 'bossMultiplier', label: 'Boss倍率', step: 0.5 },
         ]
     },
@@ -3465,19 +3475,19 @@ window.renderSimulationChart = function () {
                 const d = data[params[0].dataIndex];
                 if (!d) return '';
                 const typeColor = d.isBoss ? '#ef4444' : (d.isElite ? '#f59e0b' : '#94a3b8');
-                let s = `<b style="font-size:13px">关卡 ${d.stage}</b> &nbsp; <span style="color:#94a3b8">Day ${d.day}</span> &nbsp; <span style="background:${typeColor}20;color:${typeColor};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700">${d.stageType}</span><br/>`;
+                const countLabel = d.isBoss || d.isElite ? 'x1' : 'x' + d.enemyCount;
+                let s = `<b style="font-size:13px">关卡 ${d.stage}</b> &nbsp; <span style="color:#94a3b8">Day ${d.day}</span> &nbsp; <span style="background:${typeColor}20;color:${typeColor};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700">${d.stageType} (${countLabel})</span><br/>`;
                 s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.08)"></div>`;
-                s += `<span style="color:#ef4444">⚔ 团队DPS需求 (Force HP):</span> <b>${comma(d.reqAtk)}</b><br/>`;
-                s += `<span style="color:#22c55e">💪 玩家团队ATK:</span> <b>${comma(d.totalAtk)}</b><br/>`;
+                s += `<span style="color:#ef4444">⚔ 敌方阵容总战力:</span> <b>${comma(d.enemyCP)}</b><br/>`;
+                s += `<span style="color:#22c55e">💪 玩家阵容总战力:</span> <b>${comma(d.playerCP)}</b><br/>`;
                 s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.05)"></div>`;
-                s += `<span style="color:#94a3b8;font-size:11px">单体HP: ${comma(d.individualHp)} × ${d.enemyCount} = ${comma(d.reqAtk)}<br/>`;
-                s += `敌ATK: ${comma(d.individualAtk)}<br/>`;
-                s += `英雄ATK: ${comma(d.totalBaseHeroATK)} | 武器: ${comma(d.buildingATK)} | 槽位: ${d.slots}</span>`;
+                s += `<span style="color:#94a3b8;font-size:11px">单体怪物HP: ${comma(d.individualHp)} | 单体怪物ATK: ${comma(d.individualAtk)}<br/>`;
+                s += `玩家总HP: ${comma(d.playerHp)} | 玩家总ATK: ${comma(d.playerAtk)}</span>`;
                 return s;
             }
         },
         legend: {
-            data: ['最低团队DPS需求 (Total Force HP)', '玩家总战力'],
+            data: ['敌方阵容总战力 (Enemy Team CP)', '玩家阵容总战力 (Player Team CP)'],
             textStyle: { color: '#ccc', fontSize: 11 },
             bottom: 0
         },
@@ -3502,7 +3512,7 @@ window.renderSimulationChart = function () {
         yAxis: {
             type: 'log',
             logBase: 10,
-            name: '战力 (Log₁₀)',
+            name: '战力 CP (Log₁₀)',
             nameTextStyle: { color: '#888', fontSize: 11 },
             axisLine: { show: true, lineStyle: { color: '#334155' } },
             splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
@@ -3514,16 +3524,16 @@ window.renderSimulationChart = function () {
         ],
         series: [
             {
-                name: '最低团队DPS需求 (Total Force HP)',
+                name: '敌方阵容总战力 (Enemy Team CP)',
                 type: 'line',
-                data: data.map(d => d.reqAtk),
+                data: data.map(d => d.enemyCP),
                 lineStyle: { color: '#ef4444', width: 1.5 },
                 itemStyle: { color: '#ef4444' },
                 symbol: 'none',
                 sampling: 'lttb',
                 markPoint: {
                     data: data.filter(d => d.isBoss).map(d => ({
-                        coord: [d.stage - 1, d.reqAtk],
+                        coord: [d.stage - 1, d.enemyCP],
                         symbol: 'diamond',
                         symbolSize: 10,
                         itemStyle: { color: '#ef4444' }
@@ -3532,9 +3542,9 @@ window.renderSimulationChart = function () {
                 }
             },
             {
-                name: '玩家总战力',
+                name: '玩家阵容总战力 (Player Team CP)',
                 type: 'line',
-                data: data.map(d => d.totalAtk),
+                data: data.map(d => d.playerCP),
                 lineStyle: { color: '#22c55e', width: 2.5 },
                 itemStyle: { color: '#22c55e' },
                 symbol: 'none',
