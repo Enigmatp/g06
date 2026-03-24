@@ -545,7 +545,10 @@ document.getElementById('app').innerHTML = `
             <span class="p-2 rounded-lg" style="background:rgba(251,191,36,0.15);color:#fbbf24;font-size:1.2rem">⚙️</span>
             <h2 class="text-xl font-bold text-white tracking-widest">解锁节点配置</h2>
           </div>
-          <button class="px-4 py-1.5 rounded-lg text-xs font-bold tracking-widest bg-white/10 text-white/60 hover:bg-white/20 hover:text-white border border-white/5 transition-colors" onclick="window.restoreDefaultUnlocks()">恢复默认</button>
+          <div class="flex items-center gap-2">
+            <button class="px-4 py-1.5 rounded-lg text-xs font-bold tracking-widest bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 hover:text-emerald-300 border border-emerald-500/20 transition-colors" onclick="window.exportUnlockExcel()">📥 储存Excel</button>
+            <button class="px-4 py-1.5 rounded-lg text-xs font-bold tracking-widest bg-white/10 text-white/60 hover:bg-white/20 hover:text-white border border-white/5 transition-colors" onclick="window.restoreDefaultUnlocks()">恢复默认</button>
+          </div>
         </div>
         <div id="unlock-editors" class="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full"></div>
       </section>
@@ -711,6 +714,43 @@ window.unlockData = JSON.parse(JSON.stringify(window.defaultUnlockData));
 window.restoreDefaultUnlocks = function () {
   window.unlockData = JSON.parse(JSON.stringify(window.defaultUnlockData));
   window.renderUnlockUI();
+};
+
+window.exportUnlockExcel = function () {
+  const d = window.unlockData;
+  // Merge all items with category tags
+  const allItems = [
+    ...d.buildings.map(x => ({ ...x, cat: '建筑' })),
+    ...d.functions.map(x => ({ ...x, cat: '功能' })),
+    ...d.slots.map(x => ({ ...x, cat: '槽位' }))
+  ];
+
+  // Header rows matching the template
+  const headers = [
+    ['模式', 'S|C', 'S|C', 'S|C', 'S|C', 'S|C', 'S|C', 'S|C', 'S|C', 'S|C', 'S|C', 'S|C'],
+    ['字段', 'id', 'name', 'conditions', 'unlock_task', 'use_general_unlock_ui', 'open_other_ui', 'target_position_go_name', 'unlock_icon', 'require_ui', 'unlock_text', 'unlock_tips'],
+    ['类型', 'int', 'string', 'string[][]', 'int', 'int', 'int', 'string', 'string', 'string[]', 'string', 'string'],
+    ['说明', 'id', '名称', '且关系的条件', '解锁引导任务ID', '使用通用解锁ui（不填写的则不弹出）', '解锁时打开其他界面（和前面互斥）', '目标位置的GameObject的名字', '解锁图标', '处于对应界面才激活（不填为任意）', '解锁后显示文字', '解锁前显示文字']
+  ];
+
+  // Build data rows
+  const dataRows = allItems.map((item, idx) => {
+    const id = idx + 1;
+    const conditions = item.level > 0 ? `[[1,${item.level}]]` : '';
+    return ['', id, item.name, conditions, '', '', '', '', '', '', '', ''];
+  });
+
+  // Pad to 148 rows to match template
+  const startId = allItems.length + 1;
+  for (let i = startId; i <= 148; i++) {
+    dataRows.push(['', i, '', '', '', '', '', '', '', '', '', '']);
+  }
+
+  const wsData = [...headers, ...dataRows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'TE_FuncUnlock');
+  XLSX.writeFile(wb, 'F_功能解锁-FuncUnLock.xlsx');
 };
 
 window.updateUnlockLevel = function (category, index, val) {
