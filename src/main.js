@@ -670,25 +670,13 @@ document.getElementById('app').innerHTML = `
     </div><!-- /tab-analysis -->
 
     <!-- ── SIMULATION TAB ── -->
-    <div id="tab-simulation" style="display:none;flex-direction:column;gap:1.5rem;width:100%;align-items:center;">
-      <section class="glass flex flex-col xl:flex-row gap-6 rounded-2xl p-6 w-full animate-fade-up shadow-2xl" style="max-width:128rem;animation-delay:0.1s">
-        <!-- Left: Config inputs -->
-        <div class="flex flex-col gap-5 w-full xl:w-[350px] shrink-0">
-          <div class="flex items-center gap-3 mb-2 pb-3 border-b border-white/10">
-            <span class="text-2xl p-2 rounded-lg" style="background:rgba(236,72,153,0.15);color:#ec4899">📊</span>
-            <div class="flex flex-col">
-              <h2 class="font-bold text-lg tracking-widest text-white">模型核心参数</h2>
-              <span class="text-[10px] text-white/40 uppercase tracking-widest">Simulation Parameters</span>
-            </div>
-          </div>
-          <div id="sim-configs-list" class="flex flex-col gap-3 overflow-y-auto pr-2" style="max-height: 600px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;"></div>
-        </div>
-        
-        <!-- Right: Chart -->
-        <div class="flex-1 w-full bg-black/30 rounded-xl border border-white/5 relative flex items-center justify-center p-3 shadow-inner" style="min-height: 700px;">
-          <div id="sim-chart" class="w-full h-full absolute inset-0 rounded-lg"></div>
-        </div>
-      </section>
+    <div id="tab-simulation" style="display:none;width:100%;height:calc(100vh - 80px);" class="flex overflow-hidden">
+      <!-- Left Panel: Parameters -->
+      <div id="sim-params-panel" class="w-1/4 h-full overflow-y-auto p-4 border-r border-gray-700 flex flex-col gap-2" style="scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.15) transparent;"></div>
+      <!-- Right Panel: Chart -->
+      <div class="w-3/4 h-full p-4 flex flex-col">
+        <div id="sim-chart" class="w-full flex-1 rounded-xl" style="min-height:0;"></div>
+      </div>
     </div><!-- /tab-simulation -->
 
     </div><!-- /main-scroll-area -->
@@ -3206,137 +3194,166 @@ rebuildBar();
 setupInputs();
 
 // ==========================================
-// SIMULATION MODULE
+// SIMULATION MODULE (v2)
 // ==========================================
 
-window.GameConfig = {
-  enemyBaseHP: 110,
-  enemyScale: 1.10,
-  dailyStages: 5,
-
-  day1FreeSummons: 10,
-  dailySummons: 36,
+window.SimState = {
+  // Module 1: 总控
+  displayDays: 7,
+  // Module 2: 关卡与硬核检测
+  dailyExpectedStages: 72,
+  enemyBaseHp: 100,
+  enemyHpScale: 1.10,
+  bossHpMultiplier: 5,
+  bossTimeLimit: 30,
+  // Module 3: 英雄与升星
   heroesPerQuality: 5,
-
-  buildingBaseAtk: 90,
-  buildingScale: 1.30,
-
   qualities: [
-    { name: 'Q2', rate: 0.50, baseAtk: 4 },
+    { name: 'Q1', rate: 0.00, baseAtk: 4 },
+    { name: 'Q2', rate: 0.50, baseAtk: 8 },
     { name: 'Q3', rate: 0.25, baseAtk: 8 },
     { name: 'Q4', rate: 0.14, baseAtk: 14 },
     { name: 'Q5', rate: 0.07, baseAtk: 22 },
     { name: 'Q6', rate: 0.03, baseAtk: 34 },
     { name: 'Q7', rate: 0.01, baseAtk: 50 }
   ],
-
-  ascensionCosts: [
-    1, 1, 1, 1, 1,
-    2, 2, 2, 2, 2,
-    3, 3, 3, 3, 3,
-    5, 5, 5, 5, 5,
-    8, 8, 8, 8, 8,
-    12, 12, 12, 12, 12
-  ]
+  ascensionCosts: [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 5, 5, 5, 5, 5, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12],
+  // Module 4: 召唤
+  dailyPulls: 36,
+  day1ExtraPulls: 10,
+  // Module 5: 力量建筑
+  buildingBaseAtk: 90,
+  buildingAtkScale: 1.30,
+  // Module 6: 生存与恢复
+  hospitalBaseHeal: 20,
+  hospitalHealScale: 1.15,
+  heroBaseHp: 100,
+  heroHpScale: 1.08,
+  runTime: 5
 };
 
-function calculateAscensions(copies) {
+function simCalcAscensions(copies) {
   if (copies < 1) return 0;
   let shards = copies - 1;
-  let ascensions = 0;
-  for (let cost of window.GameConfig.ascensionCosts) {
-    if (shards >= cost) {
-      shards -= cost;
-      ascensions++;
-    } else {
-      ascensions += (shards / cost);
-      break;
-    }
+  let asc = 0;
+  for (const cost of window.SimState.ascensionCosts) {
+    if (shards >= cost) { shards -= cost; asc++; }
+    else { asc += shards / cost; break; }
   }
-  return Math.min(ascensions, 30);
+  return Math.min(asc, 30);
 }
 
-function getTopHeroesATK(totalSummons, slotsUnlk) {
-  let allHeroesEV = [];
-  for (let q of window.GameConfig.qualities) {
-    let expectedCopies = totalSummons * (q.rate / window.GameConfig.heroesPerQuality);
-    let ascLevel = calculateAscensions(expectedCopies);
-    let expectedAtk = q.baseAtk * (1 + (0.10 * ascLevel));
-    for (let i = 0; i < window.GameConfig.heroesPerQuality; i++) {
-      allHeroesEV.push(expectedAtk);
-    }
+function simGetTopHeroesATK(totalSummons, slots) {
+  const S = window.SimState;
+  const ev = [];
+  ev.push(S.qualities[0].baseAtk); // Q1 base hero
+  for (let qi = 1; qi < S.qualities.length; qi++) {
+    const q = S.qualities[qi];
+    const expectedCopies = totalSummons * (q.rate / S.heroesPerQuality);
+    const ascLvl = simCalcAscensions(expectedCopies);
+    const heroAtk = q.baseAtk * (1 + 0.10 * ascLvl);
+    for (let i = 0; i < S.heroesPerQuality; i++) ev.push(heroAtk);
   }
-  allHeroesEV.push(2); // Q1 base
-  allHeroesEV.sort((a, b) => b - a);
-
-  let teamAtk = 0;
-  for (let i = 0; i < slotsUnlk; i++) {
-    if (allHeroesEV[i]) teamAtk += allHeroesEV[i];
-  }
-  return teamAtk;
+  ev.sort((a, b) => b - a);
+  let sum = 0;
+  for (let i = 0; i < slots && i < ev.length; i++) sum += ev[i];
+  return sum;
 }
 
-function generateSimulationData(daysToSimulate = 30) {
-  let chartData = [];
+function generateChartData() {
+  const S = window.SimState;
+  const result = [];
+  for (let day = 1; day <= S.displayDays; day++) {
+    const stage = day * S.dailyExpectedStages;
+    const summons = S.day1ExtraPulls + day * S.dailyPulls;
+    const slots = Math.min(15, 1 + Math.floor(stage / 4));
 
-  for (let day = 1; day <= daysToSimulate; day++) {
-    let totalSummons = window.GameConfig.day1FreeSummons + (day * window.GameConfig.dailySummons);
+    const normalHP = S.enemyBaseHp * Math.pow(S.enemyHpScale, stage - 1);
+    const bossHP = normalHP * S.bossHpMultiplier;
+    const reqAtk = bossHP / S.bossTimeLimit;
 
-    // 强制指定每日推关数，而不是依赖无限循环模拟测试
-    let currentStage = Math.floor(day * (window.GameConfig.dailyStages || 1));
-    if (currentStage < 1) currentStage = 1;
+    const heroAtk = simGetTopHeroesATK(summons, slots);
+    const buildAtk = S.buildingBaseAtk * Math.pow(S.buildingAtkScale, stage - 1);
+    const totalAtk = heroAtk + buildAtk;
 
-    // 怪物血量 = 基础血量 * scale^(层数-1). 设定要求战力等于怪物血量
-    let requiredATK = window.GameConfig.enemyBaseHP * Math.pow(window.GameConfig.enemyScale, currentStage - 1);
+    const heroHp = S.heroBaseHp * Math.pow(S.heroHpScale, stage - 1);
+    const healRate = S.hospitalBaseHeal * Math.pow(S.hospitalHealScale, stage - 1);
+    const downtime = (heroHp / healRate) + S.runTime;
 
-    let slots = currentStage < 4 ? 1 : 1 + Math.floor(currentStage / 4);
-    if (slots > 15) slots = 15;
-
-    let heroATK = getTopHeroesATK(totalSummons, slots);
-    let buildingATK = window.GameConfig.buildingBaseAtk * Math.pow(window.GameConfig.buildingScale, currentStage - 1);
-
-    let totalPlayerATK = heroATK + buildingATK;
-
-    chartData.push({
-      day: day,
-      maxStageCleared: currentStage,
-      reqAtk: requiredATK,
-      heroAtk: heroATK,
-      buildAtk: buildingATK,
-      totalAtk: totalPlayerATK
-    });
+    result.push({ day, stage, reqAtk, heroAtk, buildAtk, totalAtk, downtime });
   }
-  return chartData;
+  return result;
 }
+
+// ── Parameter Panel UI ──
+const SIM_MODULES = [
+  {
+    title: '总控', fields: [
+      { key: 'displayDays', label: '展示天数', step: 1 },
+    ]
+  },
+  {
+    title: '关卡与Boss', fields: [
+      { key: 'dailyExpectedStages', label: '每日推关数', step: 1 },
+      { key: 'enemyBaseHp', label: '怪物基础HP', step: 10 },
+      { key: 'enemyHpScale', label: 'HP缩放系数', step: 0.01 },
+      { key: 'bossHpMultiplier', label: 'Boss HP倍率', step: 1 },
+      { key: 'bossTimeLimit', label: 'Boss限时(秒)', step: 1 },
+    ]
+  },
+  {
+    title: '英雄升星', fields: [
+      { key: 'heroesPerQuality', label: '每品质英雄数', step: 1 },
+    ]
+  },
+  {
+    title: '召唤', fields: [
+      { key: 'dailyPulls', label: '每日抽卡数', step: 1 },
+      { key: 'day1ExtraPulls', label: '首日额外抽数', step: 1 },
+    ]
+  },
+  {
+    title: '力量建筑', fields: [
+      { key: 'buildingBaseAtk', label: '基础建筑战力', step: 10 },
+      { key: 'buildingAtkScale', label: '建筑缩放系数', step: 0.01 },
+    ]
+  },
+  {
+    title: '生存恢复', fields: [
+      { key: 'hospitalBaseHeal', label: '医馆基础回复/秒', step: 1 },
+      { key: 'hospitalHealScale', label: '回复缩放系数', step: 0.01 },
+      { key: 'heroBaseHp', label: '英雄基础HP', step: 10 },
+      { key: 'heroHpScale', label: 'HP缩放系数', step: 0.01 },
+      { key: 'runTime', label: '跑图时间(秒)', step: 1 },
+    ]
+  },
+];
 
 window.renderSimulationConfigUI = function () {
-  const container = document.getElementById('sim-configs-list');
-  if (!container) return;
+  const panel = document.getElementById('sim-params-panel');
+  if (!panel) return;
 
-  const cfgFields = [
-    { key: 'enemyBaseHP', label: '初级怪物基础血量' },
-    { key: 'enemyScale', label: '每关血量提升倍率', step: 0.01 },
-    { key: 'dailyStages', label: '每日预期推关数(层)' },
-    { key: 'day1FreeSummons', label: '首日系统免费资源抽数' },
-    { key: 'dailySummons', label: '日常每日获取挂机资源' },
-    { key: 'heroesPerQuality', label: '各个品质池内同卡分布' },
-    { key: 'buildingBaseAtk', label: '开局自带基础建筑算力' },
-    { key: 'buildingScale', label: '通关后建筑每关提升版率', step: 0.01 }
-  ];
-
-  container.innerHTML = cfgFields.map(f => `
-    <div class="glass py-2.5 px-4 rounded-xl flex justify-between items-center transition-all hover:bg-white/5 border border-white/5 shadow-sm">
-      <span class="text-sm tracking-wide text-white/80 font-bold">${f.label}</span>
-      <input type="number" 
-             value="${window.GameConfig[f.key]}" 
-             step="${f.step || 1}" 
-             oninput="window.GameConfig['${f.key}'] = parseFloat(this.value); window.renderSimulationChart();"
-             class="bg-black/40 border border-white/10 text-white rounded-lg text-center focus:outline-none focus:border-emerald-500/50 transition-colors shadow-inner font-mono text-base font-bold"
-             style="width: 5.5rem; padding: 6px;">
+  panel.innerHTML = SIM_MODULES.map(mod => `
+    <div class="mb-1">
+      <div class="text-xs font-bold text-white/50 uppercase tracking-widest px-1 py-1">${mod.title}</div>
+      <div class="flex flex-col gap-1.5">
+        ${mod.fields.map(f => `
+          <div class="flex justify-between items-center bg-white/5 rounded-lg px-3 py-1.5 hover:bg-white/10 transition-colors">
+            <span class="text-xs text-white/70">${f.label}</span>
+            <input type="number"
+                   value="${window.SimState[f.key]}"
+                   step="${f.step}"
+                   oninput="window.SimState['${f.key}'] = parseFloat(this.value); window.renderSimulationChart();"
+                   class="bg-black/50 border border-white/10 text-white rounded text-center text-xs font-mono font-bold focus:outline-none focus:border-cyan-500/60 transition-colors"
+                   style="width:5rem;padding:3px 4px;">
+          </div>
+        `).join('')}
+      </div>
     </div>
   `).join('');
-}
+};
 
+// ── Chart Rendering ──
 let simChartInstance = null;
 window.renderSimulationChart = function () {
   const el = document.getElementById('sim-chart');
@@ -3347,90 +3364,82 @@ window.renderSimulationChart = function () {
     ro.observe(el);
   }
 
-  const data = generateSimulationData(30);
+  const data = generateChartData();
+  const fmt = v => v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : v.toFixed(1);
+  const comma = v => v.toLocaleString('en-US', { maximumFractionDigits: 1 });
 
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      axisPointer: { type: 'cross' }
+      backgroundColor: 'rgba(15,23,42,0.95)',
+      borderColor: 'rgba(255,255,255,0.1)',
+      textStyle: { color: '#fff', fontSize: 12 },
+      formatter: params => {
+        const d = data[params[0].dataIndex];
+        let s = `<b>Day ${d.day}</b> &nbsp; 关卡 ${d.stage}<br/>`;
+        s += `<span style="color:#ef4444">● Boss需求战力:</span> ${comma(d.reqAtk)}<br/>`;
+        s += `<span style="color:#22c55e">● 玩家总战力:</span> ${comma(d.totalAtk)}<br/>`;
+        s += `<span style="color:#3b82f6">● 英雄战力:</span> ${comma(d.heroAtk)}<br/>`;
+        s += `<span style="color:#f59e0b">● 建筑战力:</span> ${comma(d.buildAtk)}<br/>`;
+        s += `<span style="color:#94a3b8">⏱ 死亡恢复耗时:</span> ${d.downtime.toFixed(1)}秒`;
+        return s;
+      }
     },
     legend: {
-      data: ['推关进度 (Stage)', '需求战力 (Requirement)', '队伍战力 (Heroes)', '建筑战力 (Buildings)'],
-      textStyle: { color: '#ccc' },
+      data: ['Boss需求战力 (Wall)', '玩家总战力', '英雄战力', '建筑战力'],
+      textStyle: { color: '#ccc', fontSize: 11 },
       bottom: 0
     },
-    grid: { left: '3%', right: '5%', bottom: '10%', top: '8%', containLabel: true },
+    grid: { left: '2%', right: '3%', bottom: '12%', top: '6%', containLabel: true },
     xAxis: {
       type: 'category',
-      name: '天数 (Day)',
       boundaryGap: false,
-      data: data.map(d => `第 ${d.day} 天`),
+      data: data.map(d => `D${d.day}`),
       axisLabel: { color: '#888' }
     },
-    yAxis: [
-      {
-        type: 'value',
-        name: '推进关卡层数',
-        position: 'left',
-        axisLine: { show: true, lineStyle: { color: '#ec4899' } },
-        splitLine: { show: true, lineStyle: { color: 'rgba(255,255,255,0.05)' } }
-      },
-      {
-        type: 'log',
-        logBase: 10,
-        name: '战力阈值范围 (Log10)',
-        position: 'right',
-        axisLine: { show: true, lineStyle: { color: '#22d3ee' } },
-        splitLine: { show: false }
-      }
-    ],
+    yAxis: {
+      type: 'log',
+      logBase: 10,
+      name: '战力 (Log₁₀)',
+      nameTextStyle: { color: '#888' },
+      axisLine: { show: true, lineStyle: { color: '#334155' } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } }
+    },
     series: [
       {
-        name: '推关进度 (Stage)',
-        type: 'bar',
-        yAxisIndex: 0,
-        data: data.map(d => d.maxStageCleared),
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(236,72,153,0.8)' },
-            { offset: 1, color: 'rgba(236,72,153,0.1)' }
-          ]),
-          borderRadius: [4, 4, 0, 0]
-        }
-      },
-      {
-        name: '需求战力 (Requirement)',
-        type: 'line',
-        yAxisIndex: 1,
-        smooth: true,
+        name: 'Boss需求战力 (Wall)',
+        type: 'line', smooth: true,
         data: data.map(d => d.reqAtk),
-        lineStyle: { color: '#ef4444', width: 2, type: 'dashed' },
+        lineStyle: { color: '#ef4444', width: 2 },
         itemStyle: { color: '#ef4444' }
       },
       {
-        name: '队伍战力 (Heroes)',
-        type: 'line',
-        yAxisIndex: 1,
-        smooth: true,
-        data: data.map(d => d.heroAtk),
-        lineStyle: { color: '#3b82f6', width: 3 },
-        itemStyle: { color: '#3b82f6' },
+        name: '玩家总战力',
+        type: 'line', smooth: true,
+        data: data.map(d => d.totalAtk),
+        lineStyle: { color: '#22c55e', width: 3 },
+        itemStyle: { color: '#22c55e' },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(59,130,246,0.3)' },
-            { offset: 1, color: 'rgba(59,130,246,0.01)' }
+            { offset: 0, color: 'rgba(34,197,94,0.15)' },
+            { offset: 1, color: 'rgba(34,197,94,0.01)' }
           ])
         }
       },
       {
-        name: '建筑战力 (Buildings)',
-        type: 'line',
-        yAxisIndex: 1,
-        smooth: true,
+        name: '英雄战力',
+        type: 'line', smooth: true,
+        data: data.map(d => d.heroAtk),
+        lineStyle: { color: '#3b82f6', width: 2, type: 'dashed' },
+        itemStyle: { color: '#3b82f6' }
+      },
+      {
+        name: '建筑战力',
+        type: 'line', smooth: true,
         data: data.map(d => d.buildAtk),
-        lineStyle: { color: '#10b981', width: 2 },
-        itemStyle: { color: '#10b981' }
+        lineStyle: { color: '#f59e0b', width: 2, type: 'dashed' },
+        itemStyle: { color: '#f59e0b' }
       }
     ]
   };
