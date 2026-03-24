@@ -3234,37 +3234,28 @@ rebuildBar();
 setupInputs();
 
 // ==========================================
-// SIMULATION MODULE (v0.3.3 — Simplified Multiplier Scaling)
+// SIMULATION MODULE (v0.3.4)
 // ==========================================
 
 window.SimState = {
     // Module 1: 全局与章节
     displayDays: 7,
     dailyExpectedStages: 72,
+    bossStagesConfig: '30, 90, 180',
+    subsequentBossInterval: 90,
 
     // Module 2: 关卡与怪物
     minionCount: 3,
-    enemyBaseHp: 1000,
+    enemyBaseHp: 100,
     enemyBaseAtk: 20,
     enemyHpScale: 1.10,
     enemyAtkScale: 1.10,
-    eliteMultiplier: 4.0,
-    bossMultiplier: 10.0,
+    bossMultiplier: 5.0,
 
     // Module 3: 召唤系统
     day1ExtraPulls: 10,
     dailyPulls: 36,
     heroesPerQuality: 5,
-    qualities: [
-        { name: 'Q1', rate: 0.00, atk: 400, hp: 2000 },
-        { name: 'Q2', rate: 0.50, atk: 800, hp: 4000 },
-        { name: 'Q3', rate: 0.25, atk: 800, hp: 4000 },
-        { name: 'Q4', rate: 0.14, atk: 1400, hp: 7000 },
-        { name: 'Q5', rate: 0.07, atk: 2200, hp: 11000 },
-        { name: 'Q6', rate: 0.03, atk: 3400, hp: 17000 },
-        { name: 'Q7', rate: 0.01, atk: 5000, hp: 25000 }
-    ],
-    ascensionCosts: [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 5, 5, 5, 5, 5, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12],
 
     // Module 4: 力量建筑
     weaponShopBaseAtk: 9000,
@@ -3273,20 +3264,25 @@ window.SimState = {
     armorShopHpScale: 1.08,
 };
 
-function simCalcAscensions(copies) {
-    if (copies < 1) return 0;
-    let shards = copies - 1;
-    let asc = 0;
-    for (const cost of window.SimState.ascensionCosts) {
-        if (shards >= cost) { shards -= cost; asc++; }
-        else { asc += shards / cost; break; }
-    }
-    return Math.min(asc, 30);
-}
+// Hardcoded game data
+const SIM_ELITE_MULTIPLIER = 5.0;
+const SIM_QUALITIES = [
+    { rate: 0.00, atk: 400, hp: 2000 },
+    { rate: 0.50, atk: 800, hp: 4000 },
+    { rate: 0.25, atk: 800, hp: 4000 },
+    { rate: 0.14, atk: 1400, hp: 7000 },
+    { rate: 0.07, atk: 2200, hp: 11000 },
+    { rate: 0.03, atk: 3400, hp: 17000 },
+    { rate: 0.01, atk: 5000, hp: 25000 }
+];
+const SIM_ASCENSION_COSTS = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 5, 5, 5, 5, 5, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12];
 
 function generateChartData() {
     const S = window.SimState;
     const totalStages = S.displayDays * S.dailyExpectedStages;
+    const customBossStages = S.bossStagesConfig.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    const maxCustomBossStage = customBossStages.length > 0 ? Math.max(...customBossStages) : 0;
+    const bossSet = new Set(customBossStages);
     const result = [];
 
     let cachedDay = -1;
@@ -3297,16 +3293,18 @@ function generateChartData() {
         const stepIndex = Math.floor((stage - 1) / 5);
         const slots = Math.min(15, 1 + Math.floor(stage / 4));
 
-        // --- Hardcoded Boss & Elite logic ---
+        // --- Boss / Elite determination ---
         let isBossStage = false;
-        if (stage === 30 || stage === 60 || stage === 120) {
+        if (bossSet.has(stage)) {
             isBossStage = true;
-        } else if (stage > 120 && (stage - 120) % 90 === 0) {
-            isBossStage = true;
+        } else if (stage > maxCustomBossStage && S.subsequentBossInterval > 0) {
+            if ((stage - maxCustomBossStage) % S.subsequentBossInterval === 0) {
+                isBossStage = true;
+            }
         }
         const isEliteStage = !isBossStage && (stage % 5 === 0);
 
-        // --- Enemy Force (multiplier-based) ---
+        // --- Enemy Force ---
         let currentMultiplier = 1.0;
         let currentCount = S.minionCount;
         let stageType;
@@ -3316,7 +3314,7 @@ function generateChartData() {
             currentCount = 1;
             stageType = 'Boss x1';
         } else if (isEliteStage) {
-            currentMultiplier = S.eliteMultiplier;
+            currentMultiplier = SIM_ELITE_MULTIPLIER;
             currentCount = 1;
             stageType = '精英 x1';
         } else {
@@ -3324,48 +3322,51 @@ function generateChartData() {
         }
 
         const individualHp = S.enemyBaseHp * Math.pow(S.enemyHpScale, stepIndex) * currentMultiplier;
+        const individualAtk = S.enemyBaseAtk * Math.pow(S.enemyAtkScale, stepIndex) * currentMultiplier;
         const teamTotalEnemyHp = individualHp * currentCount;
-        const enemyATK = S.enemyBaseAtk * Math.pow(S.enemyAtkScale, stepIndex) * currentMultiplier;
 
         // --- Hero power (recalc only when day changes) ---
         if (currentDay !== cachedDay) {
             cachedDay = currentDay;
             const summons = S.day1ExtraPulls + currentDay * S.dailyPulls;
             cachedHeroesEV = [];
-            cachedHeroesEV.push({ atk: S.qualities[0].atk, hp: S.qualities[0].hp });
-            for (let qi = 1; qi < S.qualities.length; qi++) {
-                const q = S.qualities[qi];
+            cachedHeroesEV.push(SIM_QUALITIES[0].atk); // Base Q1
+
+            for (let i = 1; i < SIM_QUALITIES.length; i++) {
+                const q = SIM_QUALITIES[i];
                 const expectedCopies = summons * (q.rate / S.heroesPerQuality);
-                const ascLvl = simCalcAscensions(expectedCopies);
-                const expMulti = (1 + 0.10 * ascLvl) * Math.pow(1.05, ascLvl);
+                let shards = Math.max(0, expectedCopies - 1);
+                let ascensions = 0;
+                for (const cost of SIM_ASCENSION_COSTS) {
+                    if (shards >= cost) { shards -= cost; ascensions++; }
+                    else { ascensions += shards / cost; break; }
+                }
+                ascensions = Math.min(ascensions, 30);
+                const expMulti = (1 + 0.10 * ascensions) * Math.pow(1.05, ascensions);
                 const heroATK = q.atk * expMulti;
-                const heroHP = q.hp * expMulti;
-                for (let i = 0; i < S.heroesPerQuality; i++) {
-                    cachedHeroesEV.push({ atk: heroATK, hp: heroHP });
+                for (let j = 0; j < S.heroesPerQuality; j++) {
+                    cachedHeroesEV.push(heroATK);
                 }
             }
-            cachedHeroesEV.sort((a, b) => b.atk - a.atk);
+            cachedHeroesEV.sort((a, b) => b - a);
         }
 
-        let totalBaseHeroATK = 0, totalBaseHeroHP = 0;
+        let totalBaseHeroATK = 0;
         for (let i = 0; i < slots && i < cachedHeroesEV.length; i++) {
-            totalBaseHeroATK += cachedHeroesEV[i].atk;
-            totalBaseHeroHP += cachedHeroesEV[i].hp;
+            totalBaseHeroATK += cachedHeroesEV[i];
         }
 
-        // --- Building buffs (step-wise) ---
-        const finalPlayerHP = totalBaseHeroHP * (S.armorShopBaseHpMultiplier * Math.pow(S.armorShopHpScale, stepIndex));
         const buildingATK = S.weaponShopBaseAtk * Math.pow(S.weaponShopAtkScale, stepIndex);
-        const totalAtk = totalBaseHeroATK + buildingATK;
+        const playerTotalATK = totalBaseHeroATK + buildingATK;
 
         result.push({
             stage, day: currentDay, stepIndex, slots,
             isBoss: isBossStage, isElite: isEliteStage,
-            stageType, currentCount,
-            individualHp, teamTotalEnemyHp,
-            enemyATK, totalAtk,
-            totalBaseHeroATK, totalBaseHeroHP,
-            finalPlayerHP, buildingATK
+            stageType, enemyCount: currentCount,
+            individualHp, individualAtk,
+            reqAtk: teamTotalEnemyHp,
+            totalAtk: playerTotalATK,
+            totalBaseHeroATK, buildingATK
         });
     }
     return result;
@@ -3377,17 +3378,18 @@ const SIM_MODULES = [
         title: '全局与章节', color: '#fbbf24', icon: '⚙️', fields: [
             { key: 'displayDays', label: '展示天数', step: 1 },
             { key: 'dailyExpectedStages', label: '每日推关数', step: 1 },
+            { key: 'bossStagesConfig', label: 'Boss自定义关卡', type: 'text' },
+            { key: 'subsequentBossInterval', label: '后续Boss间隔', step: 10 },
         ]
     },
     {
         title: '关卡与怪物', color: '#ef4444', icon: '👹', fields: [
             { key: 'minionCount', label: '小怪数量', step: 1 },
-            { key: 'enemyBaseHp', label: '怪物基础HP', step: 100 },
+            { key: 'enemyBaseHp', label: '怪物基础HP', step: 10 },
             { key: 'enemyBaseAtk', label: '怪物基础ATK', step: 5 },
             { key: 'enemyHpScale', label: 'HP缩放/5关', step: 0.01 },
             { key: 'enemyAtkScale', label: 'ATK缩放/5关', step: 0.01 },
-            { key: 'eliteMultiplier', label: '精英倍率', step: 0.5 },
-            { key: 'bossMultiplier', label: 'Boss倍率', step: 1.0 },
+            { key: 'bossMultiplier', label: 'Boss倍率', step: 0.5 },
         ]
     },
     {
@@ -3418,16 +3420,19 @@ window.renderSimulationConfigUI = function () {
         <span class="text-xs font-bold uppercase tracking-widest" style="color:${mod.color}">${mod.title}</span>
       </div>
       <div class="flex flex-col gap-1">
-        ${mod.fields.map(f => `
+        ${mod.fields.map(f => {
+        const isText = f.type === 'text';
+        return `
           <div class="flex justify-between items-center bg-white/5 rounded-lg px-3 py-1.5 hover:bg-white/10 transition-colors">
             <span class="text-[11px] text-white/70 leading-tight" style="max-width:55%">${f.label}</span>
-            <input type="number"
+            <input type="${isText ? 'text' : 'number'}"
                    value="${window.SimState[f.key]}"
-                   step="${f.step}"
-                   oninput="window.SimState['${f.key}'] = parseFloat(this.value); window.renderSimulationChart();"
+                   ${!isText ? `step="${f.step}"` : ''}
+                   oninput="window.SimState['${f.key}'] = ${isText ? 'this.value' : 'parseFloat(this.value)'}; window.renderSimulationChart();"
                    class="bg-black/50 border border-white/10 text-white rounded text-center text-[11px] font-mono font-bold focus:outline-none focus:border-cyan-500/60 transition-colors"
-                   style="width:5rem;padding:3px 4px;">
-          </div>`).join('')}
+                   style="width:${isText ? '7rem' : '5rem'};padding:3px 4px;">
+          </div>`;
+    }).join('')}
       </div>
     </div>
   `).join('');
@@ -3462,11 +3467,11 @@ window.renderSimulationChart = function () {
                 const typeColor = d.isBoss ? '#ef4444' : (d.isElite ? '#f59e0b' : '#94a3b8');
                 let s = `<b style="font-size:13px">关卡 ${d.stage}</b> &nbsp; <span style="color:#94a3b8">Day ${d.day}</span> &nbsp; <span style="background:${typeColor}20;color:${typeColor};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700">${d.stageType}</span><br/>`;
                 s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.08)"></div>`;
-                s += `<span style="color:#ef4444">⚔ 团队DPS需求 (Force HP):</span> <b>${comma(d.teamTotalEnemyHp)}</b><br/>`;
+                s += `<span style="color:#ef4444">⚔ 团队DPS需求 (Force HP):</span> <b>${comma(d.reqAtk)}</b><br/>`;
                 s += `<span style="color:#22c55e">💪 玩家团队ATK:</span> <b>${comma(d.totalAtk)}</b><br/>`;
                 s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.05)"></div>`;
-                s += `<span style="color:#94a3b8;font-size:11px">单体HP: ${comma(d.individualHp)} × ${d.currentCount} = ${comma(d.teamTotalEnemyHp)}<br/>`;
-                s += `敌ATK: ${comma(d.enemyATK)} | 玩家HP: ${comma(d.finalPlayerHP)}<br/>`;
+                s += `<span style="color:#94a3b8;font-size:11px">单体HP: ${comma(d.individualHp)} × ${d.enemyCount} = ${comma(d.reqAtk)}<br/>`;
+                s += `敌ATK: ${comma(d.individualAtk)}<br/>`;
                 s += `英雄ATK: ${comma(d.totalBaseHeroATK)} | 武器: ${comma(d.buildingATK)} | 槽位: ${d.slots}</span>`;
                 return s;
             }
@@ -3511,14 +3516,14 @@ window.renderSimulationChart = function () {
             {
                 name: '最低团队DPS需求 (Total Force HP)',
                 type: 'line',
-                data: data.map(d => d.teamTotalEnemyHp),
+                data: data.map(d => d.reqAtk),
                 lineStyle: { color: '#ef4444', width: 1.5 },
                 itemStyle: { color: '#ef4444' },
                 symbol: 'none',
                 sampling: 'lttb',
                 markPoint: {
                     data: data.filter(d => d.isBoss).map(d => ({
-                        coord: [d.stage - 1, d.teamTotalEnemyHp],
+                        coord: [d.stage - 1, d.reqAtk],
                         symbol: 'diamond',
                         symbolSize: 10,
                         itemStyle: { color: '#ef4444' }
