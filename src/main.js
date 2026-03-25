@@ -3419,20 +3419,22 @@ function generateChartData() {
 function renderQualitiesGrid() {
   const Q = window.SimState.qualities;
   const labels = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7'];
+  const inputCls = 'bg-black/50 border border-white/10 text-white rounded text-center text-[11px] font-mono font-bold focus:outline-none focus:border-cyan-500/60 transition-colors';
+  const inputStyle = 'width:4rem;padding:3px 4px;';
   let html = `<div style="margin:6px 0 4px 0">
-    <table style="width:100%;border-collapse:collapse;font-size:10px">
-      <thead><tr style="color:#666">
-        <th style="padding:1px 3px;text-align:left;width:20px"></th>
-        <th style="padding:1px 2px;text-align:center">Rate</th>
-        <th style="padding:1px 2px;text-align:center">ATK</th>
-        <th style="padding:1px 2px;text-align:center">HP</th>
+    <table style="width:100%;border-collapse:separate;border-spacing:0 2px;font-size:11px">
+      <thead><tr style="color:rgba(255,255,255,0.45)">
+        <th style="padding:2px 6px;text-align:left;width:28px"></th>
+        <th style="padding:2px 4px;text-align:center;font-weight:600">Rate</th>
+        <th style="padding:2px 4px;text-align:center;font-weight:600">ATK</th>
+        <th style="padding:2px 4px;text-align:center;font-weight:600">HP</th>
       </tr></thead><tbody>`;
   for (let i = 0; i < Q.length; i++) {
-    html += `<tr style="border-top:1px solid rgba(255,255,255,0.04)">
-      <td style="padding:1px 3px;color:#a78bfa;font-weight:700;font-size:9px">${labels[i]}</td>
-      <td style="padding:1px 1px"><input type="number" value="${Q[i].rate}" step="0.01" oninput="window.SimState.qualities[${i}].rate=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3rem;padding:1px;font-size:9px"></td>
-      <td style="padding:1px 1px"><input type="number" value="${Q[i].atk}" step="10" oninput="window.SimState.qualities[${i}].atk=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3.2rem;padding:1px;font-size:9px"></td>
-      <td style="padding:1px 1px"><input type="number" value="${Q[i].hp}" step="50" oninput="window.SimState.qualities[${i}].hp=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3.2rem;padding:1px;font-size:9px"></td>
+    html += `<tr class="bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+      <td style="padding:4px 6px;color:#a78bfa;font-weight:700;font-size:11px;border-radius:8px 0 0 8px">${labels[i]}</td>
+      <td style="padding:2px 3px"><input type="number" value="${Q[i].rate}" step="0.01" oninput="window.SimState.qualities[${i}].rate=parseFloat(this.value);window.renderSimulationChart();" class="${inputCls}" style="${inputStyle}"></td>
+      <td style="padding:2px 3px"><input type="number" value="${Q[i].atk}" step="10" oninput="window.SimState.qualities[${i}].atk=parseFloat(this.value);window.renderSimulationChart();" class="${inputCls}" style="${inputStyle}"></td>
+      <td style="padding:2px 3px;border-radius:0 8px 8px 0"><input type="number" value="${Q[i].hp}" step="50" oninput="window.SimState.qualities[${i}].hp=parseFloat(this.value);window.renderSimulationChart();" class="${inputCls}" style="${inputStyle}"></td>
     </tr>`;
   }
   html += `</tbody></table></div>`;
