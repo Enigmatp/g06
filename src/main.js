@@ -3234,7 +3234,7 @@ rebuildBar();
 setupInputs();
 
 // ==========================================
-// SIMULATION MODULE (v0.3.7 — Pacing Overhaul)
+// SIMULATION MODULE (v0.3.8 — Building-First Pacing)
 // ==========================================
 
 window.SimState = {
@@ -3250,30 +3250,30 @@ window.SimState = {
     enemyBaseAtk: 20,
     enemyHpScale: 1.10,
     enemyAtkScale: 1.10,
-    eliteInterval: 5,
     eliteMultiplier: 1.25,
     bossMultiplier: 1.50,
 
     // Module 3: 英雄与召唤系统
     summonUnlockStage: 6,
     slotUnlockStages: '0, 2, 4, 8, 12, 16, 21, 27, 45, 60, 75, 90, 105, 130, 145',
+    day1ExtraPulls: 10,
     dailyPulls: 36,
     heroesPerQuality: 4,
     qualities: [
-        { rate: 0.00, atk: 400, hp: 2000 },
-        { rate: 0.50, atk: 800, hp: 4000 },
-        { rate: 0.25, atk: 800, hp: 4000 },
-        { rate: 0.14, atk: 1400, hp: 7000 },
-        { rate: 0.07, atk: 2200, hp: 11000 },
-        { rate: 0.03, atk: 3400, hp: 17000 },
-        { rate: 0.01, atk: 5000, hp: 25000 }
+        { rate: 0.00, atk: 10, hp: 50 },
+        { rate: 0.50, atk: 20, hp: 100 },
+        { rate: 0.25, atk: 40, hp: 200 },
+        { rate: 0.14, atk: 80, hp: 400 },
+        { rate: 0.07, atk: 160, hp: 800 },
+        { rate: 0.03, atk: 320, hp: 1600 },
+        { rate: 0.01, atk: 640, hp: 3200 }
     ],
 
-    // Module 4: 力量建筑
-    weaponShopBaseAtk: 900,
-    weaponShopAtkScale: 1.08,
-    armorShopBaseHpMultiplier: 1.0,
-    armorShopHpScale: 1.08,
+    // Module 4: 力量建筑 (Flat Stats)
+    weaponShopBaseAtk: 50,
+    weaponShopAtkScale: 1.15,
+    armorShopBaseHp: 250,
+    armorShopHpScale: 1.15,
 };
 
 const SIM_ASCENSION_COSTS = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 5, 5, 5, 5, 5, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12];
@@ -3300,61 +3300,65 @@ function generateChartData() {
         let slots = unlockStages.filter(u => stage >= u).length;
         slots = Math.min(15, Math.max(1, slots));
 
-        // --- Boss / Elite determination ---
+        // --- Boss / Elite ---
         let isBossStage = false;
         if (bossSet.has(stage)) {
             isBossStage = true;
         } else if (stage > maxCustomBossStage && S.subsequentBossInterval > 0) {
-            if ((stage - maxCustomBossStage) % S.subsequentBossInterval === 0) {
-                isBossStage = true;
-            }
+            if ((stage - maxCustomBossStage) % S.subsequentBossInterval === 0) isBossStage = true;
         }
-        const isEliteStage = !isBossStage && S.eliteInterval > 0 && (stage % S.eliteInterval === 0);
+        const isEliteStage = !isBossStage && (stage % 5 === 0);
 
         // --- Enemy CP (wave-anchored) ---
-        const minionIndividualHp = S.enemyBaseHp * Math.pow(S.enemyHpScale, stepIndex);
-        const minionIndividualAtk = S.enemyBaseAtk * Math.pow(S.enemyAtkScale, stepIndex);
-        const minionWaveCP = (minionIndividualHp + minionIndividualAtk * 5) * S.minionCount;
+        const baseIndHp = S.enemyBaseHp * Math.pow(S.enemyHpScale, stepIndex);
+        const baseIndAtk = S.enemyBaseAtk * Math.pow(S.enemyAtkScale, stepIndex);
+        const waveCP = (baseIndHp + baseIndAtk * 5) * S.minionCount;
 
-        let teamForceCP, enemyCount, individualHp, individualAtk, stageType;
+        let enemyTeamCP, enemyCount, individualHp, individualAtk, stageType;
         if (isBossStage) {
-            teamForceCP = minionWaveCP * S.bossMultiplier;
+            enemyTeamCP = waveCP * S.bossMultiplier;
             enemyCount = 1;
-            individualHp = minionIndividualHp * S.minionCount * S.bossMultiplier;
-            individualAtk = minionIndividualAtk * S.minionCount * S.bossMultiplier;
+            individualHp = baseIndHp * S.minionCount * S.bossMultiplier;
+            individualAtk = baseIndAtk * S.minionCount * S.bossMultiplier;
             stageType = 'Boss(x1)';
         } else if (isEliteStage) {
-            teamForceCP = minionWaveCP * S.eliteMultiplier;
+            enemyTeamCP = waveCP * S.eliteMultiplier;
             enemyCount = 1;
-            individualHp = minionIndividualHp * S.minionCount * S.eliteMultiplier;
-            individualAtk = minionIndividualAtk * S.minionCount * S.eliteMultiplier;
+            individualHp = baseIndHp * S.minionCount * S.eliteMultiplier;
+            individualAtk = baseIndAtk * S.minionCount * S.eliteMultiplier;
             stageType = '精英(x1)';
         } else {
-            teamForceCP = minionWaveCP;
+            enemyTeamCP = waveCP;
             enemyCount = S.minionCount;
-            individualHp = minionIndividualHp;
-            individualAtk = minionIndividualAtk;
+            individualHp = baseIndHp;
+            individualAtk = baseIndAtk;
             stageType = '小怪波(x' + S.minionCount + ')';
         }
 
-        // --- Summon logic ---
+        // --- Summons ---
         let summons = 0;
         if (stage >= S.summonUnlockStage) {
             const cumulativeDailyPulls = (stage === S.summonUnlockStage) ? 0 : Math.max(0, currentDay - unlockedSummonsDay) * S.dailyPulls;
-            summons = 10 + cumulativeDailyPulls;
+            summons = S.day1ExtraPulls + cumulativeDailyPulls;
         }
 
-        // --- Hero power (recalc when day or summons change) ---
+        // --- Hero EV (recalc when summons change) ---
         if (summons !== cachedSummons || currentDay !== cachedDay) {
             cachedDay = currentDay;
             cachedSummons = summons;
             cachedHeroesEV = [];
 
-            if (summons > 0) {
+            // Q1 base heroes (free starter units)
+            for (let j = 0; j < S.heroesPerQuality; j++) {
                 cachedHeroesEV.push({ atk: S.qualities[0].atk, hp: S.qualities[0].hp });
+            }
+
+            if (summons > 0) {
                 for (let i = 1; i < S.qualities.length; i++) {
                     const q = S.qualities[i];
                     const expectedCopies = summons * (q.rate / S.heroesPerQuality);
+                    const chanceToOwn = Math.min(1, expectedCopies);
+
                     let shards = Math.max(0, expectedCopies - 1);
                     let ascensions = 0;
                     for (const cost of SIM_ASCENSION_COSTS) {
@@ -3362,15 +3366,18 @@ function generateChartData() {
                         else { ascensions += shards / cost; break; }
                     }
                     ascensions = Math.min(ascensions, 30);
+
                     const starMultiplier = Math.pow(1.05, ascensions);
                     const expMulti = (1 + 0.10 * ascensions) * starMultiplier;
-                    const heroATK = q.atk * expMulti;
-                    const heroHP = q.hp * expMulti;
+                    const heroATK = q.atk * expMulti * chanceToOwn;
+                    const heroHP = q.hp * expMulti * chanceToOwn;
+
                     for (let j = 0; j < S.heroesPerQuality; j++) {
                         cachedHeroesEV.push({ atk: heroATK, hp: heroHP });
                     }
                 }
-                cachedHeroesEV.sort((a, b) => b.atk - a.atk);
+                // Sort by CP (HP + ATK*5)
+                cachedHeroesEV.sort((a, b) => (b.hp + b.atk * 5) - (a.hp + a.atk * 5));
             }
         }
 
@@ -3380,13 +3387,14 @@ function generateChartData() {
             totalBaseHeroHP += cachedHeroesEV[i].hp;
         }
 
-        // Hero Pure CP (before buildings)
+        // Hero Pure CP
         const heroTeamCP = totalBaseHeroHP + (totalBaseHeroATK * 5);
 
-        // Apply Buildings
+        // Buildings (FLAT addition)
         const buildingATK = S.weaponShopBaseAtk * Math.pow(S.weaponShopAtkScale, stepIndex);
+        const buildingHP = S.armorShopBaseHp * Math.pow(S.armorShopHpScale, stepIndex);
         const playerTotalATK = totalBaseHeroATK + buildingATK;
-        const playerTotalHP = totalBaseHeroHP * (S.armorShopBaseHpMultiplier * Math.pow(S.armorShopHpScale, stepIndex));
+        const playerTotalHP = totalBaseHeroHP + buildingHP;
         const playerTeamCP = playerTotalHP + (playerTotalATK * 5);
 
         result.push({
@@ -3394,20 +3402,47 @@ function generateChartData() {
             isBoss: isBossStage, isElite: isEliteStage,
             stageType, enemyCount,
             individualHp, individualAtk,
-            enemyCP: teamForceCP,
+            enemyCP: enemyTeamCP,
             playerCP: playerTeamCP,
             playerHp: playerTotalHP,
             playerAtk: playerTotalATK,
             heroCP: heroTeamCP,
             heroAtk: totalBaseHeroATK,
             heroHp: totalBaseHeroHP,
-            buildingATK
+            buildingATK, buildingHP
         });
     }
     return result;
 }
 
 // ── Parameter Panel UI ──
+function renderQualitiesGrid() {
+    const Q = window.SimState.qualities;
+    const labels = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7'];
+    let html = `<div style="margin:6px 0 4px 0">
+    <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">
+      <span style="font-size:0.8rem">📊</span>
+      <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;color:#a78bfa">英雄品质配置</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:10px">
+      <thead><tr style="color:#666">
+        <th style="padding:1px 3px;text-align:left;width:20px"></th>
+        <th style="padding:1px 2px;text-align:center">Rate</th>
+        <th style="padding:1px 2px;text-align:center">ATK</th>
+        <th style="padding:1px 2px;text-align:center">HP</th>
+      </tr></thead><tbody>`;
+    for (let i = 0; i < Q.length; i++) {
+        html += `<tr style="border-top:1px solid rgba(255,255,255,0.04)">
+      <td style="padding:1px 3px;color:#a78bfa;font-weight:700;font-size:9px">${labels[i]}</td>
+      <td style="padding:1px 1px"><input type="number" value="${Q[i].rate}" step="0.01" oninput="window.SimState.qualities[${i}].rate=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3rem;padding:1px;font-size:9px"></td>
+      <td style="padding:1px 1px"><input type="number" value="${Q[i].atk}" step="10" oninput="window.SimState.qualities[${i}].atk=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3.2rem;padding:1px;font-size:9px"></td>
+      <td style="padding:1px 1px"><input type="number" value="${Q[i].hp}" step="50" oninput="window.SimState.qualities[${i}].hp=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3.2rem;padding:1px;font-size:9px"></td>
+    </tr>`;
+    }
+    html += `</tbody></table></div>`;
+    return html;
+}
+
 const SIM_MODULES = [
     {
         title: '全局与章节', color: '#fbbf24', icon: '⚙️', fields: [
@@ -3424,55 +3459,28 @@ const SIM_MODULES = [
             { key: 'enemyBaseAtk', label: '怪物基础ATK', step: 5 },
             { key: 'enemyHpScale', label: 'HP缩放/5关', step: 0.01 },
             { key: 'enemyAtkScale', label: 'ATK缩放/5关', step: 0.01 },
-            { key: 'eliteInterval', label: '精英间隔(关)', step: 1 },
             { key: 'eliteMultiplier', label: '精英倍率(波)', step: 0.05 },
             { key: 'bossMultiplier', label: 'Boss倍率(波)', step: 0.1 },
         ]
     },
     {
-        title: '英雄与召唤系统', color: '#8b5cf6', icon: '🦸', fields: [
+        title: '英雄与召唤系统', color: '#8b5cf6', icon: '🦸', hasQualities: true, fields: [
             { key: 'summonUnlockStage', label: '抽卡解锁关卡', step: 1 },
             { key: 'slotUnlockStages', label: '槽位解锁关卡', type: 'text', wide: true },
+            { key: 'day1ExtraPulls', label: '首日额外抽数', step: 1 },
             { key: 'dailyPulls', label: '每日抽卡数', step: 1 },
-            { key: 'heroesPerQuality', label: '每品质英雄个数(Q7x4=28)', step: 1 },
+            { key: 'heroesPerQuality', label: '每品质英雄个数', step: 1 },
         ]
     },
     {
         title: '力量建筑', color: '#22d3ee', icon: '🏗️', fields: [
-            { key: 'weaponShopBaseAtk', label: '武器店基础ATK', step: 50 },
+            { key: 'weaponShopBaseAtk', label: '武器店基础ATK', step: 10 },
             { key: 'weaponShopAtkScale', label: '武器ATK缩放/5关', step: 0.01 },
-            { key: 'armorShopBaseHpMultiplier', label: '护甲基础HP倍率', step: 0.1 },
+            { key: 'armorShopBaseHp', label: '护甲基础HP', step: 50 },
             { key: 'armorShopHpScale', label: '护甲HP缩放/5关', step: 0.01 },
         ]
     },
 ];
-
-function renderQualitiesGrid() {
-    const Q = window.SimState.qualities;
-    const labels = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7'];
-    let html = `<div style="margin:4px 0 8px 0">
-    <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">
-      <span style="font-size:0.85rem">📊</span>
-      <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;color:#a78bfa">英雄品质配置</span>
-    </div>
-    <table style="width:100%;border-collapse:collapse;font-size:10px">
-      <thead><tr style="color:#666">
-        <th style="padding:1px 3px;text-align:left;width:22px"></th>
-        <th style="padding:1px 2px;text-align:center">Rate</th>
-        <th style="padding:1px 2px;text-align:center">ATK</th>
-        <th style="padding:1px 2px;text-align:center">HP</th>
-      </tr></thead><tbody>`;
-    for (let i = 0; i < Q.length; i++) {
-        html += `<tr style="border-top:1px solid rgba(255,255,255,0.04)">
-      <td style="padding:1px 3px;color:#a78bfa;font-weight:700;font-size:9px">${labels[i]}</td>
-      <td style="padding:1px 1px"><input type="number" value="${Q[i].rate}" step="0.01" oninput="window.SimState.qualities[${i}].rate=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3rem;padding:1px;font-size:9px"></td>
-      <td style="padding:1px 1px"><input type="number" value="${Q[i].atk}" step="100" oninput="window.SimState.qualities[${i}].atk=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3.2rem;padding:1px;font-size:9px"></td>
-      <td style="padding:1px 1px"><input type="number" value="${Q[i].hp}" step="500" oninput="window.SimState.qualities[${i}].hp=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3.2rem;padding:1px;font-size:9px"></td>
-    </tr>`;
-    }
-    html += `</tbody></table></div>`;
-    return html;
-}
 
 window.renderSimulationConfigUI = function () {
     const panel = document.getElementById('sim-params-panel');
@@ -3496,9 +3504,9 @@ window.renderSimulationConfigUI = function () {
               style="width:${w};padding:3px 4px;">
           </div>`;
         }).join('')}
-      </div>`;
-        if (mod.title === '英雄与召唤系统') allHtml += renderQualitiesGrid();
-        allHtml += `</div>`;
+      </div>
+      ${mod.hasQualities ? renderQualitiesGrid() : ''}
+    </div>`;
     }
     panel.innerHTML = allHtml;
 };
@@ -3538,8 +3546,8 @@ window.renderSimulationChart = function () {
                 s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.05)"></div>`;
                 s += `<span style="color:#94a3b8;font-size:11px">单体怪HP: ${comma(d.individualHp)} | 单体怪ATK: ${comma(d.individualAtk)}<br/>`;
                 s += `英雄ATK: ${comma(d.heroAtk)} | 英雄HP: ${comma(d.heroHp)}<br/>`;
-                s += `玩家ATK: ${comma(d.playerAtk)} | 玩家HP: ${comma(d.playerHp)} | 武器: ${comma(d.buildingATK)}<br/>`;
-                s += `槽位: ${d.slots} | 累计抽卡: ${d.summons}</span>`;
+                s += `建筑ATK: ${comma(d.buildingATK)} | 建筑HP: ${comma(d.buildingHP)}<br/>`;
+                s += `玩家ATK: ${comma(d.playerAtk)} | 玩家HP: ${comma(d.playerHp)} | 槽位: ${d.slots} | 抽卡: ${d.summons}</span>`;
                 return s;
             }
         },
