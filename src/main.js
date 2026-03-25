@@ -3238,192 +3238,188 @@ setupInputs();
 // ==========================================
 
 window.SimState = {
-    // Module 1: 全局与章节
-    displayDays: 7,
-    dailyExpectedStages: 72,
-    bossStagesConfig: '30, 90, 180',
-    subsequentBossInterval: 90,
+  // Module 1: 全局与章节
+  displayDays: 7,
+  dailyExpectedStages: 72,
+  bossStagesConfig: '30, 90, 180',
+  subsequentBossInterval: 90,
 
-    // Module 2: 关卡与怪物
-    minionCount: 3,
-    enemyBaseHp: 100,
-    enemyBaseAtk: 20,
-    enemyHpScale: 1.10,
-    enemyAtkScale: 1.10,
-    eliteMultiplier: 1.25,
-    bossMultiplier: 1.50,
+  // Module 2: 关卡与怪物
+  minionCount: 3,
+  enemyBaseHp: 100,
+  enemyBaseAtk: 20,
+  enemyHpScale: 1.10,
+  enemyAtkScale: 1.10,
+  eliteMultiplier: 1.25,
+  bossMultiplier: 1.50,
 
-    // Module 3: 英雄与召唤系统
-    summonUnlockStage: 6,
-    slotUnlockStages: '0, 2, 4, 8, 12, 16, 21, 27, 45, 60, 75, 90, 105, 130, 145',
-    day1ExtraPulls: 10,
-    dailyPulls: 36,
-    heroesPerQuality: 4,
-    qualities: [
-        { rate: 0.00, atk: 10, hp: 50 },
-        { rate: 0.50, atk: 20, hp: 100 },
-        { rate: 0.25, atk: 40, hp: 200 },
-        { rate: 0.14, atk: 80, hp: 400 },
-        { rate: 0.07, atk: 160, hp: 800 },
-        { rate: 0.03, atk: 320, hp: 1600 },
-        { rate: 0.01, atk: 640, hp: 3200 }
-    ],
+  // Module 3: 英雄与召唤系统
+  summonUnlockStage: 6,
+  slotUnlockStages: '0, 2, 4, 8, 12, 16, 21, 27, 45, 60, 75, 90, 105, 130, 145',
+  day1ExtraPulls: 10,
+  dailyPulls: 36,
+  heroesPerQuality: 4,
+  qualities: [
+    { rate: 0.00, atk: 10, hp: 50 },
+    { rate: 0.50, atk: 20, hp: 100 },
+    { rate: 0.25, atk: 40, hp: 200 },
+    { rate: 0.14, atk: 80, hp: 400 },
+    { rate: 0.07, atk: 160, hp: 800 },
+    { rate: 0.03, atk: 320, hp: 1600 },
+    { rate: 0.01, atk: 640, hp: 3200 }
+  ],
 
-    // Module 4: 力量建筑 (Flat Stats)
-    weaponShopBaseAtk: 50,
-    weaponShopAtkScale: 1.15,
-    armorShopBaseHp: 250,
-    armorShopHpScale: 1.15,
+  // Module 4: 力量建筑 (Flat Stats)
+  weaponShopBaseAtk: 50,
+  weaponShopAtkScale: 1.15,
+  armorShopBaseHp: 250,
+  armorShopHpScale: 1.15,
 };
 
 const SIM_ASCENSION_COSTS = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 5, 5, 5, 5, 5, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12];
 
 function generateChartData() {
-    const S = window.SimState;
-    const totalStages = S.displayDays * S.dailyExpectedStages;
-    const customBossStages = S.bossStagesConfig.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-    const maxCustomBossStage = customBossStages.length > 0 ? Math.max(...customBossStages) : 0;
-    const bossSet = new Set(customBossStages);
-    const unlockStages = S.slotUnlockStages.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-    const unlockedSummonsDay = Math.ceil(S.summonUnlockStage / S.dailyExpectedStages);
-    const result = [];
+  const S = window.SimState;
+  const totalStages = S.displayDays * S.dailyExpectedStages;
+  const customBossStages = S.bossStagesConfig.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  const maxCustomBossStage = customBossStages.length > 0 ? Math.max(...customBossStages) : 0;
+  const bossSet = new Set(customBossStages);
+  const unlockStages = S.slotUnlockStages.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  const unlockedSummonsDay = Math.ceil(S.summonUnlockStage / S.dailyExpectedStages);
+  const result = [];
 
-    let cachedDay = -1;
-    let cachedSummons = -1;
-    let cachedHeroesEV = [];
+  let cachedDay = -1;
+  let cachedSummons = -1;
+  let cachedHeroesEV = [];
 
-    for (let stage = 1; stage <= totalStages; stage++) {
-        const currentDay = Math.ceil(stage / S.dailyExpectedStages);
-        const stepIndex = Math.floor((stage - 1) / 5);
+  for (let stage = 1; stage <= totalStages; stage++) {
+    const currentDay = Math.ceil(stage / S.dailyExpectedStages);
+    const stepIndex = Math.floor((stage - 1) / 5);
 
-        // Dynamic slot unlocks
-        let slots = unlockStages.filter(u => stage >= u).length;
-        slots = Math.min(15, Math.max(1, slots));
+    // Dynamic slot unlocks
+    let slots = unlockStages.filter(u => stage >= u).length;
+    slots = Math.min(15, Math.max(1, slots));
 
-        // --- Boss / Elite ---
-        let isBossStage = false;
-        if (bossSet.has(stage)) {
-            isBossStage = true;
-        } else if (stage > maxCustomBossStage && S.subsequentBossInterval > 0) {
-            if ((stage - maxCustomBossStage) % S.subsequentBossInterval === 0) isBossStage = true;
-        }
-        const isEliteStage = !isBossStage && (stage % 5 === 0);
-
-        // --- Enemy CP (wave-anchored) ---
-        const baseIndHp = S.enemyBaseHp * Math.pow(S.enemyHpScale, stepIndex);
-        const baseIndAtk = S.enemyBaseAtk * Math.pow(S.enemyAtkScale, stepIndex);
-        const waveCP = (baseIndHp + baseIndAtk * 5) * S.minionCount;
-
-        let enemyTeamCP, enemyCount, individualHp, individualAtk, stageType;
-        if (isBossStage) {
-            enemyTeamCP = waveCP * S.bossMultiplier;
-            enemyCount = 1;
-            individualHp = baseIndHp * S.minionCount * S.bossMultiplier;
-            individualAtk = baseIndAtk * S.minionCount * S.bossMultiplier;
-            stageType = 'Boss(x1)';
-        } else if (isEliteStage) {
-            enemyTeamCP = waveCP * S.eliteMultiplier;
-            enemyCount = 1;
-            individualHp = baseIndHp * S.minionCount * S.eliteMultiplier;
-            individualAtk = baseIndAtk * S.minionCount * S.eliteMultiplier;
-            stageType = '精英(x1)';
-        } else {
-            enemyTeamCP = waveCP;
-            enemyCount = S.minionCount;
-            individualHp = baseIndHp;
-            individualAtk = baseIndAtk;
-            stageType = '小怪波(x' + S.minionCount + ')';
-        }
-
-        // --- Summons ---
-        let summons = 0;
-        if (stage >= S.summonUnlockStage) {
-            const cumulativeDailyPulls = (stage === S.summonUnlockStage) ? 0 : Math.max(0, currentDay - unlockedSummonsDay) * S.dailyPulls;
-            summons = S.day1ExtraPulls + cumulativeDailyPulls;
-        }
-
-        // --- Hero EV (recalc when summons change) ---
-        if (summons !== cachedSummons || currentDay !== cachedDay) {
-            cachedDay = currentDay;
-            cachedSummons = summons;
-            cachedHeroesEV = [];
-
-            // Q1 base heroes (free starter units)
-            for (let j = 0; j < S.heroesPerQuality; j++) {
-                cachedHeroesEV.push({ atk: S.qualities[0].atk, hp: S.qualities[0].hp });
-            }
-
-            if (summons > 0) {
-                for (let i = 1; i < S.qualities.length; i++) {
-                    const q = S.qualities[i];
-                    const expectedCopies = summons * (q.rate / S.heroesPerQuality);
-                    const chanceToOwn = Math.min(1, expectedCopies);
-
-                    let shards = Math.max(0, expectedCopies - 1);
-                    let ascensions = 0;
-                    for (const cost of SIM_ASCENSION_COSTS) {
-                        if (shards >= cost) { shards -= cost; ascensions++; }
-                        else { ascensions += shards / cost; break; }
-                    }
-                    ascensions = Math.min(ascensions, 30);
-
-                    const starMultiplier = Math.pow(1.05, ascensions);
-                    const expMulti = (1 + 0.10 * ascensions) * starMultiplier;
-                    const heroATK = q.atk * expMulti * chanceToOwn;
-                    const heroHP = q.hp * expMulti * chanceToOwn;
-
-                    for (let j = 0; j < S.heroesPerQuality; j++) {
-                        cachedHeroesEV.push({ atk: heroATK, hp: heroHP });
-                    }
-                }
-                // Sort by CP (HP + ATK*5)
-                cachedHeroesEV.sort((a, b) => (b.hp + b.atk * 5) - (a.hp + a.atk * 5));
-            }
-        }
-
-        let totalBaseHeroATK = 0, totalBaseHeroHP = 0;
-        for (let i = 0; i < slots && i < cachedHeroesEV.length; i++) {
-            totalBaseHeroATK += cachedHeroesEV[i].atk;
-            totalBaseHeroHP += cachedHeroesEV[i].hp;
-        }
-
-        // Hero Pure CP
-        const heroTeamCP = totalBaseHeroHP + (totalBaseHeroATK * 5);
-
-        // Buildings (FLAT addition)
-        const buildingATK = S.weaponShopBaseAtk * Math.pow(S.weaponShopAtkScale, stepIndex);
-        const buildingHP = S.armorShopBaseHp * Math.pow(S.armorShopHpScale, stepIndex);
-        const playerTotalATK = totalBaseHeroATK + buildingATK;
-        const playerTotalHP = totalBaseHeroHP + buildingHP;
-        const playerTeamCP = playerTotalHP + (playerTotalATK * 5);
-
-        result.push({
-            stage, day: currentDay, stepIndex, slots, summons,
-            isBoss: isBossStage, isElite: isEliteStage,
-            stageType, enemyCount,
-            individualHp, individualAtk,
-            enemyCP: enemyTeamCP,
-            playerCP: playerTeamCP,
-            playerHp: playerTotalHP,
-            playerAtk: playerTotalATK,
-            heroCP: heroTeamCP,
-            heroAtk: totalBaseHeroATK,
-            heroHp: totalBaseHeroHP,
-            buildingATK, buildingHP
-        });
+    // --- Boss / Elite ---
+    let isBossStage = false;
+    if (bossSet.has(stage)) {
+      isBossStage = true;
+    } else if (stage > maxCustomBossStage && S.subsequentBossInterval > 0) {
+      if ((stage - maxCustomBossStage) % S.subsequentBossInterval === 0) isBossStage = true;
     }
-    return result;
+    const isEliteStage = !isBossStage && (stage % 5 === 0);
+
+    // --- Enemy CP (wave-anchored) ---
+    const baseIndHp = S.enemyBaseHp * Math.pow(S.enemyHpScale, stepIndex);
+    const baseIndAtk = S.enemyBaseAtk * Math.pow(S.enemyAtkScale, stepIndex);
+    const waveCP = (baseIndHp + baseIndAtk * 5) * S.minionCount;
+
+    let enemyTeamCP, enemyCount, individualHp, individualAtk, stageType;
+    if (isBossStage) {
+      enemyTeamCP = waveCP * S.bossMultiplier;
+      enemyCount = 1;
+      individualHp = baseIndHp * S.minionCount * S.bossMultiplier;
+      individualAtk = baseIndAtk * S.minionCount * S.bossMultiplier;
+      stageType = 'Boss(x1)';
+    } else if (isEliteStage) {
+      enemyTeamCP = waveCP * S.eliteMultiplier;
+      enemyCount = 1;
+      individualHp = baseIndHp * S.minionCount * S.eliteMultiplier;
+      individualAtk = baseIndAtk * S.minionCount * S.eliteMultiplier;
+      stageType = '精英(x1)';
+    } else {
+      enemyTeamCP = waveCP;
+      enemyCount = S.minionCount;
+      individualHp = baseIndHp;
+      individualAtk = baseIndAtk;
+      stageType = '小怪波(x' + S.minionCount + ')';
+    }
+
+    // --- Summons ---
+    let summons = 0;
+    if (stage >= S.summonUnlockStage) {
+      const cumulativeDailyPulls = (stage === S.summonUnlockStage) ? 0 : Math.max(0, currentDay - unlockedSummonsDay) * S.dailyPulls;
+      summons = S.day1ExtraPulls + cumulativeDailyPulls;
+    }
+
+    // --- Hero EV (recalc when summons change) ---
+    if (summons !== cachedSummons || currentDay !== cachedDay) {
+      cachedDay = currentDay;
+      cachedSummons = summons;
+      cachedHeroesEV = [];
+
+      // Q1 base heroes (free starter units)
+      for (let j = 0; j < S.heroesPerQuality; j++) {
+        cachedHeroesEV.push({ atk: S.qualities[0].atk, hp: S.qualities[0].hp });
+      }
+
+      if (summons > 0) {
+        for (let i = 1; i < S.qualities.length; i++) {
+          const q = S.qualities[i];
+          const expectedCopies = summons * (q.rate / S.heroesPerQuality);
+          const chanceToOwn = Math.min(1, expectedCopies);
+
+          let shards = Math.max(0, expectedCopies - 1);
+          let ascensions = 0;
+          for (const cost of SIM_ASCENSION_COSTS) {
+            if (shards >= cost) { shards -= cost; ascensions++; }
+            else { ascensions += shards / cost; break; }
+          }
+          ascensions = Math.min(ascensions, 30);
+
+          const starMultiplier = Math.pow(1.05, ascensions);
+          const expMulti = (1 + 0.10 * ascensions) * starMultiplier;
+          const heroATK = q.atk * expMulti * chanceToOwn;
+          const heroHP = q.hp * expMulti * chanceToOwn;
+
+          for (let j = 0; j < S.heroesPerQuality; j++) {
+            cachedHeroesEV.push({ atk: heroATK, hp: heroHP });
+          }
+        }
+        // Sort by CP (HP + ATK*5)
+        cachedHeroesEV.sort((a, b) => (b.hp + b.atk * 5) - (a.hp + a.atk * 5));
+      }
+    }
+
+    let totalBaseHeroATK = 0, totalBaseHeroHP = 0;
+    for (let i = 0; i < slots && i < cachedHeroesEV.length; i++) {
+      totalBaseHeroATK += cachedHeroesEV[i].atk;
+      totalBaseHeroHP += cachedHeroesEV[i].hp;
+    }
+
+    // Hero Pure CP
+    const heroTeamCP = totalBaseHeroHP + (totalBaseHeroATK * 5);
+
+    // Buildings (FLAT addition)
+    const buildingATK = S.weaponShopBaseAtk * Math.pow(S.weaponShopAtkScale, stepIndex);
+    const buildingHP = S.armorShopBaseHp * Math.pow(S.armorShopHpScale, stepIndex);
+    const playerTotalATK = totalBaseHeroATK + buildingATK;
+    const playerTotalHP = totalBaseHeroHP + buildingHP;
+    const playerTeamCP = playerTotalHP + (playerTotalATK * 5);
+
+    result.push({
+      stage, day: currentDay, stepIndex, slots, summons,
+      isBoss: isBossStage, isElite: isEliteStage,
+      stageType, enemyCount,
+      individualHp, individualAtk,
+      enemyCP: enemyTeamCP,
+      playerCP: playerTeamCP,
+      playerHp: playerTotalHP,
+      playerAtk: playerTotalATK,
+      heroCP: heroTeamCP,
+      heroAtk: totalBaseHeroATK,
+      heroHp: totalBaseHeroHP,
+      buildingATK, buildingHP
+    });
+  }
+  return result;
 }
 
 // ── Parameter Panel UI ──
 function renderQualitiesGrid() {
-    const Q = window.SimState.qualities;
-    const labels = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7'];
-    let html = `<div style="margin:6px 0 4px 0">
-    <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px">
-      <span style="font-size:0.8rem">📊</span>
-      <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;color:#a78bfa">英雄品质配置</span>
-    </div>
+  const Q = window.SimState.qualities;
+  const labels = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7'];
+  let html = `<div style="margin:6px 0 4px 0">
     <table style="width:100%;border-collapse:collapse;font-size:10px">
       <thead><tr style="color:#666">
         <th style="padding:1px 3px;text-align:left;width:20px"></th>
@@ -3431,209 +3427,209 @@ function renderQualitiesGrid() {
         <th style="padding:1px 2px;text-align:center">ATK</th>
         <th style="padding:1px 2px;text-align:center">HP</th>
       </tr></thead><tbody>`;
-    for (let i = 0; i < Q.length; i++) {
-        html += `<tr style="border-top:1px solid rgba(255,255,255,0.04)">
+  for (let i = 0; i < Q.length; i++) {
+    html += `<tr style="border-top:1px solid rgba(255,255,255,0.04)">
       <td style="padding:1px 3px;color:#a78bfa;font-weight:700;font-size:9px">${labels[i]}</td>
       <td style="padding:1px 1px"><input type="number" value="${Q[i].rate}" step="0.01" oninput="window.SimState.qualities[${i}].rate=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3rem;padding:1px;font-size:9px"></td>
       <td style="padding:1px 1px"><input type="number" value="${Q[i].atk}" step="10" oninput="window.SimState.qualities[${i}].atk=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3.2rem;padding:1px;font-size:9px"></td>
       <td style="padding:1px 1px"><input type="number" value="${Q[i].hp}" step="50" oninput="window.SimState.qualities[${i}].hp=parseFloat(this.value);window.renderSimulationChart();" class="bg-black/50 border border-white/10 text-white rounded text-center font-mono font-bold focus:outline-none focus:border-purple-500/60" style="width:3.2rem;padding:1px;font-size:9px"></td>
     </tr>`;
-    }
-    html += `</tbody></table></div>`;
-    return html;
+  }
+  html += `</tbody></table></div>`;
+  return html;
 }
 
 const SIM_MODULES = [
-    {
-        title: '全局与章节', color: '#fbbf24', icon: '⚙️', fields: [
-            { key: 'displayDays', label: '展示天数', step: 1 },
-            { key: 'dailyExpectedStages', label: '每日推关数', step: 1 },
-            { key: 'bossStagesConfig', label: 'Boss自定义关卡', type: 'text' },
-            { key: 'subsequentBossInterval', label: '后续Boss间隔', step: 10 },
-        ]
-    },
-    {
-        title: '关卡与怪物', color: '#ef4444', icon: '👹', fields: [
-            { key: 'minionCount', label: '小怪波数量(x3)', step: 1 },
-            { key: 'enemyBaseHp', label: '怪物基础HP', step: 10 },
-            { key: 'enemyBaseAtk', label: '怪物基础ATK', step: 5 },
-            { key: 'enemyHpScale', label: 'HP缩放/5关', step: 0.01 },
-            { key: 'enemyAtkScale', label: 'ATK缩放/5关', step: 0.01 },
-            { key: 'eliteMultiplier', label: '精英倍率(波)', step: 0.05 },
-            { key: 'bossMultiplier', label: 'Boss倍率(波)', step: 0.1 },
-        ]
-    },
-    {
-        title: '英雄与召唤系统', color: '#8b5cf6', icon: '🦸', hasQualities: true, fields: [
-            { key: 'summonUnlockStage', label: '抽卡解锁关卡', step: 1 },
-            { key: 'slotUnlockStages', label: '槽位解锁关卡', type: 'text', wide: true },
-            { key: 'day1ExtraPulls', label: '首日额外抽数', step: 1 },
-            { key: 'dailyPulls', label: '每日抽卡数', step: 1 },
-            { key: 'heroesPerQuality', label: '每品质英雄个数', step: 1 },
-        ]
-    },
-    {
-        title: '力量建筑', color: '#22d3ee', icon: '🏗️', fields: [
-            { key: 'weaponShopBaseAtk', label: '武器店基础ATK', step: 10 },
-            { key: 'weaponShopAtkScale', label: '武器ATK缩放/5关', step: 0.01 },
-            { key: 'armorShopBaseHp', label: '护甲基础HP', step: 50 },
-            { key: 'armorShopHpScale', label: '护甲HP缩放/5关', step: 0.01 },
-        ]
-    },
+  {
+    title: '全局与章节', color: '#fbbf24', icon: '⚙️', fields: [
+      { key: 'displayDays', label: '展示天数', step: 1 },
+      { key: 'dailyExpectedStages', label: '每日推关数', step: 1 },
+      { key: 'bossStagesConfig', label: 'Boss自定义关卡', type: 'text' },
+      { key: 'subsequentBossInterval', label: '后续Boss间隔', step: 10 },
+    ]
+  },
+  {
+    title: '关卡与怪物', color: '#ef4444', icon: '👹', fields: [
+      { key: 'minionCount', label: '小怪波数量(x3)', step: 1 },
+      { key: 'enemyBaseHp', label: '怪物基础HP', step: 10 },
+      { key: 'enemyBaseAtk', label: '怪物基础ATK', step: 5 },
+      { key: 'enemyHpScale', label: 'HP缩放/5关', step: 0.01 },
+      { key: 'enemyAtkScale', label: 'ATK缩放/5关', step: 0.01 },
+      { key: 'eliteMultiplier', label: '精英倍率(波)', step: 0.05 },
+      { key: 'bossMultiplier', label: 'Boss倍率(波)', step: 0.1 },
+    ]
+  },
+  {
+    title: '英雄与召唤系统', color: '#8b5cf6', icon: '🦸', hasQualities: true, fields: [
+      { key: 'summonUnlockStage', label: '抽卡解锁关卡', step: 1 },
+      { key: 'slotUnlockStages', label: '槽位解锁关卡', type: 'text', wide: true },
+      { key: 'day1ExtraPulls', label: '首日额外抽数', step: 1 },
+      { key: 'dailyPulls', label: '每日抽卡数', step: 1 },
+      { key: 'heroesPerQuality', label: '每品质英雄个数', step: 1 },
+    ]
+  },
+  {
+    title: '力量建筑', color: '#22d3ee', icon: '🏗️', fields: [
+      { key: 'weaponShopBaseAtk', label: '武器店基础ATK', step: 10 },
+      { key: 'weaponShopAtkScale', label: '武器ATK缩放/5关', step: 0.01 },
+      { key: 'armorShopBaseHp', label: '护甲基础HP', step: 50 },
+      { key: 'armorShopHpScale', label: '护甲HP缩放/5关', step: 0.01 },
+    ]
+  },
 ];
 
 window.renderSimulationConfigUI = function () {
-    const panel = document.getElementById('sim-params-panel');
-    if (!panel) return;
-    let allHtml = '';
-    for (const mod of SIM_MODULES) {
-        allHtml += `<div class="mb-3">
+  const panel = document.getElementById('sim-params-panel');
+  if (!panel) return;
+  let allHtml = '';
+  for (const mod of SIM_MODULES) {
+    allHtml += `<div class="mb-3">
       <div class="flex items-center gap-2 px-1 py-1.5 mb-1">
         <span style="font-size:1rem">${mod.icon}</span>
         <span class="text-xs font-bold uppercase tracking-widest" style="color:${mod.color}">${mod.title}</span>
       </div>
       <div class="flex flex-col gap-1">
         ${mod.fields.map(f => {
-            const isText = f.type === 'text';
-            const w = f.wide ? '100%' : (isText ? '7rem' : '5rem');
-            return `<div class="flex justify-between items-center bg-white/5 rounded-lg px-3 py-1.5 hover:bg-white/10 transition-colors">
+      const isText = f.type === 'text';
+      const w = f.wide ? '100%' : (isText ? '7rem' : '5rem');
+      return `<div class="flex justify-between items-center bg-white/5 rounded-lg px-3 py-1.5 hover:bg-white/10 transition-colors">
             <span class="text-[11px] text-white/70 leading-tight" style="max-width:${f.wide ? '30%' : '55%'}">${f.label}</span>
             <input type="${isText ? 'text' : 'number'}" value="${window.SimState[f.key]}" ${!isText ? `step="${f.step}"` : ''}
               oninput="window.SimState['${f.key}'] = ${isText ? 'this.value' : 'parseFloat(this.value)'}; window.renderSimulationChart();"
               class="bg-black/50 border border-white/10 text-white rounded text-center text-[11px] font-mono font-bold focus:outline-none focus:border-cyan-500/60 transition-colors"
               style="width:${w};padding:3px 4px;">
           </div>`;
-        }).join('')}
+    }).join('')}
       </div>
       ${mod.hasQualities ? renderQualitiesGrid() : ''}
     </div>`;
-    }
-    panel.innerHTML = allHtml;
+  }
+  panel.innerHTML = allHtml;
 };
 
 // ── Chart Rendering ──
 let simChartInstance = null;
 window.renderSimulationChart = function () {
-    const el = document.getElementById('sim-chart');
-    if (!el) return;
-    if (!simChartInstance) {
-        simChartInstance = echarts.init(el, 'dark');
-        const ro = new ResizeObserver(() => simChartInstance.resize());
-        ro.observe(el);
-    }
+  const el = document.getElementById('sim-chart');
+  if (!el) return;
+  if (!simChartInstance) {
+    simChartInstance = echarts.init(el, 'dark');
+    const ro = new ResizeObserver(() => simChartInstance.resize());
+    ro.observe(el);
+  }
 
-    const data = generateChartData();
-    const comma = v => typeof v === 'number' && isFinite(v) ? v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '∞';
-    const daily = window.SimState.dailyExpectedStages;
+  const data = generateChartData();
+  const comma = v => typeof v === 'number' && isFinite(v) ? v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '∞';
+  const daily = window.SimState.dailyExpectedStages;
 
-    const option = {
-        backgroundColor: 'transparent',
-        tooltip: {
-            trigger: 'axis',
-            backgroundColor: 'rgba(15,23,42,0.96)',
-            borderColor: 'rgba(255,255,255,0.08)',
-            textStyle: { color: '#fff', fontSize: 12 },
-            extraCssText: 'max-width:440px;white-space:normal;line-height:1.6;',
-            formatter: params => {
-                const d = data[params[0].dataIndex];
-                if (!d) return '';
-                const typeColor = d.isBoss ? '#ef4444' : (d.isElite ? '#f59e0b' : '#94a3b8');
-                let s = `<b style="font-size:13px">关卡 ${d.stage}</b> &nbsp; <span style="color:#94a3b8">Day ${d.day}</span> &nbsp; <span style="background:${typeColor}20;color:${typeColor};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700">${d.stageType}</span><br/>`;
-                s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.08)"></div>`;
-                s += `<span style="color:#ef4444">⚔ 敌方阵容战力:</span> <b>${comma(d.enemyCP)}</b><br/>`;
-                s += `<span style="color:#22c55e">💪 玩家总战力:</span> <b>${comma(d.playerCP)}</b><br/>`;
-                s += `<span style="color:#60a5fa">🦸 英雄纯战力:</span> <b>${comma(d.heroCP)}</b><br/>`;
-                s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.05)"></div>`;
-                s += `<span style="color:#94a3b8;font-size:11px">单体怪HP: ${comma(d.individualHp)} | 单体怪ATK: ${comma(d.individualAtk)}<br/>`;
-                s += `英雄ATK: ${comma(d.heroAtk)} | 英雄HP: ${comma(d.heroHp)}<br/>`;
-                s += `建筑ATK: ${comma(d.buildingATK)} | 建筑HP: ${comma(d.buildingHP)}<br/>`;
-                s += `玩家ATK: ${comma(d.playerAtk)} | 玩家HP: ${comma(d.playerHp)} | 槽位: ${d.slots} | 抽卡: ${d.summons}</span>`;
-                return s;
-            }
-        },
-        legend: {
-            data: ['敌方阵容战力 (CP Wall)', '玩家团队总战力 (Total CP)', '英雄系统纯战力 (Hero Pure CP)'],
-            textStyle: { color: '#ccc', fontSize: 11 },
-            bottom: 0
-        },
-        grid: { left: '2%', right: '3%', bottom: '10%', top: '6%', containLabel: true },
-        xAxis: {
-            type: 'category',
-            boundaryGap: false,
-            data: data.map(d => d.stage),
-            axisLabel: {
-                color: '#888', fontSize: 10,
-                formatter: function (value, index) {
-                    const p = data[index];
-                    if (p && p.stage % daily === 0) {
-                        return '关卡 ' + p.stage + '\nDay ' + p.day + ' (' + p.stage + 'stg)';
-                    }
-                    return '';
-                }
-            },
-            axisTick: { alignWithLabel: true },
-            splitLine: { show: false }
-        },
-        yAxis: {
-            type: 'log',
-            logBase: 10,
-            name: '战力 CP (Log₁₀)',
-            nameTextStyle: { color: '#888', fontSize: 11 },
-            axisLine: { show: true, lineStyle: { color: '#334155' } },
-            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
-            axisLabel: { color: '#888', fontSize: 10 },
-            min: 1
-        },
-        dataZoom: [
-            { type: 'inside', xAxisIndex: 0, filterMode: 'none' }
-        ],
-        series: [
-            {
-                name: '敌方阵容战力 (CP Wall)',
-                type: 'line',
-                data: data.map(d => d.enemyCP),
-                lineStyle: { color: '#ef4444', width: 1.5 },
-                itemStyle: { color: '#ef4444' },
-                symbol: 'none',
-                sampling: 'lttb',
-                markPoint: {
-                    data: data.filter(d => d.isBoss).map(d => ({
-                        coord: [d.stage - 1, d.enemyCP],
-                        symbol: 'diamond',
-                        symbolSize: 10,
-                        itemStyle: { color: '#ef4444' }
-                    })),
-                    label: { show: false }
-                }
-            },
-            {
-                name: '玩家团队总战力 (Total CP)',
-                type: 'line',
-                data: data.map(d => d.playerCP),
-                lineStyle: { color: '#22c55e', width: 2.5 },
-                itemStyle: { color: '#22c55e' },
-                symbol: 'none',
-                sampling: 'lttb',
-                areaStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: 'rgba(34,197,94,0.12)' },
-                        { offset: 1, color: 'rgba(34,197,94,0.01)' }
-                    ])
-                }
-            },
-            {
-                name: '英雄系统纯战力 (Hero Pure CP)',
-                type: 'line',
-                data: data.map(d => d.heroCP),
-                lineStyle: { color: '#60a5fa', width: 1.5, type: 'dashed' },
-                itemStyle: { color: '#60a5fa' },
-                symbol: 'none',
-                sampling: 'lttb'
-            }
-        ]
-    };
+  const option = {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(15,23,42,0.96)',
+      borderColor: 'rgba(255,255,255,0.08)',
+      textStyle: { color: '#fff', fontSize: 12 },
+      extraCssText: 'max-width:440px;white-space:normal;line-height:1.6;',
+      formatter: params => {
+        const d = data[params[0].dataIndex];
+        if (!d) return '';
+        const typeColor = d.isBoss ? '#ef4444' : (d.isElite ? '#f59e0b' : '#94a3b8');
+        let s = `<b style="font-size:13px">关卡 ${d.stage}</b> &nbsp; <span style="color:#94a3b8">Day ${d.day}</span> &nbsp; <span style="background:${typeColor}20;color:${typeColor};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700">${d.stageType}</span><br/>`;
+        s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.08)"></div>`;
+        s += `<span style="color:#ef4444">⚔ 敌方阵容战力:</span> <b>${comma(d.enemyCP)}</b><br/>`;
+        s += `<span style="color:#22c55e">💪 玩家总战力:</span> <b>${comma(d.playerCP)}</b><br/>`;
+        s += `<span style="color:#60a5fa">🦸 英雄纯战力:</span> <b>${comma(d.heroCP)}</b><br/>`;
+        s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.05)"></div>`;
+        s += `<span style="color:#94a3b8;font-size:11px">单体怪HP: ${comma(d.individualHp)} | 单体怪ATK: ${comma(d.individualAtk)}<br/>`;
+        s += `英雄ATK: ${comma(d.heroAtk)} | 英雄HP: ${comma(d.heroHp)}<br/>`;
+        s += `建筑ATK: ${comma(d.buildingATK)} | 建筑HP: ${comma(d.buildingHP)}<br/>`;
+        s += `玩家ATK: ${comma(d.playerAtk)} | 玩家HP: ${comma(d.playerHp)} | 槽位: ${d.slots} | 抽卡: ${d.summons}</span>`;
+        return s;
+      }
+    },
+    legend: {
+      data: ['敌方阵容战力 (CP Wall)', '玩家团队总战力 (Total CP)', '英雄系统纯战力 (Hero Pure CP)'],
+      textStyle: { color: '#ccc', fontSize: 11 },
+      bottom: 0
+    },
+    grid: { left: '2%', right: '3%', bottom: '10%', top: '6%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: data.map(d => d.stage),
+      axisLabel: {
+        color: '#888', fontSize: 10,
+        formatter: function (value, index) {
+          const p = data[index];
+          if (p && p.stage % daily === 0) {
+            return '关卡 ' + p.stage + '\nDay ' + p.day + ' (' + p.stage + 'stg)';
+          }
+          return '';
+        }
+      },
+      axisTick: { alignWithLabel: true },
+      splitLine: { show: false }
+    },
+    yAxis: {
+      type: 'log',
+      logBase: 10,
+      name: '战力 CP (Log₁₀)',
+      nameTextStyle: { color: '#888', fontSize: 11 },
+      axisLine: { show: true, lineStyle: { color: '#334155' } },
+      splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
+      axisLabel: { color: '#888', fontSize: 10 },
+      min: 1
+    },
+    dataZoom: [
+      { type: 'inside', xAxisIndex: 0, filterMode: 'none' }
+    ],
+    series: [
+      {
+        name: '敌方阵容战力 (CP Wall)',
+        type: 'line',
+        data: data.map(d => d.enemyCP),
+        lineStyle: { color: '#ef4444', width: 1.5 },
+        itemStyle: { color: '#ef4444' },
+        symbol: 'none',
+        sampling: 'lttb',
+        markPoint: {
+          data: data.filter(d => d.isBoss).map(d => ({
+            coord: [d.stage - 1, d.enemyCP],
+            symbol: 'diamond',
+            symbolSize: 10,
+            itemStyle: { color: '#ef4444' }
+          })),
+          label: { show: false }
+        }
+      },
+      {
+        name: '玩家团队总战力 (Total CP)',
+        type: 'line',
+        data: data.map(d => d.playerCP),
+        lineStyle: { color: '#22c55e', width: 2.5 },
+        itemStyle: { color: '#22c55e' },
+        symbol: 'none',
+        sampling: 'lttb',
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(34,197,94,0.12)' },
+            { offset: 1, color: 'rgba(34,197,94,0.01)' }
+          ])
+        }
+      },
+      {
+        name: '英雄系统纯战力 (Hero Pure CP)',
+        type: 'line',
+        data: data.map(d => d.heroCP),
+        lineStyle: { color: '#60a5fa', width: 1.5, type: 'dashed' },
+        itemStyle: { color: '#60a5fa' },
+        symbol: 'none',
+        sampling: 'lttb'
+      }
+    ]
+  };
 
-    simChartInstance.setOption(option, true);
+  simChartInstance.setOption(option, true);
 };
 
 window.addEventListener('DOMContentLoaded', () => { setTimeout(() => { window.renderSimulationConfigUI(); }, 200); });
