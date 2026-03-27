@@ -240,12 +240,12 @@ function renderDetail() {
   const btn = document.getElementById('btn-purify');
   btn.disabled = player.geneFragments < getPurifyCost(p.star);
 
-  // 进度条
-  const fillPct = Math.min(p.star / 30 * 100, 100);
-  document.getElementById('purify-progress-fill').style.width = fillPct + '%';
+  // 里程碑节点（星级无上限，只标记是否到达节点）
   document.getElementById('pm-1').classList.toggle('reached', p.star >= 10);
   document.getElementById('pm-2').classList.toggle('reached', p.star >= 20);
   document.getElementById('pm-3').classList.toggle('reached', p.star >= 30);
+  document.getElementById('mc-1').classList.toggle('reached', p.star >= 10);
+  document.getElementById('mc-2').classList.toggle('reached', p.star >= 20);
 
   // 突变面板
   renderMutationSingle();
