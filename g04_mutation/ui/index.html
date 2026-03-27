@@ -74,7 +74,7 @@ footer a{color:#60a5fa;text-decoration:none}
       <div class="anno" data-i="4"><div class="an b">4</div><div class="at"><b>宠物名称</b><span>取 <code>pet.name</code>。同名宠物显示为多张独立卡片（不堆叠），因为需要作为突变材料逐只消耗</span></div></div>
       <div class="anno" data-i="5"><div class="an r">5</div><div class="at"><b>状态标签</b><span>按 <code>pet.status</code> 显示角标：「出战」红 / 「镶嵌」紫 / 「🔒」金(已锁定)。空闲不显示</span></div></div>
       <div class="anno" data-i="6"><div class="an c">6</div><div class="at"><b>返回按钮</b><span>点击 → 退出变异系统回到主界面</span></div></div>
-      <div class="anno" data-i="7"><div class="an g">7</div><div class="at"><b>★星级角标</b><span>当 <code>pet.star > 0</code> 时右上角显示「★N」。取值范围 0~30</span></div></div>
+      <div class="anno" data-i="7"><div class="an g">7</div><div class="at"><b>★星级角标</b><span>当 <code>pet.star > 0</code> 时右上角显示「★N」。<b>星级无上限</b>，可无限升星</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
   </div>
@@ -106,10 +106,10 @@ footer a{color:#60a5fa;text-decoration:none}
       <div class="anno" data-i="3"><div class="an b">3</div><div class="at"><b>锁定按钮</b><span>点击切换 <code>pet.isLocked</code>。🔓=未锁 / 🔒=已锁(红底)。锁定后从突变材料候选中排除</span></div></div>
       <div class="anno" data-i="4"><div class="an p">4</div><div class="at"><b>星级 + 属性继承</b><span>★<code>pet.star</code> · 属性继承 <code>pet.star × 5</code>%。属性继承 = 战斗属性加成</span></div></div>
       <div class="anno" data-i="5"><div class="an c">5</div><div class="at"><b>Tab切换栏</b><span>「✦基因提纯」/「🧬基因突变」。点击切换显示面板</span></div></div>
-      <div class="anno" data-i="6"><div class="an g">6</div><div class="at"><b>当前星级</b><span><code>pet.star</code>，范围 0~30</span></div></div>
+      <div class="anno" data-i="6"><div class="an g">6</div><div class="at"><b>当前星级</b><span><code>pet.star</code>，<b>无上限</b>（突变节点在10/20/30，但升星可无限继续）</span></div></div>
       <div class="anno" data-i="7"><div class="an r">7</div><div class="at"><b>属性继承%</b><span>公式：<code>pet.star × 5</code>%，如10★=+50%</span></div></div>
       <div class="anno" data-i="8"><div class="an b">8</div><div class="at"><b>升星消耗</b><span>碎片消耗公式：<code>100 + pet.star × 20</code>。0★→1★=100，10★→11★=300</span></div></div>
-      <div class="anno" data-i="9"><div class="an p">9</div><div class="at"><b>突变节点进度条</b><span>填充宽度 = <code>pet.star/30 × 100%</code>。颜色渐变蓝→紫→金。标记位10/20/30，达到时变金色</span></div></div>
+      <div class="anno" data-i="9"><div class="an p">9</div><div class="at"><b>突变节点里程碑</b><span>3个离散检查点圆圈：10★/20★/30★。达到时圆圈变金色+✓显示。<b>不是进度条</b>，因为星级无上限</span></div></div>
       <div class="anno" data-i="10"><div class="an n">10</div><div class="at"><b>提纯升星按钮</b><span>点击 → 扣碎片+<code>pet.star++</code>。碎片不足时禁用+抖动。<b>长按连续升星</b>：400ms延迟后每80ms触发</span></div></div>
       <div class="anno" data-i="11"><div class="an c">11</div><div class="at"><b>被动技能插槽 ×3</b><span>初始全🔒。解锁条件：一/二/三阶突变。已解锁显示「＋」可点击，已镶嵌显示emoji+技能名，点击可更换</span></div></div>
       <div class="anno" data-i="12"><div class="an r">12</div><div class="at"><b>关闭按钮 ✕</b><span>关闭弹窗回选择页。也可点击弹窗外遮罩关闭</span></div></div>
@@ -151,7 +151,7 @@ footer a{color:#60a5fa;text-decoration:none}
     <div class="annotations-side">
       <div class="anno" data-i="1"><div class="an n">1</div><div class="at"><b>里程碑Toast</b><span><code>pet.star</code> 命中10/20/30时触发：「🎉 已达到 N★ 突变节点！」绿色庆祝提示</span></div></div>
       <div class="anno" data-i="2"><div class="an g">2</div><div class="at"><b>★10 + 属性继承+50%</b><span>header和数据卡片同步更新。继承公式：<code>star × 5</code>%</span></div></div>
-      <div class="anno" data-i="3"><div class="an p">3</div><div class="at"><b>进度条到达"10"标记</b><span>填充33.3%。"10"字变金色。逻辑：<code>star >= milestone</code> → class <code>.reached</code></span></div></div>
+      <div class="anno" data-i="3"><div class="an p">3</div><div class="at"><b>里程碑节点亮起</b><span>10★节点圆圈变金色+✓。逻辑：<code>star >= 10</code> → class <code>.reached</code>。连接线同步变金色</span></div></div>
       <div class="anno" data-i="4"><div class="an b">4</div><div class="at"><b>碎片实时扣减</b><span>10次升星消耗：<code>Σ(100+n×20)</code> n=0~9 = 1900碎片。12800→10900</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
