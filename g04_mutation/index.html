@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>宠物变异系统 — 交互Demo</title>
+  <meta name="description" content="宠物变异系统操作Demo：基因提纯、基因突变、被动技能插槽镶嵌">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- 9:16 手机框架 -->
+  <div id="app-frame">
+
+    <!-- ══════════ 全屏：宠物选择页 ══════════ -->
+    <div id="page-select">
+      <header id="select-header">
+        <h1>基因变异</h1>
+        <div class="res-badge">
+          <span class="frag-shard"></span>
+          <span id="sel-frag-count">12,800</span>
+        </div>
+      </header>
+
+      <div id="select-subtitle">选择一只15阶宠进行基因变异</div>
+
+      <div id="pet-grid"></div>
+
+      <div id="select-bottom">
+        <button id="btn-back-main">
+          <span class="back-arrow">‹</span> 返回
+        </button>
+      </div>
+    </div>
+
+    <!-- ══════════ 弹窗：宠物详情（居中） ══════════ -->
+    <div id="popup-overlay" class="hidden">
+      <div id="popup-detail">
+        <!-- 顶部 -->
+        <div id="popup-header">
+          <div id="popup-pet-info">
+            <div id="popup-portrait-ring">
+              <div id="popup-portrait">
+                <span id="popup-emoji">🐉</span>
+              </div>
+            </div>
+            <div id="popup-name-area">
+              <span id="popup-pet-name">烈焰龙王</span>
+              <span id="popup-pet-tag" class="tag-badge">弹道</span>
+            </div>
+          </div>
+          <div id="popup-header-actions">
+            <button id="popup-lock-btn" class="lock-toggle" title="锁定/解锁">🔓</button>
+            <div class="res-badge res-badge-sm">
+              <span class="frag-shard sm"></span>
+              <span id="popup-frag-count">12,800</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 星级 -->
+        <div id="popup-star-display">
+          <span class="star-icon">★</span>
+          <span id="popup-star-num">0</span>
+          <span class="star-sep">·</span>
+          <span class="star-attr">属性继承 <strong id="popup-attr-pct">+0%</strong></span>
+        </div>
+
+        <!-- Tab 切换 -->
+        <nav id="popup-tab-bar">
+          <button class="tab-btn active" data-tab="purify">
+            <span class="tab-icon">✦</span> 基因提纯
+          </button>
+          <button class="tab-btn" data-tab="mutate">
+            <span class="tab-icon">🧬</span> 基因突变
+          </button>
+        </nav>
+
+        <!-- Tab 内容 -->
+        <div id="popup-tab-content">
+          <!-- 提纯 -->
+          <div class="tab-panel active" id="panel-purify">
+            <div class="info-card">
+              <div class="info-row">
+                <span class="info-label">当前星级</span>
+                <span class="info-value"><span class="star-icon sm">★</span> <span id="purify-cur-star">0</span></span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">属性继承</span>
+                <span class="info-value gold" id="purify-attr-pct">+0%</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">升星消耗</span>
+                <span class="info-value"><span class="frag-shard sm"></span> <span id="purify-cost-num">100</span></span>
+              </div>
+            </div>
+
+            <!-- 突变节点进度 -->
+            <div id="mutation-milestone">
+              <div class="milestone-title">突变节点</div>
+              <div class="progress-bar-wrap">
+                <div class="progress-bar-bg">
+                  <div class="progress-bar-fill" id="purify-progress-fill"></div>
+                </div>
+                <div class="progress-markers">
+                  <div class="pm" id="pm-1" style="left:33.33%"><span>10</span></div>
+                  <div class="pm" id="pm-2" style="left:66.66%"><span>20</span></div>
+                  <div class="pm" id="pm-3" style="left:100%"><span>30</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="purify-action">
+              <button id="btn-purify" class="action-btn purify-btn">
+                <span class="btn-shine"></span>
+                <span class="btn-text">✦ 提纯升星</span>
+              </button>
+              <div class="action-hint">长按可连续升星</div>
+            </div>
+          </div>
+
+          <!-- 突变 -->
+          <div class="tab-panel" id="panel-mutate">
+            <div id="mutation-single-stage"></div>
+          </div>
+        </div>
+
+        <!-- 插槽区域 -->
+        <section id="popup-slots">
+          <div class="slots-title">被动技能插槽</div>
+          <div id="slots-row">
+            <div class="slot-item locked" id="slot-1" data-slot="0">
+              <div class="slot-ring"><div class="slot-inner">
+                <span class="slot-lock-icon">🔒</span>
+                <span class="slot-pet-emoji" style="display:none;"></span>
+              </div></div>
+              <div class="slot-label">插槽 1</div>
+              <div class="slot-skill-name"></div>
+            </div>
+            <div class="slot-item locked" id="slot-2" data-slot="1">
+              <div class="slot-ring"><div class="slot-inner">
+                <span class="slot-lock-icon">🔒</span>
+                <span class="slot-pet-emoji" style="display:none;"></span>
+              </div></div>
+              <div class="slot-label">插槽 2</div>
+              <div class="slot-skill-name"></div>
+            </div>
+            <div class="slot-item locked" id="slot-3" data-slot="2">
+              <div class="slot-ring"><div class="slot-inner">
+                <span class="slot-lock-icon">🔒</span>
+                <span class="slot-pet-emoji" style="display:none;"></span>
+              </div></div>
+              <div class="slot-label">插槽 3</div>
+              <div class="slot-skill-name"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 关闭按钮（底部居中） -->
+        <div id="popup-close-area">
+          <button id="popup-close-btn">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 弹窗：选择宠物技能（居中） ══════════ -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h2>选择宠物技能</h2>
+          <span class="tag-badge" id="modal-tag-filter">弹道</span>
+        </div>
+        <div class="modal-body" id="modal-pet-list"></div>
+        <div class="modal-footer">
+          <button class="modal-footer-btn" id="modal-remove-btn" style="display:none;">卸下当前</button>
+        </div>
+        <div class="modal-close-area">
+          <button class="modal-close-x" id="modal-close-btn">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 弹窗：突变确认（居中） ══════════ -->
+    <div id="modal-mutate-overlay" class="modal-overlay hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <h2>确认突变</h2>
+        </div>
+        <div class="modal-body" id="modal-mutate-body"></div>
+        <div class="modal-footer">
+          <button class="modal-footer-btn" id="modal-mutate-cancel">取消</button>
+          <button class="modal-footer-btn primary" id="modal-mutate-confirm">确认突变</button>
+        </div>
+        <div class="modal-close-area">
+          <button class="modal-close-x" id="modal-mutate-close">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast & Particles -->
+    <div id="toast-container"></div>
+    <canvas id="particle-canvas"></canvas>
+
+  </div><!-- /app-frame -->
+
+  <!-- 操作日志（在frame外） -->
+  <div id="log-toggle" title="操作日志">📋</div>
+  <div id="log-panel" class="log-hidden">
+    <div class="log-header"><h3>操作日志</h3><button id="log-close-btn">✕</button></div>
+    <div id="log-body"></div>
+  </div>
+  <div id="log-backdrop" class="hidden"></div>
+
+  <script src="main.js"></script>
+</body>
+</html>
