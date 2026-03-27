@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>宠物变异系统 — UI 界面分解</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700;900&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #060a14;
+      --card: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.06);
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --text-m: #64748b;
+      --gold: #fbbf24;
+      --purple: #a855f7;
+      --blue: #60a5fa;
+      --cyan: #22d3ee;
+      --green: #22c55e;
+      --red: #ef4444;
+      --r: 16px;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Noto Sans SC', 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 80px 20px 60px;
+      text-align: center;
+      background: radial-gradient(ellipse at 50% 0%, rgba(168,85,247,.08), transparent 60%),
+                  radial-gradient(ellipse at 50% 100%, rgba(96,165,250,.06), transparent 50%);
+      border-bottom: 1px solid var(--border);
+    }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 900;
+      background: linear-gradient(135deg, #fff, var(--purple), var(--gold));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+    .hero p { color: var(--text-dim); font-size: 16px; max-width: 600px; margin: 0 auto; }
+    .hero-link {
+      display: inline-block; margin-top: 20px; padding: 10px 28px;
+      border-radius: 999px; font-weight: 600; font-size: 14px;
+      background: linear-gradient(135deg, var(--purple), var(--blue));
+      color: #fff; text-decoration: none;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .hero-link:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(168,85,247,.3); }
+
+    /* ── TOC ── */
+    .toc {
+      max-width: 900px; margin: 0 auto; padding: 40px 20px 20px;
+    }
+    .toc h2 { font-size: 14px; color: var(--text-m); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
+    .toc-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+    }
+    .toc-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 12px;
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--text); text-decoration: none; font-size: 13px; font-weight: 500;
+      transition: all .2s;
+    }
+    .toc-item:hover { background: rgba(255,255,255,.06); border-color: rgba(96,165,250,.2); }
+    .toc-num {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--purple), var(--blue));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800; font-family: 'Outfit', sans-serif;
+    }
+
+    /* ── Section ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+    .section {
+      padding: 60px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .section:last-child { border-bottom: none; }
+
+    .section-header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 32px;
+    }
+    .section-num {
+      width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--purple), var(--blue));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 900; font-family: 'Outfit', sans-serif;
+    }
+    .section-title { font-size: 22px; font-weight: 800; }
+    .section-subtitle { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+
+    /* ── Layout: Image + Annotations ── */
+    .screen-layout {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+    @media (max-width: 800px) {
+      .screen-layout { grid-template-columns: 1fr; }
+    }
+
+    .screen-img-wrap {
+      position: sticky; top: 20px;
+      width: 320px;
+      border-radius: var(--r);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 8px 40px rgba(0,0,0,.4);
+    }
+    .screen-img-wrap img {
+      width: 100%; height: auto; display: block;
+    }
+
+    /* ── Annotations ── */
+    .annotations { display: flex; flex-direction: column; gap: 10px; }
+
+    .anno-item {
+      display: flex; gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      transition: all .2s;
+    }
+    .anno-item:hover { background: rgba(255,255,255,.05); border-color: rgba(96,165,250,.15); }
+
+    .anno-marker {
+      width: 8px; border-radius: 4px; flex-shrink: 0;
+    }
+    .anno-marker.gold { background: var(--gold); }
+    .anno-marker.purple { background: var(--purple); }
+    .anno-marker.blue { background: var(--blue); }
+    .anno-marker.green { background: var(--green); }
+    .anno-marker.red { background: var(--red); }
+    .anno-marker.cyan { background: var(--cyan); }
+
+    .anno-content { flex: 1; min-width: 0; }
+    .anno-label { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .anno-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+    /* ── Note box ── */
+    .note-box {
+      margin-top: 16px; padding: 12px 16px;
+      border-radius: 12px; font-size: 12px;
+      border-left: 3px solid;
+    }
+    .note-box.info { background: rgba(96,165,250,.06); border-color: var(--blue); color: var(--blue); }
+    .note-box.warn { background: rgba(251,191,36,.06); border-color: var(--gold); color: var(--gold); }
+    .note-box.danger { background: rgba(239,68,68,.06); border-color: var(--red); color: var(--red); }
+    .note-box.tip { background: rgba(34,197,94,.06); border-color: var(--green); color: var(--green); }
+
+    /* ── Flow diagram ── */
+    .flow-section { padding: 60px 0; border-bottom: 1px solid var(--border); }
+    .flow-title { font-size: 18px; font-weight: 800; margin-bottom: 24px; text-align: center; }
+    .flow-diagram {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; flex-wrap: wrap; padding: 20px;
+    }
+    .flow-node {
+      padding: 10px 18px; border-radius: 12px; font-size: 12px; font-weight: 600;
+      text-align: center; min-width: 100px;
+    }
+    .flow-node.page { background: rgba(96,165,250,.1); border: 1px solid rgba(96,165,250,.2); color: var(--blue); }
+    .flow-node.popup { background: rgba(168,85,247,.1); border: 1px solid rgba(168,85,247,.2); color: var(--purple); }
+    .flow-node.modal { background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.2); color: var(--gold); }
+    .flow-arrow { font-size: 18px; color: var(--text-m); }
+
+    /* ── Spec table ── */
+    .spec-section { padding: 60px 0; }
+    .spec-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .spec-card {
+      padding: 16px; border-radius: 12px;
+      background: var(--card); border: 1px solid var(--border);
+    }
+    .spec-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+    .spec-card p { font-size: 12px; color: var(--text-dim); }
+    .spec-color {
+      display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+      margin-right: 6px; vertical-align: middle;
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 40px 20px; text-align: center;
+      border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--text-m);
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>宠物变异系统 · UI 界面分解</h1>
+    <p>9个核心界面状态的逐元素标注，涵盖基因提纯、基因突变、技能镶嵌的完整操作流程</p>
+    <a href="../" class="hero-link">🎮 查看交互 Demo →</a>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>界面索引</h2>
+    <div class="toc-grid">
+      <a href="#s1" class="toc-item"><span class="toc-num">1</span>宠物选择页</a>
+      <a href="#s2" class="toc-item"><span class="toc-num">2</span>详情弹窗 · 基因提纯</a>
+      <a href="#s3" class="toc-item"><span class="toc-num">3</span>锁定/解锁操作</a>
+      <a href="#s4" class="toc-item"><span class="toc-num">4</span>提纯至10★节点</a>
+      <a href="#s5" class="toc-item"><span class="toc-num">5</span>基因突变 Tab</a>
+      <a href="#s6" class="toc-item"><span class="toc-num">6</span>突变确认弹窗</a>
+      <a href="#s7" class="toc-item"><span class="toc-num">7</span>突变成功 · 插槽解锁</a>
+      <a href="#s8" class="toc-item"><span class="toc-num">8</span>选择宠物技能</a>
+      <a href="#s9" class="toc-item"><span class="toc-num">9</span>技能镶嵌完成</a>
+    </div>
+  </div>
+
+  <!-- Flow -->
+  <div class="container">
+    <div class="flow-section">
+      <div class="flow-title">交互流程</div>
+      <div class="flow-diagram">
+        <div class="flow-node page">① 选择页</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node popup">② 详情弹窗</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node popup">③④ 提纯升星</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node popup">⑤ 突变面板</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node modal">⑥ 确认突变</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node popup">⑦ 插槽解锁</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node modal">⑧ 选择技能</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-node popup">⑨ 镶嵌完成</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ Screen 1 ════════════ -->
+  <div class="container">
+    <div class="section" id="s1">
+      <div class="section-header">
+        <div class="section-num">1</div>
+        <div>
+          <div class="section-title">宠物选择页</div>
+          <div class="section-subtitle">全屏 · 入口页面</div>
+        </div>
+      </div>
+      <div class="screen-layout">
+        <div class="screen-img-wrap"><img src="01_selection_grid.png" alt="宠物选择页"></div>
+        <div class="annotations">
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">顶部标题栏</div><div class="anno-desc">左侧「基因变异」渐变标题，右侧显示💎当前持有基因碎片数量</div></div></div>
+          <div class="anno-item"><div class="anno-marker blue"></div><div class="anno-content"><div class="anno-label">引导文字</div><div class="anno-desc">「选择一只15阶宠进行基因变异」— 简洁操作引导</div></div></div>
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">5列宠物网格</div><div class="anno-desc">每张卡片：金色圆环 + emoji + 名称 + 3个突变进度dot。所有宠物统一金色品质（全部15阶），无品质字母标记</div></div></div>
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">★星级标记</div><div class="anno-desc">已提纯的宠物右上角显示当前星级（如 ★10）</div></div></div>
+          <div class="anno-item"><div class="anno-marker red"></div><div class="anno-content"><div class="anno-label">状态标签</div><div class="anno-desc">右下角显示宠物状态：出战（红）/ 🔒锁定（黄）/ 镶嵌（紫）</div></div></div>
+          <div class="anno-item"><div class="anno-marker cyan"></div><div class="anno-content"><div class="anno-label">返回按钮</div><div class="anno-desc">左下角「‹ 返回」退出变异系统</div></div></div>
+          <div class="note-box info">同名宠物逐一独立显示（如6只烈焰龙王），因为每只是独立资产，需被消耗作为突变材料</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ Screen 2 ════════════ -->
+    <div class="section" id="s2">
+      <div class="section-header">
+        <div class="section-num">2</div>
+        <div>
+          <div class="section-title">详情弹窗 · 基因提纯</div>
+          <div class="section-subtitle">居中弹窗 · z-index:50</div>
+        </div>
+      </div>
+      <div class="screen-layout">
+        <div class="screen-img-wrap"><img src="02_detail_purify.png" alt="基因提纯面板"></div>
+        <div class="annotations">
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">弹窗定位</div><div class="anno-desc">垂直居中，四边圆角，毛玻璃遮罩背景</div></div></div>
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">Header区</div><div class="anno-desc">彩虹旋转圆环头像（conic-gradient动画）+ 宠物名 + 攻击类型Tag</div></div></div>
+          <div class="anno-item"><div class="anno-marker green"></div><div class="anno-content"><div class="anno-label">🔓 锁定按钮</div><div class="anno-desc">Header右侧，点击切换锁定/解锁状态，防止宠物被误消耗</div></div></div>
+          <div class="anno-item"><div class="anno-marker blue"></div><div class="anno-content"><div class="anno-label">碎片显示</div><div class="anno-desc">右上角 💎12,800 — 实时显示当前碎片余额</div></div></div>
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">星级总览</div><div class="anno-desc">大号 ★0 + 属性继承百分比（每星+5%）</div></div></div>
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">双Tab切换</div><div class="anno-desc">「✦ 基因提纯」/「🧬 基因突变」— 激活项有蓝紫渐变高亮</div></div></div>
+          <div class="anno-item"><div class="anno-marker cyan"></div><div class="anno-content"><div class="anno-label">数据卡片</div><div class="anno-desc">当前星级 / 属性继承% / 升星消耗碎片 — 3行信息区</div></div></div>
+          <div class="anno-item"><div class="anno-marker blue"></div><div class="anno-content"><div class="anno-label">突变节点进度条</div><div class="anno-desc">蓝→紫→金渐变进度条，10/20/30位置有刻度标记</div></div></div>
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">提纯升星按钮</div><div class="anno-desc">金色渐变大按钮，支持单击和长按连续升星</div></div></div>
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">被动技能插槽</div><div class="anno-desc">3个圆形插槽（初始全锁定🔒），通过突变逐步解锁</div></div></div>
+          <div class="anno-item"><div class="anno-marker red"></div><div class="anno-content"><div class="anno-label">关闭按钮</div><div class="anno-desc">底部居中圆形 ✕ 按钮，点击遮罩也可关闭</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ Screen 3 ════════════ -->
+    <div class="section" id="s3">
+      <div class="section-header">
+        <div class="section-num">3</div>
+        <div>
+          <div class="section-title">锁定/解锁操作</div>
+          <div class="section-subtitle">弹窗内交互</div>
+        </div>
+      </div>
+      <div class="screen-layout">
+        <div class="screen-img-wrap"><img src="03_lock_toggle.png" alt="锁定状态"></div>
+        <div class="annotations">
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">Toast提示</div><div class="anno-desc">顶部滑入「烈焰龙王 已锁定」蓝色信息提示</div></div></div>
+          <div class="anno-item"><div class="anno-marker red"></div><div class="anno-content"><div class="anno-label">锁定按钮变化</div><div class="anno-desc">🔓 → 🔒 图标切换，按钮背景变为红色底色</div></div></div>
+          <div class="anno-item"><div class="anno-marker green"></div><div class="anno-content"><div class="anno-label">锁定效果</div><div class="anno-desc">解锁后再次点击可恢复。锁定宠物不可被用作突变材料</div></div></div>
+          <div class="note-box warn">锁定功能核心用途：保护宝贵宠物，防止在突变操作中被误消耗</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ Screen 4 ════════════ -->
+    <div class="section" id="s4">
+      <div class="section-header">
+        <div class="section-num">4</div>
+        <div>
+          <div class="section-title">提纯至10★节点</div>
+          <div class="section-subtitle">解锁首个突变条件</div>
+        </div>
+      </div>
+      <div class="screen-layout">
+        <div class="screen-img-wrap"><img src="04_purify_10star.png" alt="10星状态"></div>
+        <div class="annotations">
+          <div class="anno-item"><div class="anno-marker green"></div><div class="anno-content"><div class="anno-label">里程碑Toast</div><div class="anno-desc">🎉 已达到 10★ 突变节点！— 绿色庆祝提示</div></div></div>
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">星级更新</div><div class="anno-desc">★10，属性继承 +50%（每星5%）</div></div></div>
+          <div class="anno-item"><div class="anno-marker blue"></div><div class="anno-content"><div class="anno-label">进度条填充</div><div class="anno-desc">蓝紫金渐变填充至33%，"10"标记变为金色高亮</div></div></div>
+          <div class="anno-item"><div class="anno-marker cyan"></div><div class="anno-content"><div class="anno-label">消耗递增</div><div class="anno-desc">升星消耗公式：100 + 星级 × 20，10★时消耗为💎300</div></div></div>
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">碎片余额</div><div class="anno-desc">💎10,900 — 实时扣减后的剩余碎片</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ Screen 5 ════════════ -->
+    <div class="section" id="s5">
+      <div class="section-header">
+        <div class="section-num">5</div>
+        <div>
+          <div class="section-title">基因突变 Tab</div>
+          <div class="section-subtitle">突变面板 · 消耗同名宠物</div>
+        </div>
+      </div>
+      <div class="screen-layout">
+        <div class="screen-img-wrap"><img src="05_mutation_tab.png" alt="基因突变面板"></div>
+        <div class="annotations">
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">阶段进度</div><div class="anno-desc">●○○ 0/3 阶段完成 — 3个dot可视化进度</div></div></div>
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">阶段卡片</div><div class="anno-desc">「一阶」紫色徽章 + 标题「一阶突变 · 解锁插槽1」，紫色发光边框</div></div></div>
+          <div class="anno-item"><div class="anno-marker green"></div><div class="anno-content"><div class="anno-label">前置条件</div><div class="anno-desc">「提纯达到 10★ (当前 10★)」绿色=已满足，红色=未满足</div></div></div>
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">突变消耗</div><div class="anno-desc">「1只 同名宠物」— 消耗数量随阶段递增：1→2→4</div></div></div>
+          <div class="anno-item"><div class="anno-marker blue"></div><div class="anno-content"><div class="anno-label">材料行</div><div class="anno-desc">🐉 烈焰龙王 (4/1) — 图标 + 名称 + (可用数/需要数)</div></div></div>
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">执行突变按钮</div><div class="anno-desc">紫色渐变按钮，条件满足时点亮，否则灰色不可操作</div></div></div>
+          <div class="note-box tip">材料显示 (4/1) 表示可用4只同名宠物，本次突变仅消耗1只</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ Screen 6 ════════════ -->
+    <div class="section" id="s6">
+      <div class="section-header">
+        <div class="section-num">6</div>
+        <div>
+          <div class="section-title">突变确认弹窗</div>
+          <div class="section-subtitle">居中 Modal · z-index:100</div>
+        </div>
+      </div>
+      <div class="screen-layout">
+        <div class="screen-img-wrap"><img src="06_mutation_confirm.png" alt="突变确认"></div>
+        <div class="annotations">
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">弹窗定位</div><div class="anno-desc">垂直居中，毛玻璃遮罩 + 圆角卡片</div></div></div>
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">确认信息</div><div class="anno-desc">「确认消耗 1 只宠物执行 一阶突变？」</div></div></div>
+          <div class="anno-item"><div class="anno-marker red"></div><div class="anno-content"><div class="anno-label">风险提示</div><div class="anno-desc">⚠ 消耗的宠物将被永久销毁 — 红色警告</div></div></div>
+          <div class="anno-item"><div class="anno-marker red"></div><div class="anno-content"><div class="anno-label">消耗预览</div><div class="anno-desc">🐉 烈焰龙王 — 红色标签展示即将销毁的宠物</div></div></div>
+          <div class="anno-item"><div class="anno-marker cyan"></div><div class="anno-content"><div class="anno-label">操作按钮</div><div class="anno-desc">「取消」灰色 + 「确认突变」紫色渐变</div></div></div>
+          <div class="anno-item"><div class="anno-marker blue"></div><div class="anno-content"><div class="anno-label">关闭按钮</div><div class="anno-desc">底部居中 ✕，点击遮罩也可关闭</div></div></div>
+          <div class="note-box danger">突变操作不可逆！消耗的同名宠物将从数据中永久删除</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ Screen 7 ════════════ -->
+    <div class="section" id="s7">
+      <div class="section-header">
+        <div class="section-num">7</div>
+        <div>
+          <div class="section-title">突变成功 · 插槽解锁</div>
+          <div class="section-subtitle">一阶完成 · 自动推进二阶</div>
+        </div>
+      </div>
+      <div class="screen-layout">
+        <div class="screen-img-wrap"><img src="07_mutation_success.png" alt="突变成功"></div>
+        <div class="annotations">
+          <div class="anno-item"><div class="anno-marker green"></div><div class="anno-content"><div class="anno-label">成功Toast</div><div class="anno-desc">🧬 一阶突变成功！插槽1已解锁 — 绿色庆祝</div></div></div>
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">阶段更新</div><div class="anno-desc">●○○ → ●●○ 1/3 阶段完成，自动展示二阶要求</div></div></div>
+          <div class="anno-item"><div class="anno-marker red"></div><div class="anno-content"><div class="anno-label">二阶条件</div><div class="anno-desc">「提纯达到 20★ (当前 10★)」红色=未满足</div></div></div>
+          <div class="anno-item"><div class="anno-marker blue"></div><div class="anno-content"><div class="anno-label">插槽变化</div><div class="anno-desc">插槽1: 🔒锁定 → ＋可用，蓝色发光圆环</div></div></div>
+          <div class="anno-item"><div class="anno-marker cyan"></div><div class="anno-content"><div class="anno-label">按钮禁用</div><div class="anno-desc">二阶条件未满足，「执行突变」灰色不可操作</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ Screen 8 ════════════ -->
+    <div class="section" id="s8">
+      <div class="section-header">
+        <div class="section-num">8</div>
+        <div>
+          <div class="section-title">选择宠物技能</div>
+          <div class="section-subtitle">居中 Modal · 技能镶嵌</div>
+        </div>
+      </div>
+      <div class="screen-layout">
+        <div class="screen-img-wrap"><img src="08_skill_selection.png" alt="选择宠物技能"></div>
+        <div class="annotations">
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">弹窗标题</div><div class="anno-desc">「选择宠物技能」+ 攻击类型筛选Tag「弹道」</div></div></div>
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">技能项（3行结构）</div><div class="anno-desc">每项展示：① 宠物名（粗体）② 技能名（紫色 + 图标）③ 技能描述（灰色）</div></div></div>
+          <div class="anno-item"><div class="anno-marker green"></div><div class="anno-content"><div class="anno-label">状态标签</div><div class="anno-desc">「空闲」绿色=可选 /「出战中」红色=不可选</div></div></div>
+          <div class="anno-item"><div class="anno-marker gold"></div><div class="anno-content"><div class="anno-label">左侧竖线</div><div class="anno-desc">统一金色竖线标识宠物品质</div></div></div>
+          <div class="anno-item"><div class="anno-marker blue"></div><div class="anno-content"><div class="anno-label">关闭按钮</div><div class="anno-desc">底部居中 ✕ ，点击遮罩也可关闭</div></div></div>
+          <div class="note-box info">只有攻击类型匹配（如弹道）且拥有被动技能的宠物才会出现。出战/已镶嵌宠物灰色不可选</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════ Screen 9 ════════════ -->
+    <div class="section" id="s9">
+      <div class="section-header">
+        <div class="section-num">9</div>
+        <div>
+          <div class="section-title">技能镶嵌完成</div>
+          <div class="section-subtitle">闭环 · 最终状态</div>
+        </div>
+      </div>
+      <div class="screen-layout">
+        <div class="screen-img-wrap"><img src="09_skill_embedded.png" alt="技能镶嵌完成"></div>
+        <div class="annotations">
+          <div class="anno-item"><div class="anno-marker green"></div><div class="anno-content"><div class="anno-label">成功Toast</div><div class="anno-desc">✅ 冰霜护盾 已镶嵌到插槽1 — 绿色确认</div></div></div>
+          <div class="anno-item"><div class="anno-marker purple"></div><div class="anno-content"><div class="anno-label">插槽显示</div><div class="anno-desc">插槽1: 🐲 emoji + 「冰霜护盾」技能名，紫色发光圆环</div></div></div>
+          <div class="anno-item"><div class="anno-marker blue"></div><div class="anno-content"><div class="anno-label">其他插槽</div><div class="anno-desc">插槽2/3 仍锁定🔒，需完成二/三阶突变解锁</div></div></div>
+          <div class="anno-item"><div class="anno-marker cyan"></div><div class="anno-content"><div class="anno-label">粒子效果</div><div class="anno-desc">蓝色粒子散射动画，增强镶嵌成功的视觉反馈</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spec -->
+  <div class="container">
+    <div class="spec-section">
+      <div class="flow-title">设计规范</div>
+      <div class="spec-grid">
+        <div class="spec-card">
+          <h4>弹窗定位</h4>
+          <p>所有弹窗 / Modal 垂直居中显示，底部统一圆形 ✕ 关闭按钮</p>
+        </div>
+        <div class="spec-card">
+          <h4>缩放方式</h4>
+          <p>固定 390×693px 设计尺寸，通过 transform:scale() 整体等比缩放</p>
+        </div>
+        <div class="spec-card">
+          <h4>品质标识</h4>
+          <p>统一金色圆环（全部15阶S品），不显示品质字母</p>
+        </div>
+        <div class="spec-card">
+          <h4>色彩体系</h4>
+          <p>
+            <span class="spec-color" style="background:#fbbf24"></span>金色 = 提纯
+            <span class="spec-color" style="background:#a855f7;margin-left:8px"></span>紫色 = 突变
+            <span class="spec-color" style="background:#60a5fa;margin-left:8px"></span>蓝色 = 镶嵌
+            <span class="spec-color" style="background:#ef4444;margin-left:8px"></span>红色 = 危险
+          </p>
+        </div>
+        <div class="spec-card">
+          <h4>反馈机制</h4>
+          <p>Toast提示（顶部滑入）+ 粒子效果 + 圆环发光动画</p>
+        </div>
+        <div class="spec-card">
+          <h4>层级结构</h4>
+          <p>Layer 0: 全屏选择页 → Layer 1: 详情弹窗(z:50) → Layer 2: Modal(z:100)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    宠物变异系统 UI v5 · <a href="../">查看交互Demo</a>
+  </footer>
+
+</body>
+</html>
