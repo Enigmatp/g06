@@ -10,77 +10,38 @@
 html{scroll-behavior:smooth}
 body{font-family:'Noto Sans SC','Outfit',sans-serif;background:#0a0e1a;color:#e2e8f0;line-height:1.5}
 
-/* ── Nav ── */
-.topnav{position:sticky;top:0;z-index:100;background:rgba(10,14,26,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06);padding:10px 24px;display:flex;align-items:center;gap:16px;overflow-x:auto}
-.topnav a{white-space:nowrap;font-size:12px;font-weight:600;color:#94a3b8;text-decoration:none;padding:6px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.06);transition:all .2s}
+.topnav{position:sticky;top:0;z-index:100;background:rgba(10,14,26,.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06);padding:8px 20px;display:flex;align-items:center;gap:8px;overflow-x:auto;flex-wrap:nowrap}
+.topnav-title{font-size:12px;font-weight:800;color:#a78bfa;margin-right:6px;flex-shrink:0}
+.topnav a{white-space:nowrap;font-size:11px;font-weight:600;color:#94a3b8;text-decoration:none;padding:5px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.06);transition:all .2s;flex-shrink:0}
 .topnav a:hover,.topnav a.active{color:#fff;background:rgba(168,85,247,.15);border-color:rgba(168,85,247,.3)}
-.topnav-title{font-size:13px;font-weight:800;color:#a78bfa;margin-right:8px;flex-shrink:0}
 
-/* ── Page section ── */
-.page-section{padding:40px 24px 60px;border-bottom:1px solid rgba(255,255,255,.04);max-width:1400px;margin:0 auto}
-.page-title{font-size:20px;font-weight:900;margin-bottom:4px}
-.page-subtitle{font-size:12px;color:#64748b;margin-bottom:24px}
+.page-section{padding:48px 32px 64px;border-bottom:1px solid rgba(255,255,255,.04);max-width:1200px;margin:0 auto}
+.page-title{font-size:22px;font-weight:900;margin-bottom:3px}
+.page-subtitle{font-size:12px;color:#64748b;margin-bottom:28px}
 
-/* ── Spec Frame: screenshot + annotations ── */
-.spec-frame{position:relative;display:flex;gap:0;align-items:stretch}
+.spec-frame{position:relative;display:flex;gap:0;align-items:flex-start}
+.spec-img-side{position:relative;flex-shrink:0;width:390px}
+.spec-img-side img{display:block;width:390px;height:auto;border-radius:14px;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 40px rgba(0,0,0,.5)}
 
-/* Screenshot side */
-.spec-img-side{position:relative;flex-shrink:0}
-.spec-img-side img{display:block;height:auto;border-radius:12px;border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 40px rgba(0,0,0,.5)}
+/* Dots */
+.dot{position:absolute;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;font-family:'Outfit',sans-serif;color:#fff;z-index:10;cursor:default;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.9);box-shadow:0 0 12px rgba(0,0,0,.6);transition:transform .2s}
+.dot:hover{transform:translate(-50%,-50%) scale(1.3)}
+.dot.g{background:#f59e0b}.dot.p{background:#a855f7}.dot.b{background:#3b82f6}.dot.n{background:#22c55e}.dot.r{background:#ef4444}.dot.c{background:#06b6d4}
 
-/* Callout dot on image */
-.dot{
-  position:absolute;width:20px;height:20px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:9px;font-weight:800;font-family:'Outfit',sans-serif;color:#fff;
-  z-index:10;cursor:default;
-  transform:translate(-50%,-50%);
-  border:2px solid rgba(255,255,255,.9);
-  box-shadow:0 0 8px rgba(0,0,0,.5);
-}
-.dot.c-gold{background:#f59e0b}
-.dot.c-purple{background:#a855f7}
-.dot.c-blue{background:#3b82f6}
-.dot.c-green{background:#22c55e}
-.dot.c-red{background:#ef4444}
-.dot.c-cyan{background:#06b6d4}
+.annotations-side{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-start;padding:4px 0 4px 12px}
+.anno{display:flex;align-items:flex-start;gap:8px;padding:6px 10px;transition:background .15s;border-radius:8px}
+.anno:hover{background:rgba(255,255,255,.03)}
+.an{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;font-family:'Outfit',sans-serif;color:#fff;border:2px solid rgba(255,255,255,.25)}
+.an.g{background:#f59e0b}.an.p{background:#a855f7}.an.b{background:#3b82f6}.an.n{background:#22c55e}.an.r{background:#ef4444}.an.c{background:#06b6d4}
+.at{flex:1;min-width:0}
+.at b{font-weight:700;color:#fff;display:block;font-size:12px;margin-bottom:1px}
+.at span{color:#94a3b8;font-size:11px;line-height:1.45;display:block}
+.at code{font-size:10px;color:#a78bfa;background:rgba(167,139,250,.1);padding:1px 5px;border-radius:3px;font-family:'Outfit',monospace}
 
-/* Annotations side */
-.annotations-side{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding-left:8px}
-
-.anno-entry{
-  display:flex;align-items:flex-start;gap:8px;
-  padding:7px 12px;font-size:12px;
-  border-left:2px solid transparent;
-  transition:background .15s;
-  position:relative;
-}
-.anno-entry:hover{background:rgba(255,255,255,.02)}
-
-.anno-num{
-  width:20px;height:20px;border-radius:50%;flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;
-  font-size:9px;font-weight:800;font-family:'Outfit',sans-serif;color:#fff;
-  border:2px solid rgba(255,255,255,.3);
-}
-.anno-num.c-gold{background:#f59e0b}
-.anno-num.c-purple{background:#a855f7}
-.anno-num.c-blue{background:#3b82f6}
-.anno-num.c-green{background:#22c55e}
-.anno-num.c-red{background:#ef4444}
-.anno-num.c-cyan{background:#06b6d4}
-
-.anno-text{flex:1;min-width:0}
-.anno-text b{font-weight:700;color:#fff;display:block;font-size:12px;margin-bottom:1px}
-.anno-text span{color:#94a3b8;font-size:11px;line-height:1.4;display:block}
-.anno-text code{font-size:10px;color:#a78bfa;background:rgba(167,139,250,.1);padding:1px 4px;border-radius:3px;font-family:'Outfit',monospace}
-
-/* SVG lines */
 .leader-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5}
-.leader-svg line{stroke:rgba(255,255,255,.2);stroke-width:1;stroke-dasharray:4,3}
+.leader-svg line{stroke:rgba(255,255,255,.15);stroke-width:1;stroke-dasharray:3,3}
 
-/* ── Footer ── */
-footer{padding:40px 24px;text-align:center;font-size:11px;color:#475569}
+footer{padding:40px 24px;text-align:center;font-size:11px;color:#475569;border-top:1px solid rgba(255,255,255,.04)}
 footer a{color:#60a5fa;text-decoration:none}
 </style>
 </head>
@@ -88,317 +49,268 @@ footer a{color:#60a5fa;text-decoration:none}
 
 <nav class="topnav">
   <span class="topnav-title">UI规格标注</span>
-  <a href="#p1">① 选择页</a>
-  <a href="#p2">② 提纯面板</a>
-  <a href="#p3">③ 锁定操作</a>
-  <a href="#p4">④ 10★节点</a>
-  <a href="#p5">⑤ 突变面板</a>
-  <a href="#p6">⑥ 突变确认</a>
-  <a href="#p7">⑦ 插槽解锁</a>
-  <a href="#p8">⑧ 选择技能</a>
-  <a href="#p9">⑨ 镶嵌完成</a>
+  <a href="#p1">①选择页</a><a href="#p2">②提纯面板</a><a href="#p3">③锁定</a><a href="#p4">④10★节点</a><a href="#p5">⑤突变面板</a><a href="#p6">⑥突变确认</a><a href="#p7">⑦插槽解锁</a><a href="#p8">⑧选择技能</a><a href="#p9">⑨镶嵌完成</a>
 </nav>
 
-<!-- ═══════════════ PAGE 1: 选择页 ═══════════════ -->
+<!-- ═══════ 1 选择页 ═══════ -->
 <div class="page-section" id="p1">
   <div class="page-title">① 宠物选择页</div>
-  <div class="page-subtitle">全屏入口 · 选择15阶宠物进入变异系统</div>
-  <div class="spec-frame" data-img-h="700">
+  <div class="page-subtitle">全屏入口 · 展示所有可变异的15阶宠物</div>
+  <div class="spec-frame">
     <div class="spec-img-side">
-      <img src="01_selection_grid.png" alt="选择页" style="height:700px">
-      <div class="dot c-gold" style="top:4.5%;left:82%" data-to="1">1</div>
-      <div class="dot c-blue" style="top:12%;left:40%" data-to="2">2</div>
-      <div class="dot c-purple" style="top:21%;left:20%" data-to="3">3</div>
-      <div class="dot c-green" style="top:21%;left:63%" data-to="4">4</div>
-      <div class="dot c-cyan" style="top:25%;left:20%" data-to="5">5</div>
-      <div class="dot c-red" style="top:21%;left:88%" data-to="6">6</div>
-      <div class="dot c-gold" style="top:15%;left:30%" data-to="7">7</div>
-      <div class="dot c-purple" style="top:55%;left:48%" data-to="8">8</div>
-      <div class="dot c-blue" style="top:96%;left:22%" data-to="9">9</div>
+      <img src="01_selection_grid.png">
+      <div class="dot g" style="top:5%;left:84%" data-i="1">1</div>
+      <div class="dot p" style="top:18%;left:30%" data-i="2">2</div>
+      <div class="dot n" style="top:28%;left:30%" data-i="3">3</div>
+      <div class="dot b" style="top:15%;left:55%" data-i="4">4</div>
+      <div class="dot r" style="top:37%;left:82%" data-i="5">5</div>
+      <div class="dot c" style="top:96%;left:18%" data-i="6">6</div>
+      <div class="dot g" style="top:18%;left:64%" data-i="7">7</div>
     </div>
     <div class="annotations-side">
-      <div class="anno-entry" data-idx="1"><div class="anno-num c-gold">1</div><div class="anno-text"><b>基因碎片余额</b><span>显示 <code>player.geneFragments</code>，全局共享货币，提纯时扣减</span></div></div>
-      <div class="anno-entry" data-idx="2"><div class="anno-num c-blue">2</div><div class="anno-text"><b>引导文案</b><span>固定文案「选择一只15阶宠进行基因变异」，告知操作前提</span></div></div>
-      <div class="anno-entry" data-idx="3"><div class="anno-num c-purple">3</div><div class="anno-text"><b>宠物卡片</b><span>点击 → 打开详情弹窗。展示 <code>pet.emoji</code> + <code>pet.name</code>。所有宠物统一金色圆环（全部15阶），无品质字母</span></div></div>
-      <div class="anno-entry" data-idx="4"><div class="anno-num c-green">4</div><div class="anno-text"><b>突变进度dot</b><span>3个小圆点，填充数 = <code>pet.mutationLevel</code>（0~3），每完成1阶填1个紫色dot</span></div></div>
-      <div class="anno-entry" data-idx="5"><div class="anno-num c-cyan">5</div><div class="anno-text"><b>宠物名称</b><span>取 <code>pet.name</code>。同名宠物独立显示为多张卡片（不可堆叠），因为每只是独立资产需要作为突变材料消耗</span></div></div>
-      <div class="anno-entry" data-idx="6"><div class="anno-num c-red">6</div><div class="anno-text"><b>状态标签</b><span>根据 <code>pet.status</code> 显示：「出战」(红) / 「镶嵌」(紫) / 「🔒」(已锁定)。空闲状态不显示</span></div></div>
-      <div class="anno-entry" data-idx="7"><div class="anno-num c-gold">7</div><div class="anno-text"><b>星级角标</b><span>当 <code>pet.star > 0</code> 时显示「★N」。取值 <code>pet.star</code>，范围0~30</span></div></div>
-      <div class="anno-entry" data-idx="8"><div class="anno-num c-purple">8</div><div class="anno-text"><b>空白区域</b><span>网格下方留白，支持滚动。卡片数量不固定，按 <code>allPets</code> 数组长度渲染</span></div></div>
-      <div class="anno-entry" data-idx="9"><div class="anno-num c-blue">9</div><div class="anno-text"><b>返回按钮</b><span>点击 → 退出变异系统，返回主界面</span></div></div>
+      <div class="anno" data-i="1"><div class="an g">1</div><div class="at"><b>基因碎片余额</b><span>显示 <code>player.geneFragments</code>。全局货币，提纯消耗来源。产出途径：核心争夺战</span></div></div>
+      <div class="anno" data-i="2"><div class="an p">2</div><div class="at"><b>宠物卡片</b><span>点击 → 打开详情弹窗。展示 <code>pet.emoji</code> + <code>pet.name</code>。金色圆环 = 统一15阶品质，无品质字母显示</span></div></div>
+      <div class="anno" data-i="3"><div class="an n">3</div><div class="at"><b>突变进度 Dot</b><span>3个小圆点，紫色填充数 = <code>pet.mutationLevel</code>（0~3）。每完成1阶突变填充1个</span></div></div>
+      <div class="anno" data-i="4"><div class="an b">4</div><div class="at"><b>宠物名称</b><span>取 <code>pet.name</code>。同名宠物显示为多张独立卡片（不堆叠），因为需要作为突变材料逐只消耗</span></div></div>
+      <div class="anno" data-i="5"><div class="an r">5</div><div class="at"><b>状态标签</b><span>按 <code>pet.status</code> 显示角标：「出战」红 / 「镶嵌」紫 / 「🔒」金(已锁定)。空闲不显示</span></div></div>
+      <div class="anno" data-i="6"><div class="an c">6</div><div class="at"><b>返回按钮</b><span>点击 → 退出变异系统回到主界面</span></div></div>
+      <div class="anno" data-i="7"><div class="an g">7</div><div class="at"><b>★星级角标</b><span>当 <code>pet.star > 0</code> 时右上角显示「★N」。取值范围 0~30</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 2: 提纯面板 ═══════════════ -->
+<!-- ═══════ 2 提纯面板 ═══════ -->
 <div class="page-section" id="p2">
   <div class="page-title">② 宠物详情 · 基因提纯 Tab</div>
-  <div class="page-subtitle">居中弹窗 · 消耗碎片升星、查看突变进度</div>
-  <div class="spec-frame" data-img-h="700">
+  <div class="page-subtitle">居中弹窗 · 消耗碎片升星，查看突变进度与被动技能插槽</div>
+  <div class="spec-frame">
     <div class="spec-img-side">
-      <img src="02_detail_purify.png" alt="提纯面板" style="height:700px">
-      <div class="dot c-gold" style="top:12.5%;left:15%" data-to="1">1</div>
-      <div class="dot c-green" style="top:12.5%;left:80%" data-to="2">2</div>
-      <div class="dot c-blue" style="top:12.5%;left:68%" data-to="3">3</div>
-      <div class="dot c-purple" style="top:24%;left:50%" data-to="4">4</div>
-      <div class="dot c-cyan" style="top:31%;left:50%" data-to="5">5</div>
-      <div class="dot c-gold" style="top:42%;left:80%" data-to="6">6</div>
-      <div class="dot c-red" style="top:46%;left:80%" data-to="7">7</div>
-      <div class="dot c-blue" style="top:50%;left:80%" data-to="8">8</div>
-      <div class="dot c-purple" style="top:59%;left:50%" data-to="9">9</div>
-      <div class="dot c-green" style="top:68%;left:50%" data-to="10">10</div>
-      <div class="dot c-gold" style="top:75%;left:30%" data-to="11">11</div>
-      <div class="dot c-cyan" style="top:85%;left:50%" data-to="12">12</div>
-      <div class="dot c-red" style="top:95%;left:50%" data-to="13">13</div>
+      <img src="02_detail_purify.png">
+      <div class="dot g" style="top:12%;left:15%" data-i="1">1</div>
+      <div class="dot n" style="top:12%;left:76%" data-i="2">2</div>
+      <div class="dot b" style="top:12%;left:65%" data-i="3">3</div>
+      <div class="dot p" style="top:23%;left:40%" data-i="4">4</div>
+      <div class="dot c" style="top:30%;left:50%" data-i="5">5</div>
+      <div class="dot g" style="top:38%;left:82%" data-i="6">6</div>
+      <div class="dot r" style="top:42%;left:82%" data-i="7">7</div>
+      <div class="dot b" style="top:46%;left:82%" data-i="8">8</div>
+      <div class="dot p" style="top:55%;left:50%" data-i="9">9</div>
+      <div class="dot n" style="top:65%;left:50%" data-i="10">10</div>
+      <div class="dot c" style="top:80%;left:50%" data-i="11">11</div>
+      <div class="dot r" style="top:93%;left:50%" data-i="12">12</div>
     </div>
     <div class="annotations-side">
-      <div class="anno-entry" data-idx="1"><div class="anno-num c-gold">1</div><div class="anno-text"><b>宠物头像</b><span><code>pet.emoji</code> + 彩虹旋转圆环（纯装饰动画）。旁显 <code>pet.name</code> + <code>pet.attackTag</code>（弹道/近战/范围）</span></div></div>
-      <div class="anno-entry" data-idx="2"><div class="anno-num c-green">2</div><div class="anno-text"><b>碎片余额</b><span><code>player.geneFragments</code>，提纯扣减后实时更新</span></div></div>
-      <div class="anno-entry" data-idx="3"><div class="anno-num c-blue">3</div><div class="anno-text"><b>锁定按钮</b><span>点击 → 切换 <code>pet.isLocked</code>。🔓=未锁，🔒=已锁(红底)。锁定后该宠物不会出现在突变材料候选中</span></div></div>
-      <div class="anno-entry" data-idx="4"><div class="anno-num c-purple">4</div><div class="anno-text"><b>星级 + 属性继承</b><span>★<code>pet.star</code> · 属性继承 <code>+{pet.star×5}%</code>。属性继承=战斗属性加成比例</span></div></div>
-      <div class="anno-entry" data-idx="5"><div class="anno-num c-cyan">5</div><div class="anno-text"><b>Tab栏</b><span>点击切换「基因提纯」/「基因突变」面板。默认显示提纯Tab</span></div></div>
-      <div class="anno-entry" data-idx="6"><div class="anno-num c-gold">6</div><div class="anno-text"><b>当前星级</b><span><code>pet.star</code>，范围 0~30</span></div></div>
-      <div class="anno-entry" data-idx="7"><div class="anno-num c-red">7</div><div class="anno-text"><b>属性继承%</b><span>计算公式：<code>pet.star × 5</code>%，如10★=+50%</span></div></div>
-      <div class="anno-entry" data-idx="8"><div class="anno-num c-blue">8</div><div class="anno-text"><b>升星消耗</b><span>碎片消耗公式：<code>100 + pet.star × 20</code>。如0★→1★消耗100，10★→11★消耗300</span></div></div>
-      <div class="anno-entry" data-idx="9"><div class="anno-num c-purple">9</div><div class="anno-text"><b>突变节点进度条</b><span>渐变填充宽度 = <code>pet.star/30 × 100%</code>。标记位：10(33%) / 20(66%) / 30(100%)，达到时标记变金色</span></div></div>
-      <div class="anno-entry" data-idx="10"><div class="anno-num c-green">10</div><div class="anno-text"><b>提纯升星按钮</b><span>点击 → 扣减碎片、<code>pet.star++</code>。碎片不足时按钮禁用+抖动。<b>支持长按连续升星</b>（400ms后每80ms触发一次）</span></div></div>
-      <div class="anno-entry" data-idx="11"><div class="anno-num c-gold">11</div><div class="anno-text"><b>操作提示</b><span>固定文案「长按可连续升星」</span></div></div>
-      <div class="anno-entry" data-idx="12"><div class="anno-num c-cyan">12</div><div class="anno-text"><b>被动技能插槽 ×3</b><span><code>pet.slots[0~2]</code>。初始全锁定🔒。解锁条件：完成对应阶突变（一阶→插槽1，二阶→插槽2，三阶→插槽3）。已解锁显示「＋」，已镶嵌显示副宠emoji+技能名</span></div></div>
-      <div class="anno-entry" data-idx="13"><div class="anno-num c-red">13</div><div class="anno-text"><b>关闭按钮</b><span>点击 ✕ → 关闭详情弹窗，返回选择页。也可点击弹窗外遮罩关闭</span></div></div>
+      <div class="anno" data-i="1"><div class="an g">1</div><div class="at"><b>宠物信息区</b><span><code>pet.emoji</code> 头像(彩虹旋转动画) + <code>pet.name</code> + <code>pet.attackTag</code> Tag(弹道/近战/范围)</span></div></div>
+      <div class="anno" data-i="2"><div class="an n">2</div><div class="at"><b>碎片余额</b><span><code>player.geneFragments</code>，操作后实时更新</span></div></div>
+      <div class="anno" data-i="3"><div class="an b">3</div><div class="at"><b>锁定按钮</b><span>点击切换 <code>pet.isLocked</code>。🔓=未锁 / 🔒=已锁(红底)。锁定后从突变材料候选中排除</span></div></div>
+      <div class="anno" data-i="4"><div class="an p">4</div><div class="at"><b>星级 + 属性继承</b><span>★<code>pet.star</code> · 属性继承 <code>pet.star × 5</code>%。属性继承 = 战斗属性加成</span></div></div>
+      <div class="anno" data-i="5"><div class="an c">5</div><div class="at"><b>Tab切换栏</b><span>「✦基因提纯」/「🧬基因突变」。点击切换显示面板</span></div></div>
+      <div class="anno" data-i="6"><div class="an g">6</div><div class="at"><b>当前星级</b><span><code>pet.star</code>，范围 0~30</span></div></div>
+      <div class="anno" data-i="7"><div class="an r">7</div><div class="at"><b>属性继承%</b><span>公式：<code>pet.star × 5</code>%，如10★=+50%</span></div></div>
+      <div class="anno" data-i="8"><div class="an b">8</div><div class="at"><b>升星消耗</b><span>碎片消耗公式：<code>100 + pet.star × 20</code>。0★→1★=100，10★→11★=300</span></div></div>
+      <div class="anno" data-i="9"><div class="an p">9</div><div class="at"><b>突变节点进度条</b><span>填充宽度 = <code>pet.star/30 × 100%</code>。颜色渐变蓝→紫→金。标记位10/20/30，达到时变金色</span></div></div>
+      <div class="anno" data-i="10"><div class="an n">10</div><div class="at"><b>提纯升星按钮</b><span>点击 → 扣碎片+<code>pet.star++</code>。碎片不足时禁用+抖动。<b>长按连续升星</b>：400ms延迟后每80ms触发</span></div></div>
+      <div class="anno" data-i="11"><div class="an c">11</div><div class="at"><b>被动技能插槽 ×3</b><span>初始全🔒。解锁条件：一/二/三阶突变。已解锁显示「＋」可点击，已镶嵌显示emoji+技能名，点击可更换</span></div></div>
+      <div class="anno" data-i="12"><div class="an r">12</div><div class="at"><b>关闭按钮 ✕</b><span>关闭弹窗回选择页。也可点击弹窗外遮罩关闭</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 3: 锁定操作 ═══════════════ -->
+<!-- ═══════ 3 锁定 ═══════ -->
 <div class="page-section" id="p3">
   <div class="page-title">③ 锁定/解锁操作</div>
-  <div class="page-subtitle">点击锁定按钮后的状态变化</div>
-  <div class="spec-frame" data-img-h="700">
+  <div class="page-subtitle">保护宠物不被误消耗为突变材料</div>
+  <div class="spec-frame">
     <div class="spec-img-side">
-      <img src="03_lock_toggle.png" alt="锁定操作" style="height:700px">
-      <div class="dot c-gold" style="top:4%;left:50%" data-to="1">1</div>
-      <div class="dot c-red" style="top:13%;left:68%" data-to="2">2</div>
-      <div class="dot c-green" style="top:85%;left:47%" data-to="3">3</div>
+      <img src="03_lock_toggle.png">
+      <div class="dot g" style="top:4%;left:50%" data-i="1">1</div>
+      <div class="dot r" style="top:12.5%;left:65%" data-i="2">2</div>
     </div>
     <div class="annotations-side">
-      <div class="anno-entry" data-idx="1"><div class="anno-num c-gold">1</div><div class="anno-text"><b>Toast反馈</b><span>操作后顶部弹出「{pet.name} 已锁定/已解锁」提示，2.2秒后自动消失</span></div></div>
-      <div class="anno-entry" data-idx="2"><div class="anno-num c-red">2</div><div class="anno-text"><b>锁定按钮状态变化</b><span>锁定后：图标 🔓→🔒，按钮背景变红色。<code>pet.isLocked = true</code> 时，该宠物从突变材料候选列表中排除，选择页卡片显示🔒角标</span></div></div>
-      <div class="anno-entry" data-idx="3"><div class="anno-num c-green">3</div><div class="anno-text"><b>再次点击解锁</b><span>再次点击同一按钮 → <code>pet.isLocked = false</code>，恢复为🔓，宠物可被正常消耗</span></div></div>
+      <div class="anno" data-i="1"><div class="an g">1</div><div class="at"><b>Toast反馈</b><span>操作后顶部弹出「{<code>pet.name</code>} 已锁定」蓝色提示，2.2秒后自动消失</span></div></div>
+      <div class="anno" data-i="2"><div class="an r">2</div><div class="at"><b>锁定按钮 🔓→🔒</b><span>图标切换+按钮红底。<code>pet.isLocked=true</code> 后：① 该宠物从突变材料列表中排除 ② 选择页卡片显示🔒角标 ③ 再次点击可恢复解锁</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 4: 10★节点 ═══════════════ -->
+<!-- ═══════ 4 10★ ═══════ -->
 <div class="page-section" id="p4">
   <div class="page-title">④ 提纯至10★突变节点</div>
-  <div class="page-subtitle">到达突变门槛后的变化</div>
-  <div class="spec-frame" data-img-h="700">
+  <div class="page-subtitle">到达首个突变前置条件的里程碑反馈</div>
+  <div class="spec-frame">
     <div class="spec-img-side">
-      <img src="04_purify_10star.png" alt="10星" style="height:700px">
-      <div class="dot c-green" style="top:4%;left:50%" data-to="1">1</div>
-      <div class="dot c-gold" style="top:24%;left:35%" data-to="2">2</div>
-      <div class="dot c-purple" style="top:59%;left:38%" data-to="3">3</div>
-      <div class="dot c-blue" style="top:12.5%;left:80%" data-to="4">4</div>
+      <img src="04_purify_10star.png">
+      <div class="dot n" style="top:4%;left:50%" data-i="1">1</div>
+      <div class="dot g" style="top:23%;left:35%" data-i="2">2</div>
+      <div class="dot p" style="top:55%;left:42%" data-i="3">3</div>
+      <div class="dot b" style="top:12%;left:78%" data-i="4">4</div>
     </div>
     <div class="annotations-side">
-      <div class="anno-entry" data-idx="1"><div class="anno-num c-green">1</div><div class="anno-text"><b>里程碑Toast</b><span>当 <code>pet.star</code> 命中 10/20/30 时触发特殊庆祝Toast「🎉 已达到 N★ 突变节点！」，停留3秒</span></div></div>
-      <div class="anno-entry" data-idx="2"><div class="anno-num c-gold">2</div><div class="anno-text"><b>星级更新为★10</b><span>header区和数据卡片同步显示 <code>pet.star=10</code>，属性继承变为 <code>+50%</code></span></div></div>
-      <div class="anno-entry" data-idx="3"><div class="anno-num c-purple">3</div><div class="anno-text"><b>进度条到达"10"标记</b><span>填充至33.3%，"10"标记文字变金色 + 刻度线变金色。判定逻辑：<code>pet.star >= 10</code> → 添加 <code>.reached</code> class</span></div></div>
-      <div class="anno-entry" data-idx="4"><div class="anno-num c-blue">4</div><div class="anno-text"><b>碎片实时扣减</b><span>10次升星累积消耗：<code>Σ(100+n×20)</code> n=0~9 = 1900碎片。余额 12800→10900</span></div></div>
+      <div class="anno" data-i="1"><div class="an n">1</div><div class="at"><b>里程碑Toast</b><span><code>pet.star</code> 命中10/20/30时触发：「🎉 已达到 N★ 突变节点！」绿色庆祝提示</span></div></div>
+      <div class="anno" data-i="2"><div class="an g">2</div><div class="at"><b>★10 + 属性继承+50%</b><span>header和数据卡片同步更新。继承公式：<code>star × 5</code>%</span></div></div>
+      <div class="anno" data-i="3"><div class="an p">3</div><div class="at"><b>进度条到达"10"标记</b><span>填充33.3%。"10"字变金色。逻辑：<code>star >= milestone</code> → class <code>.reached</code></span></div></div>
+      <div class="anno" data-i="4"><div class="an b">4</div><div class="at"><b>碎片实时扣减</b><span>10次升星消耗：<code>Σ(100+n×20)</code> n=0~9 = 1900碎片。12800→10900</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 5: 突变面板 ═══════════════ -->
+<!-- ═══════ 5 突变面板 ═══════ -->
 <div class="page-section" id="p5">
   <div class="page-title">⑤ 基因突变 Tab</div>
-  <div class="page-subtitle">消耗同名宠物解锁被动技能插槽</div>
-  <div class="spec-frame" data-img-h="700">
+  <div class="page-subtitle">消耗同名宠物执行突变，解锁被动技能插槽</div>
+  <div class="spec-frame">
     <div class="spec-img-side">
-      <img src="05_mutation_tab.png" alt="突变面板" style="height:700px">
-      <div class="dot c-purple" style="top:38%;left:20%" data-to="1">1</div>
-      <div class="dot c-gold" style="top:44%;left:50%" data-to="2">2</div>
-      <div class="dot c-green" style="top:51%;left:65%" data-to="3">3</div>
-      <div class="dot c-red" style="top:55%;left:65%" data-to="4">4</div>
-      <div class="dot c-blue" style="top:61%;left:50%" data-to="5">5</div>
-      <div class="dot c-cyan" style="top:68%;left:50%" data-to="6">6</div>
-      <div class="dot c-purple" style="top:39%;left:80%" data-to="7">7</div>
-      <div class="dot c-gold" style="top:30%;left:30%" data-to="8">8</div>
+      <img src="05_mutation_tab.png">
+      <div class="dot g" style="top:30%;left:30%" data-i="1">1</div>
+      <div class="dot p" style="top:36%;left:22%" data-i="2">2</div>
+      <div class="dot n" style="top:45%;left:70%" data-i="3">3</div>
+      <div class="dot r" style="top:49%;left:70%" data-i="4">4</div>
+      <div class="dot b" style="top:55%;left:50%" data-i="5">5</div>
+      <div class="dot c" style="top:62%;left:50%" data-i="6">6</div>
+      <div class="dot p" style="top:36%;left:82%" data-i="7">7</div>
     </div>
     <div class="annotations-side">
-      <div class="anno-entry" data-idx="1"><div class="anno-num c-purple">1</div><div class="anno-text"><b>阶段徽章</b><span>显示当前阶段「一阶/二阶/三阶」。取 <code>MUTATION_STAGES[pet.mutationLevel]</code>。已完成用绿色</span></div></div>
-      <div class="anno-entry" data-idx="2"><div class="anno-num c-gold">2</div><div class="anno-text"><b>阶段标题</b><span>格式：「N阶突变 · 解锁插槽N」。N = <code>pet.mutationLevel + 1</code></span></div></div>
-      <div class="anno-entry" data-idx="3"><div class="anno-num c-green">3</div><div class="anno-text"><b>前置条件</b><span>「提纯达到 <code>stage.starReq</code>★ (当前 <code>pet.star</code>★)」。绿色=满足(<code>pet.star >= starReq</code>)，红色=不满足。三阶依次要求 10/20/30★</span></div></div>
-      <div class="anno-entry" data-idx="4"><div class="anno-num c-red">4</div><div class="anno-text"><b>突变消耗</b><span>「<code>stage.petCost</code>只 同名宠物」。三阶梯度：1→2→4只。同名=相同 <code>configId</code></span></div></div>
-      <div class="anno-entry" data-idx="5"><div class="anno-num c-blue">5</div><div class="anno-text"><b>材料行</b><span>格式：<code>pet.emoji</code> + <code>pet.name</code> + (可用/需要)。可用数 = <code>allPets.filter(同configId && idle && !isLocked && id≠主宠).length</code></span></div></div>
-      <div class="anno-entry" data-idx="6"><div class="anno-num c-cyan">6</div><div class="anno-text"><b>执行突变按钮</b><span>点击 → 打开确认弹窗。可操作条件：<code>pet.star >= starReq && 可用材料 >= petCost</code>。不满足时按钮灰色禁用</span></div></div>
-      <div class="anno-entry" data-idx="7"><div class="anno-num c-purple">7</div><div class="anno-text"><b>解锁状态图标</b><span>🔓=条件已满足可执行，🔒=条件未满足</span></div></div>
-      <div class="anno-entry" data-idx="8"><div class="anno-num c-gold">8</div><div class="anno-text"><b>阶段进度</b><span>3个dot + 「<code>pet.mutationLevel</code>/3 阶段完成」。dot填充紫色数 = mutationLevel</span></div></div>
+      <div class="anno" data-i="1"><div class="an g">1</div><div class="at"><b>阶段进度</b><span>3个dot + 「<code>pet.mutationLevel</code>/3 阶段完成」。dot填充数=<code>mutationLevel</code></span></div></div>
+      <div class="anno" data-i="2"><div class="an p">2</div><div class="at"><b>阶段徽章 + 标题</b><span>「一阶」紫色Badge + 「N阶突变 · 解锁插槽N」。取 <code>STAGES[mutationLevel]</code></span></div></div>
+      <div class="anno" data-i="3"><div class="an n">3</div><div class="at"><b>前置条件</b><span>「提纯达到 <code>stage.starReq</code>★ (当前 <code>pet.star</code>★)」。绿=满足 / 红=不满足。三阶要求：10/20/30★</span></div></div>
+      <div class="anno" data-i="4"><div class="an r">4</div><div class="at"><b>突变消耗</b><span>「<code>stage.petCost</code>只 同名宠物」。三阶梯度 1→2→4。同名=相同 <code>configId</code></span></div></div>
+      <div class="anno" data-i="5"><div class="an b">5</div><div class="at"><b>材料行</b><span><code>emoji</code> + <code>name</code> + (可用/需要)。可用 = <code>allPets.filter(同configId, idle, !locked, id≠主宠).length</code></span></div></div>
+      <div class="anno" data-i="6"><div class="an c">6</div><div class="at"><b>执行突变按钮</b><span>点击 → 打开确认弹窗。条件：<code>star≥starReq && 可用材料≥petCost</code>。否则灰色禁用</span></div></div>
+      <div class="anno" data-i="7"><div class="an p">7</div><div class="at"><b>解锁状态图标</b><span>🔓=条件全满足 / 🔒=条件不足</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 6: 突变确认 ═══════════════ -->
+<!-- ═══════ 6 突变确认 ═══════ -->
 <div class="page-section" id="p6">
   <div class="page-title">⑥ 突变确认弹窗</div>
-  <div class="page-subtitle">居中Modal · 确认消耗宠物后不可撤销</div>
-  <div class="spec-frame" data-img-h="700">
+  <div class="page-subtitle">居中Modal · 确认后不可撤销</div>
+  <div class="spec-frame">
     <div class="spec-img-side">
-      <img src="06_mutation_confirm.png" alt="突变确认" style="height:700px">
-      <div class="dot c-gold" style="top:41%;left:30%" data-to="1">1</div>
-      <div class="dot c-red" style="top:52%;left:50%" data-to="2">2</div>
-      <div class="dot c-purple" style="top:57%;left:50%" data-to="3">3</div>
-      <div class="dot c-blue" style="top:65%;left:70%" data-to="4">4</div>
-      <div class="dot c-cyan" style="top:65%;left:30%" data-to="5">5</div>
-      <div class="dot c-green" style="top:73%;left:50%" data-to="6">6</div>
+      <img src="06_mutation_confirm.png">
+      <div class="dot g" style="top:37%;left:30%" data-i="1">1</div>
+      <div class="dot r" style="top:48%;left:50%" data-i="2">2</div>
+      <div class="dot p" style="top:53%;left:50%" data-i="3">3</div>
+      <div class="dot b" style="top:63%;left:68%" data-i="4">4</div>
+      <div class="dot c" style="top:63%;left:32%" data-i="5">5</div>
+      <div class="dot n" style="top:71%;left:50%" data-i="6">6</div>
     </div>
     <div class="annotations-side">
-      <div class="anno-entry" data-idx="1"><div class="anno-num c-gold">1</div><div class="anno-text"><b>确认信息</b><span>「确认消耗 <code>stage.petCost</code> 只宠物执行 N阶突变？」动态显示阶段和数量</span></div></div>
-      <div class="anno-entry" data-idx="2"><div class="anno-num c-red">2</div><div class="anno-text"><b>警告提示</b><span>⚠ 红色文字「消耗的宠物将被永久销毁」。<b>突变不可逆</b>，消耗的宠物从 <code>allPets</code> 数组中 splice 删除</span></div></div>
-      <div class="anno-entry" data-idx="3"><div class="anno-num c-purple">3</div><div class="anno-text"><b>消耗预览</b><span>显示即将被销毁的宠物列表：<code>emoji + name</code> 红色标签。系统自动选择战力最低的同名宠物优先消耗</span></div></div>
-      <div class="anno-entry" data-idx="4"><div class="anno-num c-blue">4</div><div class="anno-text"><b>确认突变按钮</b><span>点击 → 执行突变：从数据中删除材料宠物，<code>pet.mutationLevel++</code>，解锁对应插槽 <code>pet.slots[idx].unlocked=true</code></span></div></div>
-      <div class="anno-entry" data-idx="5"><div class="anno-num c-cyan">5</div><div class="anno-text"><b>取消按钮</b><span>点击 → 关闭弹窗，不执行任何操作</span></div></div>
-      <div class="anno-entry" data-idx="6"><div class="anno-num c-green">6</div><div class="anno-text"><b>底部关闭 ✕</b><span>等效取消操作。也可点击遮罩关闭</span></div></div>
+      <div class="anno" data-i="1"><div class="an g">1</div><div class="at"><b>确认信息</b><span>「确认消耗 <code>stage.petCost</code> 只宠物执行 N阶突变？」</span></div></div>
+      <div class="anno" data-i="2"><div class="an r">2</div><div class="at"><b>警告</b><span>⚠ 红字「消耗的宠物将被永久销毁」。<b>不可逆</b>，宠物从 <code>allPets</code> 数组 splice 删除</span></div></div>
+      <div class="anno" data-i="3"><div class="an p">3</div><div class="at"><b>消耗预览</b><span><code>emoji + name</code> 红色Tag。系统自动选择空闲+未锁定的同名宠物</span></div></div>
+      <div class="anno" data-i="4"><div class="an b">4</div><div class="at"><b>确认突变</b><span>点击 → 删除材料宠, <code>pet.mutationLevel++</code>, 解锁插槽 <code>slots[idx].unlocked=true</code></span></div></div>
+      <div class="anno" data-i="5"><div class="an c">5</div><div class="at"><b>取消按钮</b><span>关闭弹窗，不执行操作</span></div></div>
+      <div class="anno" data-i="6"><div class="an n">6</div><div class="at"><b>底部关闭 ✕</b><span>等效取消。也可点击遮罩关闭</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 7: 插槽解锁 ═══════════════ -->
+<!-- ═══════ 7 插槽解锁 ═══════ -->
 <div class="page-section" id="p7">
   <div class="page-title">⑦ 突变成功 · 插槽解锁</div>
-  <div class="page-subtitle">一阶完成后自动推进至二阶</div>
-  <div class="spec-frame" data-img-h="700">
+  <div class="page-subtitle">一阶完成后自动推进二阶显示</div>
+  <div class="spec-frame">
     <div class="spec-img-side">
-      <img src="07_mutation_success.png" alt="突变成功" style="height:700px">
-      <div class="dot c-green" style="top:4%;left:50%" data-to="1">1</div>
-      <div class="dot c-purple" style="top:42%;left:20%" data-to="2">2</div>
-      <div class="dot c-red" style="top:54%;left:65%" data-to="3">3</div>
-      <div class="dot c-blue" style="top:80%;left:30%" data-to="4">4</div>
-      <div class="dot c-cyan" style="top:66%;left:50%" data-to="5">5</div>
+      <img src="07_mutation_success.png">
+      <div class="dot n" style="top:4%;left:50%" data-i="1">1</div>
+      <div class="dot p" style="top:40%;left:22%" data-i="2">2</div>
+      <div class="dot r" style="top:49%;left:70%" data-i="3">3</div>
+      <div class="dot b" style="top:76%;left:28%" data-i="4">4</div>
+      <div class="dot c" style="top:62%;left:50%" data-i="5">5</div>
     </div>
     <div class="annotations-side">
-      <div class="anno-entry" data-idx="1"><div class="anno-num c-green">1</div><div class="anno-text"><b>成功Toast</b><span>「🧬 N阶突变成功！插槽N已解锁」绿色提示 + 紫色粒子特效</span></div></div>
-      <div class="anno-entry" data-idx="2"><div class="anno-num c-purple">2</div><div class="anno-text"><b>自动推进到下一阶</b><span>卡片内容自动变为二阶：<code>starReq=20, petCost=2</code>。若三阶全部完成，显示「基因突变已全部完成」</span></div></div>
-      <div class="anno-entry" data-idx="3"><div class="anno-num c-red">3</div><div class="anno-text"><b>下阶条件（未满足时红色）</b><span>「提纯达到 20★ (当前 10★)」，需继续提纯才能执行下一阶突变</span></div></div>
-      <div class="anno-entry" data-idx="4"><div class="anno-num c-blue">4</div><div class="anno-text"><b>插槽1解锁</b><span><code>pet.slots[0].unlocked = true</code>。显示从🔒变为「＋」蓝色发光圆环，点击 → 打开技能选择弹窗</span></div></div>
-      <div class="anno-entry" data-idx="5"><div class="anno-num c-cyan">5</div><div class="anno-text"><b>执行突变按钮变禁用</b><span>二阶星级条件未满足 → 按钮灰色不可点击</span></div></div>
+      <div class="anno" data-i="1"><div class="an n">1</div><div class="at"><b>成功Toast</b><span>「🧬 N阶突变成功！插槽N已解锁」+ 紫色粒子特效</span></div></div>
+      <div class="anno" data-i="2"><div class="an p">2</div><div class="at"><b>自动推进下一阶</b><span>显示二阶信息：<code>starReq=20, petCost=2</code>。三阶全完成后显示「全部完成」</span></div></div>
+      <div class="anno" data-i="3"><div class="an r">3</div><div class="at"><b>下阶条件(红色=未满足)</b><span>「提纯达到 20★ (当前 10★)」需继续提纯</span></div></div>
+      <div class="anno" data-i="4"><div class="an b">4</div><div class="at"><b>插槽1 已解锁</b><span><code>slots[0].unlocked=true</code>。🔒→「＋」蓝色发光圆环。点击 → 打开技能选择弹窗</span></div></div>
+      <div class="anno" data-i="5"><div class="an c">5</div><div class="at"><b>按钮变禁用</b><span>二阶条件未满足 → 灰色不可点击</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 8: 选择技能 ═══════════════ -->
+<!-- ═══════ 8 选择技能 ═══════ -->
 <div class="page-section" id="p8">
   <div class="page-title">⑧ 选择宠物技能</div>
-  <div class="page-subtitle">居中Modal · 为已解锁插槽选择被动技能</div>
-  <div class="spec-frame" data-img-h="700">
+  <div class="page-subtitle">居中Modal · 为已解锁插槽选择被动技能镶嵌</div>
+  <div class="spec-frame">
     <div class="spec-img-side">
-      <img src="08_skill_selection.png" alt="选择技能" style="height:700px">
-      <div class="dot c-gold" style="top:30%;left:35%" data-to="1">1</div>
-      <div class="dot c-cyan" style="top:30%;left:80%" data-to="2">2</div>
-      <div class="dot c-purple" style="top:40%;left:35%" data-to="3">3</div>
-      <div class="dot c-blue" style="top:45%;left:45%" data-to="4">4</div>
-      <div class="dot c-green" style="top:46%;left:75%" data-to="5">5</div>
-      <div class="dot c-red" style="top:63%;left:75%" data-to="6">6</div>
-      <div class="dot c-gold" style="top:68%;left:15%" data-to="7">7</div>
-      <div class="dot c-cyan" style="top:77%;left:50%" data-to="8">8</div>
+      <img src="08_skill_selection.png">
+      <div class="dot g" style="top:29%;left:30%" data-i="1">1</div>
+      <div class="dot c" style="top:29%;left:82%" data-i="2">2</div>
+      <div class="dot p" style="top:37%;left:35%" data-i="3">3</div>
+      <div class="dot b" style="top:42%;left:42%" data-i="4">4</div>
+      <div class="dot n" style="top:37%;left:80%" data-i="5">5</div>
+      <div class="dot r" style="top:60%;left:80%" data-i="6">6</div>
+      <div class="dot g" style="top:47%;left:35%" data-i="7">7</div>
     </div>
     <div class="annotations-side">
-      <div class="anno-entry" data-idx="1"><div class="anno-num c-gold">1</div><div class="anno-text"><b>弹窗标题</b><span>「选择宠物技能」— 选择的是技能而非宠物本体</span></div></div>
-      <div class="anno-entry" data-idx="2"><div class="anno-num c-cyan">2</div><div class="anno-text"><b>攻击类型筛选Tag</b><span>自动匹配主宠 <code>pet.attackTag</code>。只显示攻击类型相同且拥有 <code>passiveSkill</code> 的宠物</span></div></div>
-      <div class="anno-entry" data-idx="3"><div class="anno-num c-purple">3</div><div class="anno-text"><b>宠物名称（行1）</b><span><code>pet.name</code>，粗体显示</span></div></div>
-      <div class="anno-entry" data-idx="4"><div class="anno-num c-blue">4</div><div class="anno-text"><b>技能名称（行2）</b><span><code>pet.passiveSkill.icon</code> + <code>pet.passiveSkill.name</code>，紫色高亮</span></div></div>
-      <div class="anno-entry" data-idx="5"><div class="anno-num c-green">5</div><div class="anno-text"><b>状态标签</b><span>「空闲」(绿)=可选 /「出战中」(红)=不可选 /「已镶嵌」(紫)=不可选 /「🔒」(金)=锁定中</span></div></div>
-      <div class="anno-entry" data-idx="6"><div class="anno-num c-red">6</div><div class="anno-text"><b>不可选项</b><span>灰色半透明，不可点击。条件：出战中 / 已被其他插槽镶嵌 / 同configId重复</span></div></div>
-      <div class="anno-entry" data-idx="7"><div class="anno-num c-gold">7</div><div class="anno-text"><b>技能描述（行3）</b><span><code>pet.passiveSkill.desc</code>，灰色小字，说明技能效果数值</span></div></div>
-      <div class="anno-entry" data-idx="8"><div class="anno-num c-cyan">8</div><div class="anno-text"><b>关闭按钮 ✕</b><span>底部居中关闭弹窗。也可点击遮罩关闭</span></div></div>
+      <div class="anno" data-i="1"><div class="an g">1</div><div class="at"><b>弹窗标题</b><span>「选择宠物技能」— 强调选技能而非宠物本体</span></div></div>
+      <div class="anno" data-i="2"><div class="an c">2</div><div class="at"><b>攻击类型筛选</b><span>自动匹配主宠 <code>attackTag</code>。仅列出同类型且有 <code>passiveSkill</code> 的宠物</span></div></div>
+      <div class="anno" data-i="3"><div class="an p">3</div><div class="at"><b>宠物名称(行1)</b><span><code>pet.name</code> 粗体</span></div></div>
+      <div class="anno" data-i="4"><div class="an b">4</div><div class="at"><b>技能名称(行2)</b><span><code>passiveSkill.icon</code> + <code>passiveSkill.name</code>，紫色高亮</span></div></div>
+      <div class="anno" data-i="5"><div class="an n">5</div><div class="at"><b>状态标签</b><span>「空闲」绿=可选 /「出战中」红=不可选 /「已镶嵌」紫=不可选</span></div></div>
+      <div class="anno" data-i="6"><div class="an r">6</div><div class="at"><b>不可选项(灰色)</b><span>半透明不可点击。出战中/已镶嵌/同configId重复</span></div></div>
+      <div class="anno" data-i="7"><div class="an g">7</div><div class="at"><b>技能描述(行3)</b><span><code>passiveSkill.desc</code>，灰字。描述具体技能效果和数值</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 9: 镶嵌完成 ═══════════════ -->
+<!-- ═══════ 9 镶嵌完成 ═══════ -->
 <div class="page-section" id="p9">
   <div class="page-title">⑨ 技能镶嵌完成</div>
-  <div class="page-subtitle">副宠被动技能已挂载到主宠插槽</div>
-  <div class="spec-frame" data-img-h="700">
+  <div class="page-subtitle">副宠被动技能挂载到主宠插槽</div>
+  <div class="spec-frame">
     <div class="spec-img-side">
-      <img src="09_skill_embedded.png" alt="镶嵌完成" style="height:700px">
-      <div class="dot c-green" style="top:4%;left:50%" data-to="1">1</div>
-      <div class="dot c-purple" style="top:84%;left:30%" data-to="2">2</div>
-      <div class="dot c-blue" style="top:84%;left:50%" data-to="3">3</div>
-      <div class="dot c-gold" style="top:90%;left:30%" data-to="4">4</div>
+      <img src="09_skill_embedded.png">
+      <div class="dot n" style="top:4%;left:50%" data-i="1">1</div>
+      <div class="dot p" style="top:80%;left:30%" data-i="2">2</div>
+      <div class="dot b" style="top:80%;left:55%" data-i="3">3</div>
+      <div class="dot g" style="top:86%;left:30%" data-i="4">4</div>
     </div>
     <div class="annotations-side">
-      <div class="anno-entry" data-idx="1"><div class="anno-num c-green">1</div><div class="anno-text"><b>镶嵌成功Toast</b><span>「✅ {passiveSkill.name} 已镶嵌到插槽N」绿色提示 + 蓝色粒子特效</span></div></div>
-      <div class="anno-entry" data-idx="2"><div class="anno-num c-purple">2</div><div class="anno-text"><b>插槽已镶嵌状态</b><span>圆环变紫色发光。内显 <code>embeddedPet.emoji</code>。<code>pet.slots[idx].embeddedPetId = selectedPet.id</code>，副宠 <code>status</code> 变为 'embedded'</span></div></div>
-      <div class="anno-entry" data-idx="3"><div class="anno-num c-blue">3</div><div class="anno-text"><b>未解锁插槽</b><span>插槽2/3仍显示🔒，灰色不可操作。需完成二/三阶突变解锁。点击锁定插槽无反应</span></div></div>
-      <div class="anno-entry" data-idx="4"><div class="anno-num c-gold">4</div><div class="anno-text"><b>技能名称标签</b><span>插槽下方显示 <code>embeddedPet.passiveSkill.name</code>，紫色文字。点击已镶嵌插槽 → 重新打开技能选择弹窗，可更换或卸下</span></div></div>
+      <div class="anno" data-i="1"><div class="an n">1</div><div class="at"><b>镶嵌成功Toast</b><span>「✅ {<code>passiveSkill.name</code>} 已镶嵌到插槽N」+ 蓝色粒子特效</span></div></div>
+      <div class="anno" data-i="2"><div class="an p">2</div><div class="at"><b>已镶嵌插槽</b><span>圆环紫色发光，内显 <code>embeddedPet.emoji</code>。数据：<code>slots[idx].embeddedPetId = selectedPet.id</code>，副宠 <code>status='embedded'</code></span></div></div>
+      <div class="anno" data-i="3"><div class="an b">3</div><div class="at"><b>未解锁插槽</b><span>🔒灰色，不可点击。需完成二/三阶突变。点击无反应</span></div></div>
+      <div class="anno" data-i="4"><div class="an g">4</div><div class="at"><b>技能名称标签</b><span>插槽下方显示 <code>embeddedPet.passiveSkill.name</code>。点击已镶嵌插槽 → 可重新选择（更换或卸下）</span></div></div>
     </div>
     <svg class="leader-svg"></svg>
   </div>
 </div>
 
-<footer>
-  宠物变异系统 UI 规格标注 v5 · <a href="../">查看交互Demo</a>
-</footer>
+<footer>宠物变异系统 UI 规格标注 v5 · <a href="../">查看交互Demo</a></footer>
 
 <script>
-// Draw leader lines from dots to annotations
-function drawLeaders() {
-  document.querySelectorAll('.spec-frame').forEach(frame => {
-    const svg = frame.querySelector('.leader-svg');
-    if (!svg) return;
-    const frameRect = frame.getBoundingClientRect();
-    svg.setAttribute('viewBox', `0 0 ${frame.offsetWidth} ${frame.offsetHeight}`);
-    svg.innerHTML = '';
-
-    frame.querySelectorAll('.dot').forEach(dot => {
-      const idx = dot.dataset.to;
-      const anno = frame.querySelector(`.anno-entry[data-idx="${idx}"]`);
-      if (!anno) return;
-
-      const dotRect = dot.getBoundingClientRect();
-      const annoRect = anno.getBoundingClientRect();
-
-      const x1 = dotRect.left - frameRect.left + dotRect.width / 2;
-      const y1 = dotRect.top - frameRect.top + dotRect.height / 2;
-      const x2 = annoRect.left - frameRect.left;
-      const y2 = annoRect.top - frameRect.top + annoRect.height / 2;
-
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', x1);
-      line.setAttribute('y1', y1);
-      line.setAttribute('x2', x2);
-      line.setAttribute('y2', y2);
-      svg.appendChild(line);
+function drawLeaders(){
+  document.querySelectorAll('.spec-frame').forEach(f=>{
+    const svg=f.querySelector('.leader-svg');if(!svg)return;
+    const fr=f.getBoundingClientRect();
+    svg.setAttribute('viewBox',`0 0 ${f.offsetWidth} ${f.offsetHeight}`);
+    svg.innerHTML='';
+    f.querySelectorAll('.dot').forEach(d=>{
+      const i=d.dataset.i;
+      const a=f.querySelector(`.anno[data-i="${i}"]`);if(!a)return;
+      const dr=d.getBoundingClientRect(),ar=a.getBoundingClientRect();
+      const x1=dr.left-fr.left+dr.width/2,y1=dr.top-fr.top+dr.height/2;
+      const x2=ar.left-fr.left,y2=ar.top-fr.top+ar.height/2;
+      const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+      l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+      svg.appendChild(l);
     });
   });
 }
-
-window.addEventListener('load', () => { setTimeout(drawLeaders, 200); });
-window.addEventListener('resize', drawLeaders);
-window.addEventListener('scroll', () => {}, { passive: true });
-
-// Active nav highlight
-const sections = document.querySelectorAll('.page-section');
-const navLinks = document.querySelectorAll('.topnav a');
-const observer = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      navLinks.forEach(l => l.classList.remove('active'));
-      const link = document.querySelector(`.topnav a[href="#${e.target.id}"]`);
-      if (link) link.classList.add('active');
-    }
-  });
-}, { threshold: 0.3 });
-sections.forEach(s => observer.observe(s));
+window.addEventListener('load',()=>setTimeout(drawLeaders,300));
+window.addEventListener('resize',drawLeaders);
+const secs=document.querySelectorAll('.page-section'),navs=document.querySelectorAll('.topnav a');
+new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){navs.forEach(l=>l.classList.remove('active'));const a=document.querySelector(`.topnav a[href="#${e.target.id}"]`);if(a)a.classList.add('active')}}),{threshold:.2}).observe&&secs.forEach(s=>new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){navs.forEach(l=>l.classList.remove('active'));const a=document.querySelector(`.topnav a[href="#${e.target.id}"]`);if(a)a.classList.add('active')}}),{threshold:.2}).observe(s));
 </script>
 </body>
 </html>
