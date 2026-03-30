@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Core Conquest Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#080a12;color:#ddd;font-family:'Inter',sans-serif;overflow:hidden;height:100vh;width:100vw;user-select:none}
+canvas{display:block;cursor:grab}canvas:active{cursor:grabbing}
+.hud{position:fixed;top:0;left:0;right:0;height:44px;background:linear-gradient(180deg,rgba(8,10,18,.95),rgba(8,10,18,.4));backdrop-filter:blur(8px);display:flex;align-items:center;padding:0 20px;z-index:100;border-bottom:1px solid rgba(255,255,255,.04)}
+.hud-t{font-family:'Cinzel',serif;font-size:15px;font-weight:700;letter-spacing:2px;color:rgba(210,190,140,.85)}
+.leg{position:fixed;top:52px;right:12px;background:rgba(10,12,22,.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px 16px;z-index:100;min-width:170px}
+.leg-t{font-family:'Cinzel',serif;font-size:9px;letter-spacing:1.5px;color:rgba(255,255,255,.35);margin-bottom:10px;text-transform:uppercase}
+.li{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;cursor:pointer;transition:opacity .2s}.li:hover{opacity:.8}.li.dim{opacity:.18}
+.ld{width:10px;height:10px;border-radius:50%;flex-shrink:0}.lc{margin-left:auto;font-size:10px;color:rgba(255,255,255,.3);font-family:'Cinzel',serif}
+.tip{position:fixed;pointer-events:none;background:rgba(8,10,18,.92);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 12px;z-index:200;opacity:0;transition:opacity .12s;min-width:140px}
+.tip.vis{opacity:1}
+.tn{font-family:'Cinzel',serif;font-weight:700;font-size:13px;margin-bottom:2px}.tt{font-size:10px;color:rgba(255,255,255,.4);margin-bottom:4px}.tc{font-size:10px;color:rgba(255,255,255,.5)}
+.ctrls{position:fixed;bottom:16px;right:16px;display:flex;flex-direction:column;gap:4px;z-index:100}
+.cb{width:32px;height:32px;border-radius:7px;border:1px solid rgba(255,255,255,.07);background:rgba(10,12,22,.8);color:rgba(255,255,255,.55);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}.cb:hover{background:rgba(30,30,50,.9);color:#fff}
+.sb{position:fixed;bottom:0;left:0;right:0;height:26px;background:rgba(8,10,18,.85);border-top:1px solid rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;gap:24px;font-size:10px;color:rgba(255,255,255,.25);z-index:100}
+.sv{color:rgba(210,190,140,.55);font-family:'Cinzel',serif}
+.tabs{margin-left:auto;display:flex;gap:12px}
+.tab{font-size:11px;font-family:'Cinzel',serif;color:rgba(255,255,255,0.4);cursor:pointer;padding:4px 8px;border-bottom:2px solid transparent;transition:all 0.2s;letter-spacing:1px}
+.tab:hover{color:#fff}
+.tab.act{color:rgba(210,190,140,1);border-bottom:2px solid rgba(210,190,140,1)}
+</style>
+</head>
+<body>
+<canvas id="C"></canvas>
+<div class="hud">
+  <div class="hud-t" id="mN">THE ABYSSAL UNDERWORLD</div>
+  <div class="tabs">
+    <div class="tab act" onclick="switchMap(0)">THE UNDERWORLD</div>
+    <div class="tab" onclick="switchMap(1)">THE MORTAL EXPANSE</div>
+    <div class="tab" onclick="switchMap(2)">THE CELESTIAL SPIRE</div>
+  </div>
+</div>
+<div class="leg" id="leg"></div>
+<div class="tip" id="tip"><div class="tn" id="tN"></div><div class="tt" id="tT"></div><div class="tc" id="tC"></div></div>
+<div class="ctrls"><button class="cb" id="zi">+</button><button class="cb" id="zo">−</button><button class="cb" id="rv">⌂</button></div>
+<div class="sb"><span>Cities <span class="sv" id="sT">130</span></span><span>Roads <span class="sv" id="sE">0</span></span><span>Zoom <span class="sv" id="sZ">100%</span></span></div>
+
+<script>
+const MAPS=[
+  {
+    name:'The Abyssal Underworld', mapScale:1.0, minD:42, bg1:[10,12,22], bg2:[8,10,18],
+    zones:[[.88,.98],[.75,.88],[.48,.84],[.32,.60],[.20,.42],[.14,.26]],
+    tiers:[
+      {id:'main',n:'Capital',cn:'主城',count:10,color:'#e8edf5',glow:'rgba(232,237,245,.45)',r:14},
+      {id:'border',n:'Border',cn:'边境城',count:30,color:'#3ddc84',glow:'rgba(61,220,132,.35)',r:10},
+      {id:'standard',n:'Standard',cn:'标准城',count:42,color:'#4dacff',glow:'rgba(77,172,255,.35)',r:8},
+      {id:'front',n:'Frontline',cn:'前线城',count:24,color:'#b388ff',glow:'rgba(179,136,255,.35)',r:8},
+      {id:'military',n:'Military',cn:'军事城',count:16,color:'#ffab40',glow:'rgba(255,171,64,.35)',r:9},
+      {id:'hub_enter',n:'Hub-Enter',cn:'枢纽入口',count:8,color:'#ff5252',glow:'rgba(255,82,82,.45)',r:10}
+    ]
+  },
+  {
+    name:'The Mortal Expanse', mapScale:0.75, minD:75, bg1:[16,28,20], bg2:[10,18,14],
+    zones:[[.98,.99],[.75,.88],[.55,.75],[.35,.50],[.20,.35],[.10,.25]],
+    tiers:[
+      {id:'hub_exit',n:'Hub-Exit',cn:'枢纽出口',count:0,color:'#ffffff',glow:'rgba(255,255,255,.6)',r:14},
+      {id:'standard',n:'Standard',cn:'标准城',count:24,color:'#3ddc84',glow:'rgba(61,220,132,.35)',r:10},
+      {id:'military',n:'Military',cn:'军事城',count:5,color:'#4dacff',glow:'rgba(77,172,255,.35)',r:8},
+      {id:'rare',n:'Rare',cn:'稀有城',count:7,color:'#b388ff',glow:'rgba(179,136,255,.35)',r:8},
+      {id:'elite',n:'Elite',cn:'精英城',count:6,color:'#ffab40',glow:'rgba(255,171,64,.35)',r:9},
+      {id:'hub_enter',n:'Hub-Enter',cn:'枢纽入口',count:4,color:'#ff5252',glow:'rgba(255,82,82,.45)',r:10}
+    ]
+  },
+  {
+    name:'The Celestial Spire', mapScale:0.60, minD:95, bg1:[15,35,45], bg2:[10,18,24],
+    zones:[[.98,.99],[.75,.88],[.50,.70],[.30,.45],[.15,.30],[.08,.20]],
+    tiers:[
+      {id:'hub_exit',n:'Hub-Exit',cn:'枢纽出口',count:0,color:'#ffffff',glow:'rgba(255,255,255,.6)',r:14},
+      {id:'standard',n:'Standard',cn:'标准城',count:12,color:'#3ddc84',glow:'rgba(61,220,132,.35)',r:10},
+      {id:'military',n:'Military',cn:'军事城',count:3,color:'#4dacff',glow:'rgba(77,172,255,.35)',r:8},
+      {id:'rare',n:'Rare',cn:'稀有城',count:3,color:'#b388ff',glow:'rgba(179,136,255,.35)',r:8},
+      {id:'boss',n:'Boss',cn:'首领城',count:3,color:'#ffab40',glow:'rgba(255,171,64,.35)',r:9},
+      {id:'hub_enter',n:'Hub-Enter',cn:'枢纽入口',count:1,color:'#ff5252',glow:'rgba(255,82,82,.45)',r:16}
+    ]
+  }
+];
+
+let curMapIdx=0;
+let TIERS=MAPS[0].tiers, ZONES=MAPS[0].zones, mapConfig=MAPS[0];
+
+const PFX=['Frost','Storm','Iron','Raven','Wolf','Shadow','Fire','Stone','Dawn','Dusk','Thunder','Ice','Silver','Gold','Star','Wind','Mist','Ember','Thorn','Crown','Rune','Fell','North','Ash','Oak','Deep','High','Gray','Red','Dark','Bright','Wild','Pale','Old','Ever','Far','Sun','Moon','Sea','Sky','Blood','Bone','Steel','Drake','Hawk','Bear','Elk','Wyrm'];
+const SFX={main:['Throne','Realm','Crown','Spire','Citadel','Dominion','Summit','Crest'],border:['Gate','Mark','Wall','Ward','Edge','Pass','Post','Watch','Bound'],standard:['Heim','Stead','Haven','Dale','Ford','Field','Vale','Town','Hold'],front:['Blade','Spear','Shield','Guard','Strike','Charge','Front','Clash'],military:['Fort','Garrison','Arsenal','Stronghold','Barracks','Command','Base'],hub:['Heart','Core','Nexus','Root','Origin','Anchor'],rare:['Sanctum','Vault','Shrine','Temple','Oasis','Bower'],elite:['Keep','Castle','Palace','Citadel','Fortress'],boss:['Lair','Den','Pit','Throne','Cavern'],spire:['Peak','Pinnacle','Apex','Zenith','Crown']};
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+let nodes=[],edges=[],stars=[];
+let hovered=null,hlTier=null;
+let panX=0,panY=0,zoom=1,dragging=false,dsx,dsy,dpx,dpy,phase=0;
+const canvas=document.getElementById('C'),ctx=canvas.getContext('2d');
+
+// Global organic distortion — asymmetric blob, NOT heart-shaped
+function warpPos(x,y,cx,cy){
+  const dx=x-cx,dy=y-cy;
+  const r=Math.hypot(dx,dy),a=Math.atan2(dy,dx);
+  // Asymmetric distortion using frequencies 1,4,7 (avoids 2-fold heart symmetry)
+  const rWarp=1+.11*Math.sin(1*a+0.3)+.07*Math.sin(4*a+4.1)+.05*Math.sin(7*a+1.7);
+  // Angular distortion
+  const aWarp=a+.06*Math.sin(2*a+4.5)+.03*Math.sin(7*a+2.8);
+  const nr=r*rWarp;
+  return{x:cx+Math.cos(aWarp)*nr, y:cy+Math.sin(aWarp)*nr};
+}
+
+function dist2(a,b){return(a.x-b.x)**2+(a.y-b.y)**2}
+function segsCross(x1,y1,x2,y2,x3,y3,x4,y4){
+  const d1=(x4-x3)*(y1-y3)-(y4-y3)*(x1-x3),d2=(x4-x3)*(y2-y3)-(y4-y3)*(x2-x3);
+  const d3=(x2-x1)*(y3-y1)-(y2-y1)*(x3-x1),d4=(x2-x1)*(y4-y1)-(y2-y1)*(x4-x1);
+  return((d1>0&&d2<0)||(d1<0&&d2>0))&&((d3>0&&d4<0)||(d3<0&&d4>0));
+}
+// Point-to-segment distance (for near-miss detection)
+function ptSegDist(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,len2=dx*dx+dy*dy;
+  if(len2<.01)return Math.hypot(px-ax,py-ay);
+  let t=((px-ax)*dx+(py-ay)*dy)/len2;
+  t=Math.max(0,Math.min(1,t));
+  return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+}
+// Check if edge passes too close to any non-endpoint node
+function edgeNearNode(a,b){
+  for(const n of nodes){
+    if(n===a||n===b)continue;
+    if(ptSegDist(n.x,n.y,a.x,a.y,b.x,b.y) < n.radius + 8)return true;
+  }
+  return false;
+}
+function crossesAny(a,b){
+  // Check segment crossing
+  for(const e of edges){
+    if(e.from===a||e.from===b||e.to===a||e.to===b)continue;
+    if(segsCross(a.x,a.y,b.x,b.y,e.from.x,e.from.y,e.to.x,e.to.y))return true;
+  }
+  // Check near-miss (road passes too close to a city)
+  if(edgeNearNode(a,b))return true;
+  return false;
+}
+function addEdge(a,b,cc){
+  const k=[a.id,b.id].sort().join('|');
+  if(edges.find(e=>e.k===k))return false;
+  edges.push({from:a,to:b,k});
+  a.conns.push(b.id);b.conns.push(a.id);
+  cc.set(a.id,cc.get(a.id)+1);cc.set(b.id,cc.get(b.id)+1);return true;
+}
+function tryAddEdge(a,b,cc){
+  if(crossesAny(a,b))return false;
+  return addEdge(a,b,cc);
+}
+
+let ghostNodes = [];
+
+function switchMap(idx) {
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    if(i === idx) el.classList.add('act'); else el.classList.remove('act');
+  });
+
+  ghostNodes = [];
+  if (idx > 0) {
+    // PASS 1: Generate previous map silently to extract geometric hub anchors
+    curMapIdx = idx - 1;
+    mapConfig = MAPS[curMapIdx]; TIERS = mapConfig.tiers; ZONES = mapConfig.zones;
+    generate();
+    
+    const finalTier = TIERS[TIERS.length-1].id;
+    const hubs = nodes.filter(n => n.tier === finalTier);
+    
+    const cx = canvas.width/2, cy = (canvas.height-26)/2+22;
+    let maxBound=0;
+    hubs.forEach(h=>{
+      const d=Math.max(Math.abs(h.x-cx), Math.abs(h.y-cy));
+      if(d>maxBound)maxBound=d;
+    });
+    
+    // Scale precisely mathematically outwards referencing square bounds to frame seamlessly
+    const currScale = MAPS[idx].mapScale;
+    const currR = Math.min(canvas.width,canvas.height-70)*0.34*currScale;
+    const targetBound = currR * 1.04; // Pushed out slightly further perfectly to graze the border visually
+    const scale = targetBound / (maxBound || 1);
+    
+    const targetTier = MAPS[idx].tiers[0];
+    ghostNodes = hubs.map((h, i) => ({
+       name: h.name.replace('Entrance', 'Exit').replace('Enter', 'Exit'),
+       x: cx + (h.x - cx)*scale,
+       y: cy + (h.y - cy)*scale,
+       r: targetTier.r,
+       oColor: targetTier.color,
+       oGlow: targetTier.glow
+    }));
+  }
+
+  // PASS 2: Configure state for the actual map and generate
+  curMapIdx = idx;
+  mapConfig = MAPS[idx];
+  TIERS = mapConfig.tiers;
+  ZONES = mapConfig.zones;
+  document.getElementById('mN').textContent = mapConfig.name.toUpperCase();
+  
+  panX=0; panY=0; zoom=1;
+  buildLegend();
+  generate();
+}
+
+function generate(){
+  const rng=mulberry32(2026);
+  nodes=[];edges=[];
+  const W=canvas.width,H=canvas.height;
+  const cx=W/2,cy=(H-26)/2+22;
+  const mapR=Math.min(W,H-70)*0.34*mapConfig.mapScale;
+  stars=[];for(let i=0;i<200;i++)stars.push({x:rng()*W,y:rng()*H,s:rng()*1.2+.3,b:rng()});
+  const sh=[...PFX].sort(()=>rng()-.5);let ni=0;
+  function getMax(t){switch(t){case'hub':case'spire':return 8;case'main':return 3;case'military':case'boss':case'elite':return 6;case'border':return 4;case'front':case'rare':return 5;default:return 5;}}
+
+  function placeInZone(tier,ti,count){
+    const [rMin,rMax]=ZONES[ti];
+    const placed=[];
+    for(let i=0;i<count;i++){
+      const baseAngle=(2*Math.PI*i/count)-Math.PI/2;
+      const isCore=ti===TIERS.length-1;
+      // Core geometries strictly rigid to emphasize symmetry without jitter
+      const angJitScale=isCore?0:.9; 
+      const angle=baseAngle+(rng()-.5)*2*Math.PI/count*angJitScale;
+      // Multi-node cores on Maps >= 2 bind to outer max zone bounds to forcefully prevent them stacking too densely inside the 0.75 limit
+      const rFrac=isCore ? (curMapIdx > 0 && count > 1 ? rMax : rMin) : rMin+rng()*(rMax-rMin);
+      const r = ((isCore && count === 1) ? 0 : rFrac*mapR) * (curMapIdx > 0 ? 0.75 : 1);
+      
+      // Changed to natural circle orbit; allows Map > 0 outer rings to scale perfectly without projecting square corners into the borders
+      const rawX = cx+Math.cos(angle)*r;
+      const rawY = cy+Math.sin(angle)*r;
+      
+      const wp=warpPos(rawX,rawY,cx,cy);
+      const sfx=SFX[tier.id]||SFX['standard'];
+      const node={id:`${tier.id}_${i}`,tier:tier.id,ti,idx:i,
+        name:sh[ni%sh.length]+sfx[i%sfx.length],
+        x:wp.x,y:wp.y,radius:tier.r,color:tier.color,glow:tier.glow,
+        angle,conns:[]};
+      nodes.push(node);placed.push(node);ni++;
+    }
+    return placed;
+  }
+
+  let layer0Nodes=[];
+  let layer1Nodes=[];
+
+  if (curMapIdx===0) {
+    const sqHalf=mapR*0.88; 
+    for(let i=0;i<10;i++){
+      const baseAngle=(2*Math.PI*i/10)-Math.PI/2;
+      const angle=baseAngle+(rng()-.5)*.08; 
+      const ca=Math.cos(angle),sa=Math.sin(angle);
+      const maxExt=Math.max(Math.abs(ca),Math.abs(sa));
+      const sx=ca/maxExt*sqHalf*(0.96+rng()*.02);
+      const sy=sa/maxExt*sqHalf*(0.96+rng()*.02);
+      const sfx=SFX[TIERS[0].id];
+      const node={id:`main_${i}`,tier:'main',ti:0,idx:i,
+        name:sh[ni%sh.length]+sfx[i%sfx.length],
+        x:cx+sx,y:cy+sy,radius:TIERS[0].r,color:TIERS[0].color,glow:TIERS[0].glow,
+        angle,conns:[]};
+      nodes.push(node);layer0Nodes.push(node);ni++;
+    }
+    const borderTier=TIERS[1];
+    layer0Nodes.forEach((cap,ci)=>{
+      const capAngle=Math.atan2(cap.y-cy,cap.x-cx);
+      for(let j=0;j<3;j++){
+        const spread=(j-1)*(.22+rng()*.03); 
+        const bAngle=capAngle+spread;
+        const z1=ZONES[1];
+        const bDist=mapR*(z1[0] + rng()*(z1[1]-z1[0]));
+        const bx=cx+Math.cos(bAngle)*bDist;
+        const by=cy+Math.sin(bAngle)*bDist;
+        const sfx=SFX[borderTier.id]; const idx=ci*3+j;
+        const node={id:`border_${idx}`,tier:'border',ti:1,idx,
+          name:sh[ni%sh.length]+sfx[idx%sfx.length],
+          x:bx,y:by,radius:borderTier.r,color:borderTier.color,glow:borderTier.glow,
+          angle:bAngle,conns:[]};
+        nodes.push(node);layer1Nodes.push(node);ni++;
+      }
+    });
+    for(let ti=2;ti<TIERS.length;ti++) placeInZone(TIERS[ti],ti,TIERS[ti].count);
+  } else {
+    // Inject fully native opaque Ghost nodes natively as ti=0 Outer Edge anchoring elements
+    ghostNodes.forEach((g, gi) => {
+      const hn = {
+         id: `ghost_${gi}`, tier: 'hub_exit', ti: 0, idx: gi,
+         name: g.name, x: g.x, y: g.y, radius: g.r, color: g.oColor, glow: g.oGlow,
+         angle: Math.atan2(g.y-cy, g.x-cx), conns: []
+         // isGhost removed, functions indistinguishably from Capital 100% physically.
+      };
+      nodes.push(hn); layer0Nodes.push(hn);
+    });
+    
+    // Explicitly mirror Map 1 Capital geometric generation locking Hub-Exits to Standard tiers (1:3 ratios unconditionally)
+    const stdTier=TIERS[1];
+    layer0Nodes.forEach((cap,ci)=>{
+      const capAngle=Math.atan2(cap.y-cy,cap.x-cx);
+      for(let j=0;j<3;j++){
+        const spread=(j-1)*(.22+rng()*.03); 
+        const bAngle=capAngle+spread;
+        const z1=ZONES[1];
+        const bDist=mapR*(z1[0] + rng()*(z1[1]-z1[0])) * 0.75; // Expanded closer to bounds safely 
+        const bx=cx+Math.cos(bAngle)*bDist;
+        const by=cy+Math.sin(bAngle)*bDist;
+        const sfx=SFX[stdTier.id] || SFX['standard']; 
+        const idx=ci*3+j;
+        const node={id:`${stdTier.id}_${idx}`,tier:stdTier.id,ti:1,idx,
+          name:sh[ni%sh.length]+sfx[idx%sfx.length],
+          x:bx,y:by,radius:stdTier.r,color:stdTier.color,glow:stdTier.glow,
+          angle:bAngle,conns:[]};
+        nodes.push(node);layer1Nodes.push(node);ni++;
+      }
+    });
+    // Proceed building interior zones safely decoupled from outmost rings
+    for(let ti=2;ti<TIERS.length;ti++) placeInZone(TIERS[ti],ti,TIERS[ti].count);
+  }
+
+  // Relaxation — stronger force to make all nodes evenly placed as requested
+  // Compress inner physics padding for later maps to explicitly avoid repulsive overlap pushing nodes into the outer rings
+  const minD = curMapIdx > 0 ? mapConfig.minD * 0.75 : mapConfig.minD; 
+  for(let iter=0;iter<80;iter++){
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        // Outer layer (ti=0) and Core layer (Hubs) are completely pinned
+        const iPinned = nodes[i].ti===0 || nodes[i].ti===TIERS.length-1;
+        const jPinned = nodes[j].ti===0 || nodes[j].ti===TIERS.length-1;
+        if(iPinned && jPinned) continue;
+        const dx=nodes[j].x-nodes[i].x,dy=nodes[j].y-nodes[i].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<minD&&d>.1){
+          // Elastic push back to making things uniform
+          const push=(minD-d)*0.15; 
+          const ux=(dx/d)*push,uy=(dy/d)*push;
+          if(!iPinned){ nodes[i].x-=ux; nodes[i].y-=uy; }
+          if(!jPinned){ nodes[j].x+=ux; nodes[j].y+=uy; }
+        }
+      }
+    }
+  }
+
+  // Circle-to-square mapping — explicit bounding box tension
+  const cx2=cx,cy2=cy;
+  nodes.forEach(n=>{
+    if (curMapIdx > 0 || n.ti===0 || n.ti===TIERS.length-1) return; // Never mathematically mutate natively orthogonal Capital/Hub geometries
+    const dx=n.x-cx2,dy=n.y-cy2;
+    const r=Math.hypot(dx,dy);
+    if(r<1)return;
+    const a=Math.atan2(dy,dx);
+    const maxCos=Math.max(Math.abs(Math.cos(a)),Math.abs(Math.sin(a)));
+    const squareR=1/maxCos;
+    const blend=Math.min(1,(r/mapR)*.7);
+    const factor=1+(squareR-1)*blend*.40;
+    n.x=cx2+dx*factor;
+    n.y=cy2+dy*factor;
+  });
+
+  // Unified geometric locking complete
+
+  // ═══ BUILD EDGES (non-crossing + near-miss check) ═══
+  const cc=new Map();nodes.forEach(n=>cc.set(n.id,0));
+  edges=[];
+  function dist2(a,b){const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy;}
+  function crosses(A,B,C,D){
+    const d=(D.y-C.y)*(B.x-A.x)-(D.x-C.x)*(B.y-A.y);if(d===0)return false;
+    const ua=((D.x-C.x)*(A.y-C.y)-(D.y-C.y)*(A.x-C.x))/d;
+    const ub=((B.x-A.x)*(A.y-C.y)-(B.y-A.y)*(A.x-C.x))/d;
+    return(ua>0.001&&ua<0.999&&ub>0.001&&ub<0.999);
+  }
+  function crossesAny(a,b){
+    for(const e of edges){
+      if(e.from===a||e.from===b||e.to===a||e.to===b)continue;
+      if(crosses(a,b,e.from,e.to))return true;
+    }
+    // Deep near-miss check to stop edge intersections around cities!
+    for(const n of nodes){
+      if(n===a || n===b) continue;
+      if(ptSegDist(n.x,n.y, a.x,a.y, b.x,b.y) < n.radius + 8) return true;
+    }
+    return false;
+  }
+  function addEdge(a,b,cc){
+    edges.push({from:a,to:b});
+    a.conns.push(b);b.conns.push(a);
+    cc.set(a.id,cc.get(a.id)+1);cc.set(b.id,cc.get(b.id)+1);
+  }
+  function tryAddEdge(a,b,cc){
+    if(crossesAny(a,b))return false;
+    addEdge(a,b,cc);return true;
+  }
+  function ptSegDist(px,py, x1,y1, x2,y2){
+    const l2=(x2-x1)**2+(y2-y1)**2;if(l2===0)return Math.hypot(px-x1,py-y1);
+    let t=((px-x1)*(x2-x1)+(py-y1)*(y2-y1))/l2;t=Math.max(0,Math.min(1,t));
+    return Math.hypot(px-(x1+t*(x2-x1)),py-(y1+t*(y2-y1)));
+  }
+  function segsCross(x1,y1,x2,y2,x3,y3,x4,y4){
+    return crosses({x:x1,y:y1},{x:x2,y:y2},{x:x3,y:y3},{x:x4,y:y4});
+  }
+
+  // Phase 0: Core->SubCore ONLY (each center connects to 2-3 NEAREST outward nodes of tier-1)
+  const cores=nodes.filter(n=>n.ti===TIERS.length-1);
+  const subs=nodes.filter(n=>n.ti===TIERS.length-2);
+  cores.forEach(h=>{
+    if (curMapIdx === 2) {
+      // Map 3 Explicit override: center connects to ALL Orange and ALL Purple nodes directly
+      const allSubs=nodes.filter(n=>n.ti===TIERS.length-2 || n.ti===TIERS.length-3);
+      for(const s of allSubs) if(!crossesAny(h,s)) addEdge(h,s,cc);
+    } else {
+      const ha=Math.atan2(h.y-cy, h.x-cx);
+      const nearest=[...subs].filter(m=>{
+        let diff=Math.abs(ha-Math.atan2(m.y-cy, m.x-cx));
+        if(diff>Math.PI) diff=2*Math.PI-diff;
+        return diff < Math.PI/2.5; // strictly outward cone
+      }).sort((a,b)=>dist2(h,a)-dist2(h,b));
+      const want=2+Math.floor(rng()*2); // 2 or 3
+      let c=0;
+      for(const m of nearest){
+        if(c>=want)break;
+        if(!crossesAny(h,m)){tryAddEdge(h,m,cc)&&c++;}
+      }
+    }
+  });
+
+  // Phase 1: Layer0→Layer1 exactly 1:3 ratio mathematically enforced mapping
+  layer0Nodes.forEach((mc,ci)=>{
+    for(let j=0;j<3;j++) addEdge(mc,layer1Nodes[ci*3+j],cc);
+  });
+
+  // Phase 2: All other candidate edges (free connections, no hub↔hub, no hub↔non-military)
+  const cands=[];
+  for(let i=0;i<nodes.length;i++){
+    for(let j=i+1;j<nodes.length;j++){
+      const a=nodes[i],b=nodes[j];
+      // Outer Rim native restriction: must only connect inward to sub-rim
+      if(a.ti===0&&b.ti!==1)continue;
+      if(b.ti===0&&a.ti!==1)continue;
+      // Core native restriction: must only connect outward to sub-core
+      const isACore=a.ti===TIERS.length-1, isBCore=b.ti===TIERS.length-1;
+      if(isACore || isBCore){
+        if(isACore&&b.ti!==TIERS.length-2)continue;
+        if(isBCore&&a.ti!==TIERS.length-2)continue;
+        const hn = isACore?a:b, mn = isACore?b:a;
+        const ha=Math.atan2(hn.y-cy, hn.x-cx), ma=Math.atan2(mn.y-cy, mn.x-cx);
+        let diff=Math.abs(ha-ma);
+        if(diff>Math.PI) diff=2*Math.PI-diff;
+        if(diff>Math.PI/2.5) continue; // prevent core crossing
+      }
+      // Skip handled topology
+      if((a.ti===0&&b.ti===1)||(b.ti===0&&a.ti===1))continue;
+      const td=Math.abs(a.ti-b.ti);
+      if(td>2)continue;
+      const d=dist2(a,b);
+      const distScale = curMapIdx === 2 ? 1.6 : 1; // Map 3: wider reach for denser connectivity
+      const maxDist=mapR*(td===0?.25:td===1?.32:.45)*distScale;
+      if(d>maxDist*maxDist)continue;
+      // Aggressive priority to td===1 to forcefully guarantee step-by-step bridging inward
+      let score=Math.sqrt(d)*(td===0?1.05:td===1?.40:1.4);
+      // Explicitly encourage green(border) <-> blue(standard) connections
+      if((a.tier==='border'&&b.tier==='standard')||(b.tier==='border'&&a.tier==='standard')) score*=0.5;
+      cands.push({a,b,score});
+    }
+  }
+  cands.sort((a,b)=>a.score-b.score);
+
+  // Guarantee inner nodes have enough connection slots to form inward/outward bridges
+  const maxConnBoost = curMapIdx === 2 ? 3 : 0; // Map 3: boost all connection caps 
+  function getMax(t){return (t==='border'?7:t==='military'?6:t==='frontline'?5:4) + maxConnBoost;}
+  for(const e of cands){
+    if(cc.get(e.a.id)>=getMax(e.a.tier)||cc.get(e.b.id)>=getMax(e.b.tier))continue;
+    if(crossesAny(e.a,e.b))continue;
+    tryAddEdge(e.a,e.b,cc);
+  }
+
+  // Phase 3: Ensure min 2 connections per node
+  nodes.forEach(n=>{
+    if(cc.get(n.id)>=2)return;
+    const pool=nodes.filter(o=>{
+      if(o===n||cc.get(o.id)>=getMax(o.tier))return false;
+      const isCore = n.ti===TIERS.length-1 || o.ti===TIERS.length-1;
+      if(isCore){
+        const hn = n.ti===TIERS.length-1?n:o, mn = n.ti===TIERS.length-1?o:n;
+        if(mn.ti !== TIERS.length-2) return false; // Core only connects to sub-core
+        const ha=Math.atan2(hn.y-cy, hn.x-cx), ma=Math.atan2(mn.y-cy, mn.x-cx);
+        let diff=Math.abs(ha-ma);
+        if(diff>Math.PI) diff=2*Math.PI-diff;
+        if(diff>Math.PI/2.5) return false;
+        return true;
+      }
+      
+      // Outer rim exclusively bridges to sub-rim directly
+      if(n.ti===0)return o.ti===1;
+      if(o.ti===0)return n.ti===1;
+      return Math.abs(o.ti-n.ti)<=2;
+    }).sort((a,b)=>dist2(n,a)-dist2(n,b));
+    for(const c of pool){
+      if(cc.get(n.id)>=2)break;
+      if(!crossesAny(n,c))tryAddEdge(n,c,cc);
+    }
+    // Strict enforcement fallback removed (we trust Phase 4 to cleanly slice nearby viable crossbeams without forcing near-misses)
+  });
+
+  // Phase 3.5: Extreme Graph Solvency Guarantee (BFS Flood Fill to forcibly repair any severed geometry islands bridging to topological core mesh)
+  const visited=new Set(), q=[nodes[0]]; visited.add(nodes[0].id); let head=0;
+  while(head<q.length){
+    q[head++].conns.forEach(c=>{ if(!visited.has(c.id)){visited.add(c.id); q.push(c);} });
+  }
+  let safeIter=0;
+  while(visited.size<nodes.length && safeIter++<30){
+    const unvisited = nodes.filter(n=>!visited.has(n.id));
+    let bestDist=Infinity, bestA=null, bestB=null;
+    unvisited.forEach(u=>{
+      nodes.filter(v=>visited.has(v.id)).forEach(v=>{
+        if(u.ti===0 && v.ti!==1) return; if(v.ti===0 && u.ti!==1) return;
+        if(u.ti===TIERS.length-1 && v.ti!==TIERS.length-2) return; if(v.ti===TIERS.length-1 && u.ti!==TIERS.length-2) return;
+        if(crossesAny(u,v)) return;
+        const d = dist2(u,v);
+        if(d<bestDist) { bestDist=d; bestA=u; bestB=v; }
+      });
+    });
+    if(bestA && bestB){
+      tryAddEdge(bestA,bestB,cc); // Resurrect entirely severed components
+      const q2=[bestA]; visited.add(bestA.id); let h2=0;
+      while(h2<q2.length){ q2[h2++].conns.forEach(c=>{ if(!visited.has(c.id)){visited.add(c.id); q2.push(c);} }); }
+    } else break; // Mathematically irreconcilable without violating crossing geometry rules
+  }
+
+  // Phase 4: Extreme Edge-Splitting Rescue (mathematically guarantees no dead-ends, no crossings, no near-misses)
+  nodes.forEach(n => {
+    if (cc.get(n.id) >= 2) return;
+    let bestEdge = null, minDist = Infinity;
+    for (const e of edges) {
+      if (e.from === n || e.to === n) continue;
+      
+      const px = e.to.x - e.from.x, py = e.to.y - e.from.y;
+      const l2 = px*px + py*py;
+      if (l2===0) continue;
+      let t = ((n.x - e.from.x)*px + (n.y - e.from.y)*py) / l2;
+      t = Math.max(0, Math.min(1, t));
+      const px2 = e.from.x + t*px, py2 = e.from.y + t*py;
+      const d2 = (n.x - px2)**2 + (n.y - py2)**2;
+      
+      if (d2 < minDist) {
+        let canSplit = true;
+        for (const oe of edges) {
+          if (oe === e || oe.from === n || oe.to === n) continue;
+          if (segsCross(n.x, n.y, e.from.x, e.from.y, oe.from.x, oe.from.y, oe.to.x, oe.to.y) || 
+              segsCross(n.x, n.y, e.to.x, e.to.y, oe.from.x, oe.from.y, oe.to.x, oe.to.y)) { canSplit = false; break; }
+        }
+        if (!canSplit) continue;
+        
+        for (const mn of nodes) {
+           if (mn===n || mn===e.from || mn===e.to) continue;
+           if (ptSegDist(mn.x, mn.y, n.x, n.y, e.from.x, e.from.y) < mn.radius + 8 || 
+               ptSegDist(mn.x, mn.y, n.x, n.y, e.to.x, e.to.y) < mn.radius + 8) { canSplit = false; break; }
+        }
+        if (!canSplit) continue;
+        
+        minDist = d2; bestEdge = e; 
+      }
+    }
+    
+    if (bestEdge) {
+      edges = edges.filter(e => e !== bestEdge);
+      bestEdge.from.conns = bestEdge.from.conns.filter(id => id !== bestEdge.to.id);
+      bestEdge.to.conns = bestEdge.to.conns.filter(id => id !== bestEdge.from.id);
+      cc.set(bestEdge.from.id, cc.get(bestEdge.from.id) - 1);
+      cc.set(bestEdge.to.id, cc.get(bestEdge.to.id) - 1);
+      addEdge(n, bestEdge.from, cc);
+      addEdge(n, bestEdge.to, cc);
+    }
+  });
+
+  document.getElementById('sE').textContent=edges.length;
+  document.getElementById('sT').textContent=nodes.length;
+}
+
+// ═══ RENDERING ═══
+function w2s(x,y){return{x:(x+panX)*zoom+canvas.width/2*(1-zoom),y:(y+panY)*zoom+canvas.height/2*(1-zoom)}}
+function s2w(sx,sy){return{x:(sx-canvas.width/2*(1-zoom))/zoom-panX,y:(sy-canvas.height/2*(1-zoom))/zoom-panY}}
+
+function draw(){
+  phase+=.005;const W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  // BG
+  const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.65);
+  bg.addColorStop(0,`rgba(${mapConfig.bg1.join(',')},1)`);
+  bg.addColorStop(1,`rgba(${mapConfig.bg2.join(',')},1)`);
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  // Stars
+  stars.forEach(s=>{const p=w2s(s.x,s.y);const tw=.3+.7*(.5+.5*Math.sin(phase*2+s.b*20));ctx.fillStyle=`rgba(180,190,220,${.08+tw*.25})`;ctx.fillRect(p.x,p.y,s.s,s.s);});
+
+  // Square border
+  const mapSz=Math.min(W,H-70)*0.34*mapConfig.mapScale; 
+  const bcx=W/2,bcy=(H-26)/2+22;
+  const bHalf=mapSz*(curMapIdx > 0 ? 1.18 : 1.05);
+  const tl=w2s(bcx-bHalf,bcy-bHalf),br=w2s(bcx+bHalf,bcy+bHalf);
+  ctx.strokeStyle='rgba(180,160,120,.25)';ctx.lineWidth=2;
+  ctx.strokeRect(tl.x,tl.y,br.x-tl.x,br.y-tl.y);
+  // Inner decorative border
+  const m2=4*zoom;
+  ctx.strokeStyle='rgba(180,160,120,.10)';ctx.lineWidth=1;
+  ctx.strokeRect(tl.x+m2,tl.y+m2,br.x-tl.x-m2*2,br.y-tl.y-m2*2);
+
+  // Edges
+  const cSet=hovered?new Set([hovered.id,...hovered.conns]):null;
+  edges.forEach(e=>{
+    const p1=w2s(e.from.x,e.from.y),p2=w2s(e.to.x,e.to.y);
+    if(hovered){
+      if(e.from===hovered||e.to===hovered){
+        const g=ctx.createLinearGradient(p1.x,p1.y,p2.x,p2.y);
+        g.addColorStop(0,e.from.color+'bb');g.addColorStop(1,e.to.color+'bb');
+        ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);
+        ctx.strokeStyle=g;ctx.lineWidth=2.5;ctx.stroke();return;
+      }else{ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.strokeStyle=e.from.isGhost||e.to.isGhost?'rgba(190,175,130,.01)':'rgba(190,175,130,.03)';ctx.lineWidth=.6;ctx.stroke();return;}
+    }
+    let a=.35,w=1.2; // Brighter default state
+    if(hlTier!==null){if(e.from.tier!==hlTier&&e.to.tier!==hlTier){a=.05;}else{a=.65;w=1.8;}}
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);
+    ctx.strokeStyle=`rgba(210,195,150,${a})`;ctx.lineWidth=w;ctx.stroke();
+  });
+
+  // Nodes
+  nodes.forEach(node=>{
+    const s=w2s(node.x,node.y),r=node.radius*zoom*(node===hovered?1.4:1);if(r<1)return;
+    let al=1, gi=1;
+    if(hovered){if(node===hovered)gi=2.5;else if(cSet.has(node.id))gi=1.5;else{al=.1;gi=.1;}}
+    if(hlTier!==null){if(node.tier!==hlTier){al=.1;gi=.08;}else gi=1.4;}
+    if(gi>.2&&r>2){
+      const pr=r*(1.5+Math.sin(phase*1.5+node.angle*2)*.2)*gi;
+      const gg=ctx.createRadialGradient(s.x,s.y,r*.3,s.x,s.y,pr);
+      gg.addColorStop(0,node.glow.replace(/[\d.]+\)$/,(.28*al*gi)+')'));gg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.beginPath();ctx.arc(s.x,s.y,pr,0,Math.PI*2);ctx.fillStyle=gg;ctx.fill();
+    }
+    ctx.beginPath();ctx.arc(s.x,s.y,r,0,Math.PI*2);
+    const fg=ctx.createRadialGradient(s.x-r*.3,s.y-r*.3,0,s.x,s.y,r);
+    fg.addColorStop(0,node.color+(al>.5?'ff':'30'));fg.addColorStop(1,node.color+(al>.5?'bb':'18'));
+    ctx.fillStyle=fg;ctx.fill();
+    ctx.strokeStyle=node.color+(al>.5?'55':'10');ctx.lineWidth=node===hovered?2.5:1;ctx.stroke();
+    if(r>4&&al>.3){ctx.beginPath();ctx.arc(s.x-r*.2,s.y-r*.25,r*.28,0,Math.PI*2);ctx.fillStyle=`rgba(255,255,255,${.2*al})`;ctx.fill();}
+    if(zoom>.7&&r>5&&al>.20){
+      ctx.font=`${Math.max(7,Math.min(10,r*.65))}px "Cinzel",serif`;
+      ctx.textAlign='center';ctx.textBaseline='top';
+      ctx.fillStyle=`rgba(220,210,190,${.6*al})`;ctx.fillText(node.name,s.x,s.y+r+3);
+    }
+  });
+  requestAnimationFrame(draw);
+}
+
+// ═══ INTERACTION ═══
+const tip=document.getElementById('tip');
+canvas.addEventListener('mousemove',e=>{
+  if(dragging){panX=dpx+(e.clientX-dsx)/zoom;panY=dpy+(e.clientY-dsy)/zoom;return;}
+  const wp=s2w(e.clientX,e.clientY);let found=null,minD=1e9;
+  nodes.forEach(n=>{const d=Math.hypot(wp.x-n.x,wp.y-n.y);if(d<n.radius*2.2&&d<minD){minD=d;found=n;}});
+  if(found!==hovered){
+    hovered=found;
+    if(found){
+      const t=TIERS.find(t=>t.id===found.tier);
+      document.getElementById('tN').textContent=found.name;document.getElementById('tN').style.color=found.color;
+      document.getElementById('tT').textContent=`${t.cn} · ${t.n} · Ring ${Math.max(1, found.ti+1)}`;
+      document.getElementById('tC').textContent=`Connections: ${found.conns.length}`;tip.classList.add('vis');
+    }else tip.classList.remove('vis');
+  }
+  if(hovered){let tx=e.clientX+14,ty=e.clientY+14;if(tx+170>innerWidth)tx=e.clientX-170;if(ty+70>innerHeight)ty=e.clientY-70;tip.style.left=tx+'px';tip.style.top=ty+'px';}
+});
+canvas.addEventListener('mousedown',e=>{dragging=true;dsx=e.clientX;dsy=e.clientY;dpx=panX;dpy=panY;});
+canvas.addEventListener('mouseup',()=>dragging=false);
+canvas.addEventListener('mouseleave',()=>{dragging=false;hovered=null;tip.classList.remove('vis');});
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();const d=e.deltaY>0?.9:1.1;const nz=Math.max(.3,Math.min(5,zoom*d));
+  const wx=(e.clientX-canvas.width/2*(1-zoom))/zoom-panX,wy=(e.clientY-canvas.height/2*(1-zoom))/zoom-panY;
+  zoom=nz;panX=(e.clientX-canvas.width/2*(1-zoom))/zoom-wx;panY=(e.clientY-canvas.height/2*(1-zoom))/zoom-wy;
+  document.getElementById('sZ').textContent=Math.round(zoom*100)+'%';
+},{passive:false});
+document.getElementById('zi').onclick=()=>{zoom=Math.min(5,zoom*1.3);document.getElementById('sZ').textContent=Math.round(zoom*100)+'%';};
+document.getElementById('zo').onclick=()=>{zoom=Math.max(.3,zoom*.7);document.getElementById('sZ').textContent=Math.round(zoom*100)+'%';};
+document.getElementById('rv').onclick=()=>{zoom=1;panX=0;panY=0;document.getElementById('sZ').textContent='100%';};
+
+// Legend
+function buildLegend(){
+  const p=document.getElementById('leg');p.innerHTML='<div class="leg-t">City Types</div>';
+  TIERS.forEach(t=>{const it=document.createElement('div');it.className='li';it.dataset.tier=t.id;
+  it.innerHTML=`<div class="ld" style="background:${t.color}"></div><span>${t.cn} ${t.n}</span><span class="lc">${t.count}</span>`;
+  it.onclick=()=>{if(hlTier===t.id){hlTier=null;document.querySelectorAll('.li').forEach(e=>e.classList.remove('dim'));}
+  else{hlTier=t.id;document.querySelectorAll('.li').forEach(e=>e.classList.toggle('dim',e.dataset.tier!==t.id));}};
+  p.appendChild(it);});
+}
+
+// Init
+canvas.width=innerWidth;canvas.height=innerHeight;buildLegend();switchMap(0);draw();
+window.addEventListener('resize',()=>{canvas.width=innerWidth;canvas.height=innerHeight;switchMap(curMapIdx);});
+</script>
+</body>
+</html>
