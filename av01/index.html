@@ -2,22 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>Top War Clone - Crowd Runner</title>
     <style>
-      body {
-        margin: 0;
-        padding: 0;
-        background-color: #000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 100%; height: 100%;
         overflow: hidden;
+        background-color: #000;
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        position: fixed;
       }
       #game-container {
-        width: 100%;
-        height: 100%;
+        width: 100%; height: 100%;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -26,11 +28,13 @@
         display: block;
         max-width: 100vw;
         max-height: 100vh;
+        max-height: -webkit-fill-available;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-CfsvGS1K.js"></script>
+    <script src="./assets/index-CfsvGS1K.js"></script>
+    <script defer src="./assets/mobile_patch.js"></script>
   </head>
   <body>
-    <div id="game-container"></div>
+    <div id="game-container"></div>
   </body>
 </html>

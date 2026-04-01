@@ -1,0 +1,96 @@
+effect_skill1_buff.png
+size: 967,253
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+chutu/buff/a_00041
+  rotate: false
+  xy: 72, 154
+  size: 101, 97
+  orig: 142, 212
+  offset: 29, 2
+  index: -1
+chutu/buff/a_00044
+  rotate: true
+  xy: 773, 137
+  size: 114, 148
+  orig: 142, 212
+  offset: 18, 2
+  index: -1
+chutu/buff/a_00047
+  rotate: true
+  xy: 557, 6
+  size: 132, 203
+  orig: 142, 212
+  offset: 3, 2
+  index: -1
+chutu/buff/a_00050
+  rotate: true
+  xy: 762, 2
+  size: 133, 203
+  orig: 142, 212
+  offset: 5, 2
+  index: -1
+chutu/buff/a_00053
+  rotate: true
+  xy: 360, 12
+  size: 128, 195
+  orig: 142, 212
+  offset: 8, 3
+  index: -1
+chutu/buff/a_00056
+  rotate: true
+  xy: 175, 15
+  size: 126, 183
+  orig: 142, 212
+  offset: 11, 4
+  index: -1
+chutu/buff/a_00059
+  rotate: true
+  xy: 2, 29
+  size: 123, 171
+  orig: 142, 212
+  offset: 13, 5
+  index: -1
+chutu/buff/a_00062
+  rotate: true
+  xy: 175, 146
+  size: 105, 161
+  orig: 142, 212
+  offset: 14, 6
+  index: -1
+chutu/buff/a_00065
+  rotate: true
+  xy: 338, 143
+  size: 108, 152
+  orig: 142, 212
+  offset: 15, 6
+  index: -1
+chutu/buff/a_00068
+  rotate: true
+  xy: 492, 142
+  size: 109, 142
+  orig: 142, 212
+  offset: 17, 7
+  index: -1
+chutu/buff/a_00071
+  rotate: true
+  xy: 636, 140
+  size: 111, 135
+  orig: 142, 212
+  offset: 18, 6
+  index: -1
+chutu/skill1/1_00090
+  rotate: false
+  xy: 27, 214
+  size: 43, 37
+  orig: 43, 37
+  offset: 0, 0
+  index: -1
+chutu/skill1/li_00048
+  rotate: false
+  xy: 2, 231
+  size: 23, 20
+  orig: 28, 24
+  offset: 3, 2
+  index: -1
