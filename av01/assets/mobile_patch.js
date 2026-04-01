@@ -53,6 +53,45 @@
       scene.__mobilePatchActive = false;
     });
 
+    // Completely intercept the scene's update loop to freeze it during Game Over / Win
+    // Also add performance cleanup: destroy off-screen objects each frame
+    if (!scene.__origUpdatePatchApplied) {
+        scene.__origUpdatePatchApplied = true;
+        var origUpdate = scene.update;
+        var _perfFrame = 0;
+        scene.update = function(time, delta) {
+            if (scene.isGameOver) {
+                if (scene.physics && scene.physics.world && !scene.physics.world.isPaused) {
+                     scene.physics.pause();
+                }
+                return;
+            }
+            if (origUpdate) {
+                origUpdate.call(scene, time, delta);
+            }
+            // Every 10 frames, clean up off-screen bullets and enemies
+            _perfFrame++;
+            if (_perfFrame % 10 === 0) {
+                var h = scene.scale.height;
+                var w = scene.scale.width;
+                if (scene.bullets) {
+                    scene.bullets.getChildren().forEach(function(b) {
+                        if (b.active && (b.y < -100 || b.y > h + 100 || b.x < -100 || b.x > w + 100)) {
+                            b.destroy();
+                        }
+                    });
+                }
+                if (scene.enemies) {
+                    scene.enemies.getChildren().forEach(function(e) {
+                        if (e.active && e.y > h + 200) {
+                            e.destroy();
+                        }
+                    });
+                }
+            }
+        };
+    }
+
     // Create the Swipe to Move tutorial overlay
     var swipeTutorial = scene.add.text(
       scene.scale.width / 2,
@@ -252,11 +291,33 @@
 
     
     /* -------------------------------------------------------------- */
-    /*  TRACK PRE-DEATH STATE                                         */
+    /*  TRACK PRE-DEATH STATE AND ENEMY TRACKING                      */
     /* -------------------------------------------------------------- */
-    scene.events.on("update", function() {
-        if (scene.crowd && scene.crowd.units && scene.crowd.units.length > 0) {
+    var _trackFrame = 0;
+    scene.events.on("update", function(time, delta) {
+        if (!scene.isGameOver && scene.crowd && scene.crowd.units && scene.crowd.units.length > 0) {
             scene.__lastKnownUnits = scene.crowd.units.length;
+        }
+
+        // Throttle enemy tracking to every 3rd frame for performance
+        _trackFrame++;
+        if (_trackFrame % 3 !== 0) return;
+
+        if (!scene.isGameOver && scene.enemies && scene.crowd && scene.crowd.leaderPoint) {
+            var lx = scene.crowd.leaderPoint.x;
+            var chaseY = scene.scale.height * 0.5;
+            var enemies = scene.enemies.getChildren();
+            for (var i = 0; i < enemies.length; i++) {
+                var e = enemies[i];
+                if (e.activeEnemy && !e.isBoss && e.y > chaseY) {
+                    var dx = lx - e.x;
+                    // Multiply speed by 3 to compensate for running every 3rd frame
+                    var speed = 180 * 3 * (delta / 1000); 
+                    if (Math.abs(dx) > 5) {
+                        e.x += (dx > 0 ? 1 : -1) * Math.min(Math.abs(dx), speed);
+                    }
+                }
+            }
         }
     });
 
@@ -272,6 +333,11 @@
       // Don't call origShowGameOver() to avoid scene.restart() and UI overlays
       scene.isGameOver = true;
       touchState.active = false;
+
+      // Pause Game completely
+      if (scene.physics) scene.physics.pause();
+      if (scene.spawnTimer) scene.spawnTimer.paused = true;
+      if (scene.fireTimer) scene.fireTimer.paused = true;
       
       // Dim background
       scene.__reviveOverlay = scene.add.rectangle(
