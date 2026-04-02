@@ -3326,6 +3326,7 @@ function generateChartData() {
   let p_lastSummons = 0;
   let p_wishCounter = 0;
   let p_globalJobXP = 0;
+  let p_xpBudget = 0;
     const S = window.SimState;
   // Parse stage-based breakpoint format: "[[1,12],[51,10]]"
   // Returns the exponent (as decimal) for a given stage number
@@ -3471,17 +3472,25 @@ function generateChartData() {
               }
               if (wMatrix[wMatrix.length-1][0] > 0 && curPulls >= wMatrix[wMatrix.length-1][0]) gachaLv = wMatrix.length - 1;
 
+              let nLv = Math.min(gachaLv, Math.max(0, nMatrix.length - 1));
               for (let i = 0; i < S.qualities.length; i++) {
-                  a_persistentExpected[i] += ((nMatrix[gachaLv][i] || 0) / 100) / (S.heroesPerQuality || 4);
+                  a_persistentExpected[i] += ((nMatrix[nLv]?.[i] || 0) / 100) / (S.heroesPerQuality || 4);
               }
-              
+              if (nMatrix[nLv]?.[7]) a_globalJobXP += (nMatrix[nLv][7]/100) * 10;
+              if (nMatrix[nLv]?.[8]) a_globalJobXP += (nMatrix[nLv][8]/100) * 20;
+              if (nMatrix[nLv]?.[9]) a_globalJobXP += (nMatrix[nLv][9]/100) * 40;
+
               if (a_summons >= (S.wishUnlockStage || 0)) { // Assume wish is unlocked natively or via config
                   a_wishCounter++;
                   if (a_wishCounter >= (S.wishPullRatio || 10)) {
                       a_wishCounter = 0;
+                      let wLv = Math.min(gachaLv, Math.max(0, wMatrix.length - 1));
                       for (let i = 1; i < S.qualities.length; i++) {
-                          a_persistentExpected[i] += ((wMatrix[gachaLv][i] || 0) / 100) / (S.heroesPerQuality || 4);
+                          a_persistentExpected[i] += ((wMatrix[wLv]?.[i] || 0) / 100) / (S.heroesPerQuality || 4);
                       }
+                      if (wMatrix[wLv]?.[8]) a_globalJobXP += (wMatrix[wLv][8]/100) * 25;
+                      if (wMatrix[wLv]?.[9]) a_globalJobXP += (wMatrix[wLv][9]/100) * 50;
+                      if (wMatrix[wLv]?.[10]) a_globalJobXP += (wMatrix[wLv][10]/100) * 100;
                   }
               }
 
@@ -3699,17 +3708,25 @@ function generateChartData() {
               }
               if (wMatrix[wMatrix.length-1][0] > 0 && curPulls >= wMatrix[wMatrix.length-1][0]) gachaLv = wMatrix.length - 1;
 
+              let nLv = Math.min(gachaLv, Math.max(0, nMatrix.length - 1));
               for (let i = 0; i < S.qualities.length; i++) {
-                  p_persistentExpected[i] += ((nMatrix[gachaLv][i] || 0) / 100) / (S.heroesPerQuality || 4);
+                  p_persistentExpected[i] += ((nMatrix[nLv]?.[i] || 0) / 100) / (S.heroesPerQuality || 4);
               }
+              if (nMatrix[nLv]?.[7]) p_globalJobXP += (nMatrix[nLv][7]/100) * 10;
+              if (nMatrix[nLv]?.[8]) p_globalJobXP += (nMatrix[nLv][8]/100) * 20;
+              if (nMatrix[nLv]?.[9]) p_globalJobXP += (nMatrix[nLv][9]/100) * 40;
               
               if (summons >= (S.wishUnlockStage || 0)) { // Assume wish is unlocked natively or via config
                   p_wishCounter++;
                   if (p_wishCounter >= (S.wishPullRatio || 10)) {
                       p_wishCounter = 0;
+                      let wLv = Math.min(gachaLv, Math.max(0, wMatrix.length - 1));
                       for (let i = 1; i < S.qualities.length; i++) {
-                          p_persistentExpected[i] += ((wMatrix[gachaLv][i] || 0) / 100) / (S.heroesPerQuality || 4);
+                          p_persistentExpected[i] += ((wMatrix[wLv]?.[i] || 0) / 100) / (S.heroesPerQuality || 4);
                       }
+                      if (wMatrix[wLv]?.[8]) p_globalJobXP += (wMatrix[wLv][8]/100) * 25;
+                      if (wMatrix[wLv]?.[9]) p_globalJobXP += (wMatrix[wLv][9]/100) * 50;
+                      if (wMatrix[wLv]?.[10]) p_globalJobXP += (wMatrix[wLv][10]/100) * 100;
                   }
               }
 
@@ -3753,7 +3770,7 @@ function generateChartData() {
         // Add to our available pool, sort by highest CP
         let pool = [...starterHeroes, ...cachedHeroesEV].sort((a,b) => b.cp - a.cp);
         
-        let p_xpBudget = p_globalJobXP;
+        p_xpBudget = p_globalJobXP;
         pool.forEach(h => {
              let max_stars = h.stars;
              let current_stars = 0;
@@ -3821,6 +3838,8 @@ function generateChartData() {
     }
 
     let cClinic = 0;
+    let clinicHps = 0; // Fix ReferenceError
+    let weaponClicks = 0, armorClicks = 0, sanctuaryClicks = 0;
     /* stripped */
     if (stage >= (S.clinicUnlockStage || 5)) {
       cClinic = Math.max(0, Math.floor((cFoundry + cTannery + cMine) / 3));
@@ -3873,6 +3892,7 @@ function generateChartData() {
       heroAtk: totalBaseHeroATK, heroHp: totalBaseHeroHP,
       weaponClicks: weaponClicks, armorClicks: armorClicks, sanctuaryClicks: sanctuaryClicks,
       gachaLv: curGachaLv, reqNext: reqNext,
+      totalXP: Math.round(p_globalJobXP), usedXP: Math.round(p_globalJobXP - p_xpBudget),
       heroSlots: cachedHeroesEV.slice(0, slots).map(h => ({ q: h.quality || 1, s: h.stars || 0, cp: Math.round(h.cp || (h.atk * 5 + h.hp)), own: h.hasCopy || 0 })).sort((a,b) => b.q - a.q || b.s - a.s || b.cp - a.cp),
       collectionAtkPct: cachedHeroesEV._totalCollectionPct || 0,
       cClinic: cClinic, clinicHps: Number(clinicHps.toFixed(2)),
@@ -3936,6 +3956,11 @@ function renderGachaMatrixGrid() {
     let matrix;
     try { matrix = JSON.parse(S[key] || '[]'); } catch(e) { matrix = []; }
     if (!Array.isArray(matrix) || matrix.length === 0) return '<div style="color:#666;font-size:10px">Invalid matrix</div>';
+    
+    // UI-side alignment migration for legacy arrays
+    if (isWish) {
+        matrix.forEach(row => { if (row.length === 10) row.splice(7, 0, 0); });
+    }
 
     const col0Label = isWish ? '卡尺升级' : 'Q1';
     const col0Color = isWish ? '#fbbf24' : qColors[0];
@@ -3947,13 +3972,11 @@ function renderGachaMatrixGrid() {
         <thead><tr style="color:rgba(255,255,255,0.4)">
           <th style="padding:1px 2px;text-align:left;width:24px;font-size:9px">Lv</th>
           <th style="padding:1px 1px;text-align:center;font-weight:600;font-size:9px;color:${col0Color}" title="${col0Title}">${col0Label}</th>`;
-    let maxColsHT = isWish ? 11 : 10;
     const extraColors = ['#fbbf24', '#f59e0b', '#d97706'];
-    for (let q = 1; q < maxColsHT; q++) {
-      let qLabelIdx = isWish ? (q - 1) : q;
-      let isXP = qLabelIdx >= 7;
-      let tLab = qLabels[qLabelIdx];
-      let tCol = isXP ? extraColors[qLabelIdx - 7] : qColors[qLabelIdx];
+    for (let i = 0; i < 9; i++) {
+      let isXP = i >= 6;
+      let tLab = qLabels[i + 1];
+      let tCol = isXP ? extraColors[i - 6] : qColors[i + 1];
       html += `<th style="padding:1px 1px;text-align:center;font-weight:600;font-size:9px;color:${tCol}">${tLab}</th>`;
     }
     html += `</tr></thead><tbody>`;
@@ -3970,7 +3993,8 @@ function renderGachaMatrixGrid() {
         } else {
           // If stored value is 0 or messed up in cache, apply defaults visually to help them
           const defs = [50, 100, 200, 400, 600, 800, 1000];
-          if (val0 === 0 && defs[lv]) { val0 = defs[lv]; matrix[lv][0] = val0; window.SimState[''+key] = JSON.stringify(matrix); }
+          let defVal = defs[lv] || (1000 + (lv - 6) * 500); 
+          if (val0 === 0 && defVal) { val0 = defVal; matrix[lv][0] = val0; window.SimState[''+key] = JSON.stringify(matrix); }
           html += `<td style="padding:1px 1px"><input type="number" value="${val0}" step="50" style="width:3.2rem;padding:2px;color:#fbbf24" class="${inputCls}" oninput="try{let m=JSON.parse(window.SimState['${key}']);m[${lv}][0]=parseFloat(this.value)||0;window.SimState['${key}']=JSON.stringify(m);window.renderSimulationChart();}catch(e){}"></td>`;
         }
       } else {
@@ -3978,13 +4002,13 @@ function renderGachaMatrixGrid() {
       }
 
       // Q2-Q7 and XP columns
-      let maxCols = isWish ? 11 : 10;
-      for (let q = 1; q < maxCols; q++) {
+      for (let i = 0; i < 9; i++) {
+        let q = isWish ? (i >= 6 ? i + 2 : i + 1) : i + 1;
         const val = matrix[lv][q] || 0;
-        const rd = q === (maxCols - 1) ? 'border-radius:0 6px 6px 0' : '';
+        const rd = i === 8 ? 'border-radius:0 6px 6px 0' : '';
         const dim = val === 0 ? 'opacity:0.25;' : '';
-        let step = (isWish && q >= 8) ? '5' : ((!isWish && q >= 7) ? '5' : '0.5'); // Larger steps for XP
-        let isXP = (isWish && q >= 8) || (!isWish && q >= 7);
+        let step = i >= 6 ? '5' : '0.5'; // Larger steps for XP
+        let isXP = i >= 6;
         let colorOverride = isXP ? 'color:#fbbf24;' : ''; // Yellow text for XP
         html += `<td style="padding:1px 1px;${rd}"><input type="number" value="${val}" step="${step}" style="${inputStyle}${dim}${colorOverride}" class="${inputCls}" oninput="try{let m=JSON.parse(window.SimState['${key}']);m[${lv}][${q}]=parseFloat(this.value)||0;window.SimState['${key}']=JSON.stringify(m);this.style.opacity=this.value==0?'0.25':'1';window.renderSimulationChart();}catch(e){}"></td>`;
       }
@@ -4040,7 +4064,6 @@ const SIM_MODULES = [
     rules: [
       { title: '双池系统', desc: '抽卡分为<b>普通抽卡</b>和<b>许愿抽卡</b>两个池子。许愿机制依赖设定的界限点激活。<br/>注意：矩阵界面的前七列为不同档次英雄（基底按总比重65%换算），后三列为三大经验掉落区（占比35%）。' },
       { title: '固定武装与潜力拔高', desc: '所有英雄的基础武装全部被暴力锁死统一定调，基础ATK和HP严格按照界面下方的配置锚定执行（默认10与50）。高品质卡牌战力的拉开完完全全依赖他们恐怖的 <b>精通% (Mastery)</b> 以及其附带的星级放大杠杆作用。' },
-      { title: '通用经验与升星双轨制', desc: '<b>①卡池掉落：</b> 卡池右侧特设三大经验掉落区（基础掉率 20%/10%/5%），普通池单格触发对应 10/20/40 经验，许愿池单格触发 25/50/100 经验。<br/><b>②单次消耗等差阶乘突破：</b> 每次进阶星级必须持有对应的碎片天花板与充裕的经验池！单次升阶消耗遵循等差公式：<code>基础底数 24 × (目标星级 - 1) × 1.5 ^ (英雄级别 - 1)</code>。<br/>引擎模拟时将使用贪心算法优先把公共经验灌注给最高 CP 潜力的头部英雄序列！' },
       { title: '通用经验与升星双轨制', desc: '<b>①卡池掉落压缩：</b> 卡池右侧特设三大经验掉落区（基础掉率 20%/10%/5%），普通池单格触发 10/20/40 经验，许愿池单格触发 25/50/100 经验。纯英雄掉率已被压缩至 65%以让渡给经验池。<br/><b>②单次消耗等差阶乘突破：</b> 每次进阶星级必须持有对应的碎片天花板与足够扫荡的充裕经验池！单次升星消耗遵循等差公式：<code>基础消耗 24 × (目标星级 - 1) × 1.5 ^ (英雄品质级别 - 1)</code>。<br/>系统将贪婪地把积累的公共经验灌注给您持有碎片中 CP 潜力最高的顶级英雄！' },
       { title: '8级卡尺', desc: '普通池和许愿池共享卡尺等级，共 <code>8</code> 级。随抽数累积自动升级。<br/>• Lv1普通池：Q1~Q3<br/>• Lv5普通池：首次可出Q7 (0.5%)<br/>• Lv8普通池：Q7概率 = <code>2%</code><br/>• Lv8许愿池：Q7概率 = <code>5%</code>' },
       { title: '多级动态卡尺 (阶梯保底)', desc: '许愿池采用了直观的动态卡尺系统。通过累计抽数达到对应区间的阈值（可在第一列自由配置），卡尺会自动升阶，永久性提高高阶品质的出货概率上限！' },
@@ -4188,6 +4211,7 @@ window.renderSimulationChart = function () {
         s += `<span style="color:#60a5fa">🦸 英雄CP:</span> <b>${comma(d.heroCP)}</b><br/>`;
         s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.05)"></div>`;
         s += `<span style="color:#a78bfa;font-size:11px">🔥 英雄 (${d.slots}槽/${comma(d.summons)}抽)  卡尺Lv:${d.gachaLv+1} ${d.reqNext>0?`(${comma(d.summons)}/${comma(d.reqNext)})`:'(Max)'} &nbsp; 图鉴:<b>+${(d.collectionAtkPct || 0).toFixed(1)}%</b></span><br/>`;
+        if (d.totalXP > 0) s += `<span style="color:#fbbf24;font-size:11px">🌟 经验碎片: <b>${comma(d.usedXP)}</b> (已分配) / <b> ${comma(d.totalXP)}</b> (累计掉落)</span><br/>`;
         if (d.heroSlots && d.heroSlots.length > 0) {
           s += `<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px">`;
           for (const h of d.heroSlots) {
