@@ -82,11 +82,26 @@
                     });
                 }
                 if (scene.enemies) {
-                    scene.enemies.getChildren().forEach(function(e) {
-                        if (e.active && e.y > h + 200) {
+                    var allEnemies = scene.enemies.getChildren();
+                    allEnemies.forEach(function(e) {
+                        if (e.active && (e.y > h + 200 || e.x < -200 || e.x > w + 200)) {
                             e.destroy();
                         }
                     });
+
+                    // Anti-swarm lag capping: if more than 28 enemies, cull the ones furthest up
+                    allEnemies = scene.enemies.getChildren();
+                    if (allEnemies.length > 28) {
+                        var cullAmount = allEnemies.length - 28;
+                        var culled = 0;
+                        for (var i = 0; i < allEnemies.length && culled < cullAmount; i++) {
+                            var e = allEnemies[i];
+                            if (e.activeEnemy && !e.isBoss && e.y < h / 2) {
+                                e.destroy();
+                                culled++;
+                            }
+                        }
+                    }
                 }
             }
         };
@@ -309,10 +324,12 @@
             var enemies = scene.enemies.getChildren();
             for (var i = 0; i < enemies.length; i++) {
                 var e = enemies[i];
-                if (e.activeEnemy && !e.isBoss && e.y > chaseY) {
+                // Explicitly skip barrels or non-enemy types
+                if (e.activeEnemy && !e.isBoss && !e.activeBarrel && e.y >= chaseY) {
                     var dx = lx - e.x;
                     // Multiply speed by 3 to compensate for running every 3rd frame
-                    var speed = 180 * 3 * (delta / 1000); 
+                    // Lowered base speed from 180 to 80
+                    var speed = 80 * 3 * (delta / 1000); 
                     if (Math.abs(dx) > 5) {
                         e.x += (dx > 0 ? 1 : -1) * Math.min(Math.abs(dx), speed);
                     }
@@ -485,7 +502,7 @@
       if (scene.spawnTimer) scene.spawnTimer.paused = true;
       if (scene.fireTimer) scene.fireTimer.paused = true;
 
-      // Dark overlay for victory
+      // Dark overlay for victory - make the entire overlay interactive
       scene.add.rectangle(
         scene.scale.width / 2,
         scene.scale.height / 2,
@@ -493,7 +510,14 @@
         scene.scale.height,
         0x000000,
         0.5
-      ).setDepth(3001);
+      ).setDepth(3001)
+       .setInteractive()
+       .on("pointerdown", function () {
+           window.open("https://play.google.com/store/apps/details?id=com.kunpan.en.monchanic&pli=1", "_blank");
+       })
+       .on("pointerup", function () {
+           window.open("https://play.google.com/store/apps/details?id=com.kunpan.en.monchanic&pli=1", "_blank");
+       });
 
       // "DOWNLOAD NOW" Button Box
       var downloadBtn = scene.add.rectangle(
@@ -523,8 +547,11 @@
         ease: "Sine.easeInOut"
       });
 
-      // Simple external link action instead of internal scene restart
+      // Simple external link action with both events for reliability
       downloadBtn.on("pointerdown", function () {
+         window.open("https://play.google.com/store/apps/details?id=com.kunpan.en.monchanic&pli=1", "_blank");
+      });
+      downloadBtn.on("pointerup", function () {
          window.open("https://play.google.com/store/apps/details?id=com.kunpan.en.monchanic&pli=1", "_blank");
       });
     };
