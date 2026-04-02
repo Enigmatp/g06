@@ -1,4 +1,4 @@
-﻿import './style.css';
+import './style.css';
 import * as XLSX from 'xlsx';
 import * as echarts from 'echarts';
 
@@ -125,10 +125,8 @@ document.getElementById('app').innerHTML = `
     <nav class="tab-nav animate-fade-up" style="animation-delay:0.05s">
       <button class="tab-btn tab-active" onclick="switchTab('overview')" id="tab-btn-overview">总览</button>
       <button class="tab-btn" onclick="switchTab('resources')" id="tab-btn-resources">循环</button>
-      <button class="tab-btn" onclick="switchTab('buildings')" id="tab-btn-buildings">建筑</button>
       <button class="tab-btn" onclick="switchTab('unlock')" id="tab-btn-unlock">解锁</button>
       <button class="tab-btn" onclick="switchTab('simulation')" id="tab-btn-simulation">数值</button>
-      <button class="tab-btn" onclick="switchTab('analysis')" id="tab-btn-analysis">分析</button>
     </nav>
 
     <!-- ── OVERVIEW TAB ── -->
@@ -677,8 +675,9 @@ document.getElementById('app').innerHTML = `
       <!-- Left Panel: Parameters -->
       <div id="sim-params-panel" class="w-1/4 h-full overflow-y-auto p-4 border-r border-gray-700 flex flex-col gap-2" style="scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.15) transparent;"></div>
       <!-- Right Panel: Chart -->
-      <div class="w-3/4 h-full p-4 flex flex-col">
+      <div class="w-3/4 h-full p-4 flex flex-col gap-4">
         <div id="sim-chart" class="w-full flex-1 rounded-xl" style="min-height:0;"></div>
+        <div id="sim-building-chart" class="w-full flex-1 rounded-xl" style="min-height:0;"></div>
       </div>
     </div><!-- /tab-simulation -->
 
@@ -703,9 +702,9 @@ window.defaultUnlockData = {
   slots: [
     { name: "slot1", level: 0 }, { name: "slot2", level: 2 }, { name: "slot3", level: 4 },
     { name: "slot4", level: 8 }, { name: "slot5", level: 12 }, { name: "slot6", level: 16 },
-    { name: "slot7", level: 21 }, { name: "slot8", level: 27 }, { name: "slot9", level: 33 },
-    { name: "slot10", level: 45 }, { name: "slot11", level: 54 }, { name: "slot12", level: 63 },
-    { name: "slot13", level: 72 }, { name: "slot14", level: 81 }, { name: "slot15", level: 90 }
+    { name: "slot7", level: 21 }, { name: "slot8", level: 27 }, { name: "slot9", level: 45 },
+    { name: "slot10", level: 60 }, { name: "slot11", level: 75 }, { name: "slot12", level: 90 },
+    { name: "slot13", level: 105 }, { name: "slot14", level: 120 }, { name: "slot15", level: 135 }
   ]
 };
 
@@ -758,6 +757,7 @@ window.updateUnlockLevel = function (category, index, val) {
   if (!isNaN(v)) {
     window.unlockData[category][index].level = v;
     window.renderUnlockUI();
+    if (window.renderSimulationChart) window.renderSimulationChart();
   }
 };
 
@@ -1417,7 +1417,7 @@ function setupInputs() {
 
 // ── Tab switching ─────────────────────────────────────────────────────
 window.switchTab = function (id) {
-  ['overview', 'buildings', 'resources', 'analysis', 'unlock', 'simulation'].forEach(tab => {
+  ['overview', 'resources', 'unlock', 'simulation'].forEach(tab => {
     const el = document.getElementById(`tab-${tab}`);
     if (el) el.style.display = id === tab ? 'flex' : 'none';
   });
@@ -1720,7 +1720,7 @@ function updateAllBldgModuleCards() {
 }
 
 // ── Canvas Chart ─────────────────────────────────────────────────────
-function drawBldgChart() {
+function drawBldgChart() { return; 
   const canvas = document.getElementById('bldg-chart');
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
@@ -3148,9 +3148,9 @@ window.confirmCustomSave = function () {
   });
 
   let savedList = [];
-  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v2') || '[]'); } catch (e) { }
+  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v3') || '[]'); } catch (e) { }
   savedList.push(profile);
-  localStorage.setItem('g05_saves_v2', JSON.stringify(savedList));
+  localStorage.setItem('g05_saves_v3', JSON.stringify(savedList));
 
   document.getElementById('custom-save-modal').style.display = 'none';
   window.renderSaveManagerList();
@@ -3161,7 +3161,7 @@ window.renderSaveManagerList = function () {
   if (!listEl) return;
 
   let savedList = [];
-  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v2') || '[]'); } catch (e) { }
+  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v3') || '[]'); } catch (e) { }
 
   // Sort descending by timestamp
   savedList.sort((a, b) => b.timestamp - a.timestamp);
@@ -3196,15 +3196,15 @@ window.renderSaveManagerList = function () {
 window.delCustomSave = function (id) {
   if (!confirm('确定永久删除该备份存档吗？')) return;
   let savedList = [];
-  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v2') || '[]'); } catch (e) { }
+  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v3') || '[]'); } catch (e) { }
   savedList = savedList.filter(p => p.id !== id);
-  localStorage.setItem('g05_saves_v2', JSON.stringify(savedList));
+  localStorage.setItem('g05_saves_v3', JSON.stringify(savedList));
   window.renderSaveManagerList();
 };
 
 window.loadCustomSave = function (id) {
   let savedList = [];
-  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v2') || '[]'); } catch (e) { }
+  try { savedList = JSON.parse(localStorage.getItem('g05_saves_v3') || '[]'); } catch (e) { }
   const p = savedList.find(x => x.id === id);
   if (!p) return;
 
@@ -3234,411 +3234,1105 @@ rebuildBar();
 setupInputs();
 
 // ==========================================
-// SIMULATION MODULE (v0.3.9 — Exposed Ascension + Building CP Line)
+// SIMULATION MODULE (v0.4.6 — Ultra-Wide Rule Modal UI Overhaul)
 // ==========================================
 
 window.SimState = {
-    // Module 1: 全局与章节
-    displayDays: 7,
-    dailyExpectedStages: 72,
-    bossStagesConfig: '30, 90, 180',
-    subsequentBossInterval: 90,
+  // Module 1: 推关节奏与章节目标
+  displayDays: 7,
+  day1PushStages: 300,
+  dailyPushDecay: 10,
+  minDailyPush: 150,
+  bossStagesConfig: '50, 150, 300',
+  subsequentBossInterval: 150,
 
-    // Module 2: 关卡与怪物
-    minionCount: 3,
-    enemyBaseHp: 100,
-    enemyBaseAtk: 20,
-    enemyHpScale: 1.10,
-    enemyAtkScale: 1.10,
-    eliteMultiplier: 1.25,
-    bossMultiplier: 1.50,
+  // Module 2: 关卡与怪物
+  minionCount: 3,
+  enemyBaseHp: 15,
+  enemyBaseAtk: 3,
+  enemyStageExponent: '[[1,12],[51,10]]',
+  playerStageExponent: '[[1,10],[51,8]]',
+  eliteScale: 150,
+  bossScale: 200,
 
-    // Module 3: 英雄与召唤系统
-    summonUnlockStage: 6,
-    slotUnlockStages: '0, 2, 4, 8, 12, 16, 21, 27, 45, 60, 75, 90, 105, 130, 145',
-    day1ExtraPulls: 10,
-    dailyPulls: 36,
-    heroesPerQuality: 4,
-    ascensionCostsConfig: '1,1,1,1,1, 2,2,2,2,2, 3,3,3,3,3, 5,5,5,5,5, 8,8,8,8,8, 12,12,12,12,12',
-    ascensionLinearBonus: 0.10,
-    ascensionExpBonus: 1.05,
-    qualities: [
-        { rate: 0.00, atk: 10, hp: 50 },
-        { rate: 0.50, atk: 20, hp: 100 },
-        { rate: 0.25, atk: 40, hp: 200 },
-        { rate: 0.14, atk: 80, hp: 400 },
-        { rate: 0.07, atk: 160, hp: 800 },
-        { rate: 0.03, atk: 320, hp: 1600 },
-        { rate: 0.01, atk: 640, hp: 3200 }
-    ],
+  // Module 3: 抽卡概率层级系统
+  summonUnlockStage: 50,
+  slotUnlockStages: '0, 20, 50, 90, 140, 200, 270, 350, 440, 540, 650, 770, 900, 1040, 1190',
+  day1ExtraPulls: 10,
+  dailyPulls: 100,
+  wishPullRatio: 100,
+  exchangeCoinsPerPull: 1,
+  heroesPerQuality: 4,
+  heroBaseAtk: 10,
+  heroBaseHp: 50,
+  normalRatesMatrix: '[[39,19.5,6.5,0,0,0,0,20,10,5],[30.55,18.2,9.75,6.5,0,0,0,20,10,5],[24.7,15.6,11.7,8.45,4.55,0,0,20,10,5],[21.45,13.65,10.4,9.75,6.5,3.25,0,20,10,5],[21.13,11.7,9.1,10.4,7.8,4.55,0.33,20,10,5],[20.15,10.4,7.8,11.05,9.1,5.85,0.65,20,10,5],[19.18,9.75,7.15,11.7,9.75,6.5,0.98,20,10,5],[18.2,9.1,6.5,12.35,10.4,7.15,1.3,20,10,5]]',
+  guaranteeConfig: '[[400,6],[600,6,10],[800,7,5],[1200,7]]',
+  wishRatesMatrix: '[[50,32.5,22.75,9.75,0,0,0,0,20,10,5],[100,22.1,18.2,14.3,10.4,0,0,0,20,10,5],[200,15.6,14.95,15.6,11.7,7.15,0,0,20,10,5],[400,11.7,13,14.95,13.65,11.05,0.65,20,10,5],[600,9.1,11.05,14.3,14.95,14.3,1.3,20,10,5],[800,6.5,9.1,13.65,16.25,17.55,1.95,20,10,5],[1000,4.55,7.15,13,16.9,20.8,2.6,0,20,10,5],[0,3.25,5.85,11.7,17.55,23.4,3.25,0,20,10,5]]',
 
-    // Module 4: 力量建筑
-    weaponShopBaseAtk: 50,
-    weaponShopAtkScale: 1.15,
-    armorShopBaseHp: 250,
-    armorShopHpScale: 1.15,
+  qualities: [
+    { mastery: 100, starMastery: 1,   shardCost: 10,  collectionAtk: 0.2 },
+    { mastery: 150, starMastery: 1.5, shardCost: 15,  collectionAtk: 0.3 },
+    { mastery: 225, starMastery: 2.3, shardCost: 23,  collectionAtk: 0.5 },
+    { mastery: 338, starMastery: 3.4, shardCost: 34,  collectionAtk: 0.7 },
+    { mastery: 506, starMastery: 5.1, shardCost: 51,  collectionAtk: 1.0 },
+    { mastery: 759, starMastery: 7.6, shardCost: 76,  collectionAtk: 1.5 },
+    { mastery: 1139, starMastery: 11.4, shardCost: 114, collectionAtk: 2.3 }
+  ],
+
+  // Module 4: 医馆
+  clinicUnlockStage: 1,
+  clinicBaseHps: 0,
+  clinicUpgradeHps: 0,
+
+  // Module 4.5: 放置资源引擎
+  facilityBaseProd: 1,
+  facilityProdExponent: 100,
+
+  clickCostBase: 100,
+  clickCostMulti: 1,
+
+  // Module 5: 武器店
+  weaponUnlockStage: 2,
+  weaponAtkBase: 0,
+  weaponUpgradeAtk: 0,
+  weaponTierInterval: 1,
+  weaponTierBonus: 0,
+
+  // Module 6: 防具店
+  armorUnlockStage: 30,
+  armorHpBase: 0,
+  armorUpgradeHp: 0,
+  armorTierInterval: 1,
+  armorTierBonus: 0,
+
+  // Module 7: 圣殿
+  sanctuaryUnlockStage: 90,
+  sanctuaryAtkBase: 0,
+  sanctuaryHpBase: 0,
+  sanctuaryUpgradeAtk: 0,
+  sanctuaryUpgradeHp: 0,
+  sanctuaryTierInterval: 1,
+  sanctuaryTierBonus: 0
 };
 
 function generateChartData() {
+  let a_persistentExpected = new Array(8).fill(0);
+  let a_lastSummons = 0;
+  let a_wishCounter = 0;
+  let a_globalJobXP = 0;
+  let a_xpBudget = 0; // hoisted to fix NaN
+
+  let p_persistentExpected = new Array(8).fill(0);
+  let p_lastSummons = 0;
+  let p_wishCounter = 0;
+  let p_globalJobXP = 0;
     const S = window.SimState;
-    const totalStages = S.displayDays * S.dailyExpectedStages;
-    const customBossStages = S.bossStagesConfig.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-    const maxCustomBossStage = customBossStages.length > 0 ? Math.max(...customBossStages) : 0;
-    const bossSet = new Set(customBossStages);
-    const unlockStages = S.slotUnlockStages.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-    const ascCosts = S.ascensionCostsConfig.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
-    const unlockedSummonsDay = Math.ceil(S.summonUnlockStage / S.dailyExpectedStages);
-    const result = [];
-
-    let cachedDay = -1;
-    let cachedSummons = -1;
-    let cachedHeroesEV = [];
-
-    for (let stage = 1; stage <= totalStages; stage++) {
-        const currentDay = Math.ceil(stage / S.dailyExpectedStages);
-        const stepIndex = Math.floor((stage - 1) / 5);
-
-        let slots = unlockStages.filter(u => stage >= u).length;
-        slots = Math.min(15, Math.max(1, slots));
-
-        // --- Boss / Elite ---
-        let isBossStage = false;
-        if (bossSet.has(stage)) {
-            isBossStage = true;
-        } else if (stage > maxCustomBossStage && S.subsequentBossInterval > 0) {
-            if ((stage - maxCustomBossStage) % S.subsequentBossInterval === 0) isBossStage = true;
-        }
-        const isEliteStage = !isBossStage && (stage % 5 === 0);
-
-        // --- Enemy CP (wave-anchored) ---
-        const baseIndHp = S.enemyBaseHp * Math.pow(S.enemyHpScale, stepIndex);
-        const baseIndAtk = S.enemyBaseAtk * Math.pow(S.enemyAtkScale, stepIndex);
-        const waveCP = (baseIndHp + baseIndAtk * 5) * S.minionCount;
-
-        let enemyTeamCP, enemyCount, individualHp, individualAtk, stageType;
-        if (isBossStage) {
-            enemyTeamCP = waveCP * S.bossMultiplier;
-            enemyCount = 1;
-            individualHp = baseIndHp * S.minionCount * S.bossMultiplier;
-            individualAtk = baseIndAtk * S.minionCount * S.bossMultiplier;
-            stageType = 'Boss(x1)';
-        } else if (isEliteStage) {
-            enemyTeamCP = waveCP * S.eliteMultiplier;
-            enemyCount = 1;
-            individualHp = baseIndHp * S.minionCount * S.eliteMultiplier;
-            individualAtk = baseIndAtk * S.minionCount * S.eliteMultiplier;
-            stageType = '精英(x1)';
-        } else {
-            enemyTeamCP = waveCP;
-            enemyCount = S.minionCount;
-            individualHp = baseIndHp;
-            individualAtk = baseIndAtk;
-            stageType = '小怪波(x' + S.minionCount + ')';
-        }
-
-        // --- Summons ---
-        let summons = 0;
-        if (stage >= S.summonUnlockStage) {
-            const cumulativeDailyPulls = (stage === S.summonUnlockStage) ? 0 : Math.max(0, currentDay - unlockedSummonsDay) * S.dailyPulls;
-            summons = S.day1ExtraPulls + cumulativeDailyPulls;
-        }
-
-        // --- Hero EV ---
-        if (summons !== cachedSummons || currentDay !== cachedDay) {
-            cachedDay = currentDay;
-            cachedSummons = summons;
-            cachedHeroesEV = [];
-
-            // ONLY one starter hero before summoning
-            cachedHeroesEV.push({ atk: S.qualities[0].atk, hp: S.qualities[0].hp });
-
-            if (summons > 0) {
-                for (let i = 1; i < S.qualities.length; i++) {
-                    const q = S.qualities[i];
-                    const expectedCopies = summons * (q.rate / S.heroesPerQuality);
-                    const chanceToOwn = Math.min(1, expectedCopies);
-
-                    let shards = Math.max(0, expectedCopies - 1);
-                    let ascensions = 0;
-                    for (const cost of ascCosts) {
-                        if (shards >= cost) { shards -= cost; ascensions++; }
-                        else { ascensions += shards / cost; break; }
-                    }
-                    ascensions = Math.min(ascensions, ascCosts.length);
-
-                    const starMultiplier = Math.pow(S.ascensionExpBonus, ascensions);
-                    const expMulti = (1 + S.ascensionLinearBonus * ascensions) * starMultiplier;
-                    const heroATK = q.atk * expMulti * chanceToOwn;
-                    const heroHP = q.hp * expMulti * chanceToOwn;
-
-                    for (let j = 0; j < S.heroesPerQuality; j++) {
-                        cachedHeroesEV.push({ atk: heroATK, hp: heroHP });
-                    }
-                }
-                cachedHeroesEV.sort((a, b) => (b.hp + b.atk * 5) - (a.hp + a.atk * 5));
-            }
-        }
-
-        let totalBaseHeroATK = 0, totalBaseHeroHP = 0;
-        for (let i = 0; i < slots && i < cachedHeroesEV.length; i++) {
-            totalBaseHeroATK += cachedHeroesEV[i].atk;
-            totalBaseHeroHP += cachedHeroesEV[i].hp;
-        }
-
-        // Buildings (flat addition)
-        const buildingATK = S.weaponShopBaseAtk * Math.pow(S.weaponShopAtkScale, stepIndex);
-        const buildingHP = S.armorShopBaseHp * Math.pow(S.armorShopHpScale, stepIndex);
-
-        // All CPs
-        const buildingTeamCP = buildingHP + (buildingATK * 5);
-        const heroTeamCP = totalBaseHeroHP + (totalBaseHeroATK * 5);
-        const playerTeamCP = buildingTeamCP + heroTeamCP;
-
-        result.push({
-            stage, day: currentDay, stepIndex, slots, summons,
-            isBoss: isBossStage, isElite: isEliteStage,
-            stageType, enemyCount,
-            individualHp, individualAtk,
-            enemyCP: enemyTeamCP,
-            playerCP: playerTeamCP,
-            heroCP: heroTeamCP,
-            buildingCP: buildingTeamCP,
-            heroAtk: totalBaseHeroATK, heroHp: totalBaseHeroHP,
-            buildingATK, buildingHP
-        });
+  // Parse stage-based breakpoint format: "[[1,12],[51,10]]"
+  // Returns the exponent (as decimal) for a given stage number
+  const getExpForStage = (configStr, stage) => {
+    try {
+      const bp = JSON.parse(String(configStr || '[]'));
+      if (!Array.isArray(bp) || bp.length === 0) return 0;
+      let val = bp[0][1]; // default to first entry
+      for (const entry of bp) {
+        if (stage >= entry[0]) val = entry[1];
+        else break;
+      }
+      return val / 1000;
+    } catch (e) {
+      // Fallback: try old comma-separated format
+      const list = String(configStr || '').split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+      if (list.length === 0) return 0;
+      return list[list.length - 1] / 1000;
     }
-    return result;
+  };
+
+
+  // Day boundaries: day1=180, day2=170, day3=160 (decaying by 10)
+  let totalStages = 0;
+  let dayLimitsGlobal = [];
+  let tmpD = 1, tmpC = 0, tmpP = S.day1PushStages || 180;
+  const dailyDecay = S.dailyPushDecay ?? 10;
+
+  for (let i = 0; i < (S.displayDays || 7); i++) {
+    tmpC += tmpP;
+    dayLimitsGlobal.push({ stage: tmpC, day: tmpD, pushToday: tmpP });
+    tmpD++;
+    tmpP = Math.max(S.minDailyPush ?? 150, tmpP - dailyDecay);
+  }
+  totalStages = tmpC;
+  // Build Chapters from bossStagesConfig: e.g. "30, 90, 180" then subsequentBossInterval
+  const bossStages = (S.bossStagesConfig || '30, 90, 180').split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  const bossInterval = S.subsequentBossInterval || 90;
+  let chLimits = [...bossStages];
+  let lastBoss = chLimits.length > 0 ? chLimits[chLimits.length - 1] : 0;
+  while (lastBoss < totalStages + 100) {
+    lastBoss += bossInterval;
+    chLimits.push(lastBoss);
+  }
+
+  window.dayLimitsGlobal = dayLimitsGlobal;
+  window.chapterLimitsGlobal = chLimits;
+
+  // Base CP
+  const baseEnemyHp = S.enemyBaseHp || 15;
+  const baseEnemyAtk = S.enemyBaseAtk || 3;
+  const minionCount = S.minionCount || 3;
+  const initialWaveCP = (baseEnemyHp + baseEnemyAtk * 5) * minionCount;
+  // --- Pre-calculate Enemy Base Curve iteratively ---
+  const enemyBaseCurve = [initialWaveCP]; 
+  let curE = initialWaveCP;
+  for (let s = 1; s <= totalStages + 100; s++) {
+    curE *= (1 + getExpForStage(S.enemyStageExponent, s));
+    enemyBaseCurve[s] = curE;
+  }
+
+
+
+  const result = [];
+  const bossSet = new Set(chLimits);
+
+  // --- 0. PRECALC ANCHORS FOR BUILDING INTERPOLATION ---
+  const slotUnlockStagesList = (S.slotUnlockStages || '0, 20, 50, 90, 140, 200, 270, 350, 440, 540, 650, 770, 900, 1040, 1190').split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+  const ascCosts = (S.ascensionCostsConfig || '1,1,1,1,1, 2,2,2,2,2, 3,3,3,3,3, 5,5,5,5,5').split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+  let cachedDay = -1;
+  let cachedSummons = -1;
+  let cachedSlots = -1;
+  let cachedHeroesEV = [];
+  let initialStarterCP = 100;
+
+  const anchors = [];
+  let firstDayStage = dayLimitsGlobal.length > 0 ? dayLimitsGlobal[0].stage : 90;
+  // Use pre-calculated enemy curve for Day 1 anchor
+  let targetEnemyCPDay1 = enemyBaseCurve[firstDayStage];
+  let idealStartCP = targetEnemyCPDay1;
+  for (let s = firstDayStage; s > 1; s--) {
+    idealStartCP /= (1 + getExpForStage(S.playerStageExponent, s));
+  }
+
+  anchors.push({ stage: 1, reqBuildingCP: idealStartCP });
+  for (const d of dayLimitsGlobal) {
+    let t_stage = d.stage;
+    let t_enemyCP = enemyBaseCurve[t_stage];
+    if (bossSet.has(t_stage) || t_stage % 5 === 0) {
+      t_enemyCP *= ((S.eliteScale || 150) / 100);
+    }
+    let t_chap = 1;
+    for (let i = 0; i < chLimits.length; i++) {
+      if (t_stage <= chLimits[i]) { t_chap = i + 1; break; }
+    }
+
+    // Anchor uses identical EV logic
+    let a_summons = 0;
+    let sUnlock = S.summonUnlockStage || 30;
+    if (t_stage >= sUnlock) {
+      let daysSinceUnlock = Math.max(0, d.day - 1);
+      let cumulativeDailyPulls = daysSinceUnlock * (S.dailyPulls || 36);
+      a_summons = (S.day1ExtraPulls || 10) + cumulativeDailyPulls;
+      let prevDayStage = d.day === 1 ? 0 : dayLimitsGlobal[d.day - 2].stage;
+      let stagesInToday = d.stage - prevDayStage;
+      let stagesDoneToday = t_stage - prevDayStage;
+      if (stagesDoneToday < 0) stagesDoneToday = 0;
+      
+      let fraction = stagesDoneToday / stagesInToday;
+      if (fraction > 1) fraction = 1;
+
+      let pullsToday = Math.floor(fraction * (S.dailyPulls || 100) / 10) * 10;
+      a_summons += pullsToday;
+    }
+
+    let a_slots = slotUnlockStagesList.filter(u => t_stage >= u).length;
+    a_slots = Math.min(15, Math.max(1, a_slots));
+    let a_HeroesEV = [];
+    let q0 = S.qualities && S.qualities[0] ? S.qualities[0] : { atk: 10, hp: 50 };
+    let a_initCP = (S.heroBaseHp !== undefined ? S.heroBaseHp : 50) + (S.heroBaseAtk !== undefined ? S.heroBaseAtk : 10) * 5;
+    
+    // Guaranteed starters
+    let a_starterHeroes = [];
+    for (let i = 0; i < a_slots; i++) {
+        a_starterHeroes.push({ atk: (S.heroBaseAtk !== undefined ? S.heroBaseAtk : 10), hp: (S.heroBaseHp !== undefined ? S.heroBaseHp : 50), cp: a_initCP, hasCopy: 1, quality: 1, stars: 0, 
+                             mastery: (q0.mastery||100)/100, collectionAtkPct: 0 });
+    }
+
+    if (a_summons > 0 && S.qualities) {
+        let nMatrix = []; let wMatrix = [];
+        try { nMatrix = JSON.parse(S.normalRatesMatrix || '[]'); } catch(e){}
+        try { wMatrix = JSON.parse(S.wishRatesMatrix || '[]'); } catch(e){}
+        wMatrix.forEach(row => { if (row.length === 10) row.splice(7, 0, 0); });
+        
+        if (a_summons > a_lastSummons) {
+          let delta = a_summons - a_lastSummons;
+          for (let p = 1; p <= delta; p++) {
+              let curPulls = a_lastSummons + p;
+              let gachaLv = 0;
+              for (let lv=0; lv<wMatrix.length; lv++) {
+                  if (wMatrix[lv][0] > 0 && curPulls >= wMatrix[lv][0]) gachaLv = lv + 1;
+                  else break;
+              }
+              if (wMatrix[wMatrix.length-1][0] > 0 && curPulls >= wMatrix[wMatrix.length-1][0]) gachaLv = wMatrix.length - 1;
+
+              for (let i = 0; i < S.qualities.length; i++) {
+                  a_persistentExpected[i] += ((nMatrix[gachaLv][i] || 0) / 100) / (S.heroesPerQuality || 4);
+              }
+              
+              if (a_summons >= (S.wishUnlockStage || 0)) { // Assume wish is unlocked natively or via config
+                  a_wishCounter++;
+                  if (a_wishCounter >= (S.wishPullRatio || 10)) {
+                      a_wishCounter = 0;
+                      for (let i = 1; i < S.qualities.length; i++) {
+                          a_persistentExpected[i] += ((wMatrix[gachaLv][i] || 0) / 100) / (S.heroesPerQuality || 4);
+                      }
+                  }
+              }
+
+              let hQ = 0;
+              for (let i = S.qualities.length - 1; i >= 0; i--) {
+                  if (a_persistentExpected[i] >= 0.5) { hQ = i; break; }
+              }
+
+              let coinVal = (S.exchangeCoinsPerPull !== undefined ? S.exchangeCoinsPerPull : 1) + (a_wishCounter === 0 ? 10 : 0);
+              let hqPrice = S.qualities[hQ] ? (S.qualities[hQ].shardCost || 10) : 10;
+              a_persistentExpected[hQ] += (coinVal / hqPrice) / (S.heroesPerQuality || 4);
+          }
+          a_lastSummons = a_summons;
+        }
+
+        for (let i = 0; i < S.qualities.length; i++) {
+          const q = S.qualities[i];
+          const expectedCopies = a_persistentExpected[i];
+          const chanceToOwn = expectedCopies >= 0.5 ? 1 : 0;
+
+          
+          if (chanceToOwn <= 0) continue;
+
+          let shards = Math.max(0, expectedCopies - 1);
+          let stars = Math.floor(shards);
+
+          const totalMastery = ((q.mastery || 100) + (q.starMastery || 1) * stars) / 100;
+          const heroATK = (S.heroBaseAtk !== undefined ? S.heroBaseAtk : 10) * totalMastery;
+          const heroHP = (S.heroBaseHp !== undefined ? S.heroBaseHp : 50) * totalMastery;
+          const cp = chanceToOwn > 0 ? (heroATK * 5 + heroHP) : 0;
+
+          for (let j = 0; j < (S.heroesPerQuality || 4); j++) {
+            a_HeroesEV.push({ 
+              atk: heroATK, hp: heroHP, hasCopy: chanceToOwn, quality: i + 1, stars: stars,
+              mastery: totalMastery, cp: cp,
+              collectionAtkPct: q.collectionAtk || 0 
+            });
+          }
+        }
+        
+        let pool = [...a_starterHeroes, ...a_HeroesEV].sort((a,b) => b.cp - a.cp);
+        
+        a_xpBudget = a_globalJobXP;
+        pool.forEach(h => {
+             let max_stars = h.stars;
+             let current_stars = 0;
+             if (max_stars >= 1) current_stars = 1;
+             
+             let baseMultiplier = 24 * Math.pow(1.5, h.quality - 1);
+             while (current_stars < max_stars) {
+                 let next_cost = baseMultiplier * current_stars;
+                 if (a_xpBudget >= next_cost) {
+                     a_xpBudget -= next_cost;
+                     current_stars++;
+                 } else {
+                     break;
+                 }
+             }
+             
+             h.stars = current_stars;
+             const q = (S.qualities && S.qualities[Math.max(0, h.quality - 1)]) ? S.qualities[Math.max(0, h.quality - 1)] : {mastery: 100, starMastery: 1};
+             h.mastery = ((q.mastery || 100) + (q.starMastery || 1) * h.stars) / 100;
+             h.atk = (S.heroBaseAtk !== undefined ? S.heroBaseAtk : 10) * h.mastery;
+             h.hp  = (S.heroBaseHp !== undefined ? S.heroBaseHp : 50) * h.mastery;
+             h.cp = h.hasCopy > 0 ? (h.atk * 5 + h.hp) : 0;
+        });
+        
+        pool.sort((a,b) => b.cp - a.cp);
+        a_HeroesEV = pool.slice(0, a_slots);
+
+        let totalCollectionAtk = 0;
+        pool.forEach(h => { if (h.hasCopy >= 0.5 && h.collectionAtkPct) totalCollectionAtk += h.collectionAtkPct * (1 + (h.stars || 0)); });
+        
+        let collectionBonus = 1 + (totalCollectionAtk / 100);
+        a_HeroesEV.forEach(h => {
+          h.atk *= collectionBonus;
+          h.hp *= collectionBonus;
+          h.cp = h.atk * 5 + h.hp;
+        });
+    } else {
+        a_HeroesEV = a_starterHeroes;
+    }
+
+    let a_totalATK = 0, a_totalHP = 0;
+    let a_topRawHP = 0;
+    if (a_HeroesEV.length > 0) {
+      a_topRawHP = a_HeroesEV[0].rawHp !== undefined ? a_HeroesEV[0].rawHp : a_HeroesEV[0].hp;
+    }
+
+    for (let i = 0; i < a_slots && i < a_HeroesEV.length; i++) {
+      a_totalATK += a_HeroesEV[i].atk;
+      a_totalHP += a_HeroesEV[i].hp;
+    }
+
+    let a_clinicHps = 0;
+    if (t_stage >= (S.clinicUnlockStage || 5)) {
+      a_clinicHps = (S.clinicBaseHps || 1) + ((S.clinicUpgradeHps || 5) / 100) * Math.max(0, Math.floor((t_stage - (S.clinicUnlockStage || 1)) / 5));
+    }
+
+    let a_cp = a_totalHP + a_totalATK * 5;
+    if (a_cp === 0) a_cp = a_initCP;
+    let t_heroMulti = a_cp / a_initCP;
+
+    anchors.push({ stage: t_stage, reqBuildingCP: t_enemyCP / t_heroMulti });
+  }
+
+  let prevW = 0, prevA = 0, prevS = 0;
+  let activeGold = 0, curSteel = 0, curLeather = 0, curCrystal = 0;
+  let cFoundry = 0, cTannery = 0, cMine = 0;
+
+  for (let stage = 1; stage <= totalStages; stage++) {
+    // --- 1. ENEMY CP CURVE ---
+    // Enemy multiplier: x1.5 per chapter (30 stages) — gentle idle RPG ramp
+    let enemyTeamCP = enemyBaseCurve[stage];
+
+    const isBossStage = bossSet.has(stage);
+    const isEliteStage = !isBossStage && (stage % 5 === 0);
+    let stageType = '\u5c0f\u602a';
+    // Note: Boss has 5x HP, 1/5 ATK (CP is roughly identical to Elite, so we use eliteScale multiplier)
+    if (isBossStage) { enemyTeamCP *= ((S.bossScale || 200) / 100); stageType = 'Boss'; }
+    else if (isEliteStage) { enemyTeamCP *= ((S.eliteScale || 150) / 100); stageType = '\u7cbe\u82f1'; }
+
+    // --- 2. PLAYER CP CURVE ---
+    // Find which day we are in
+    let currentDayLimit = dayLimitsGlobal[dayLimitsGlobal.length - 1];
+    for (let i = 0; i < dayLimitsGlobal.length; i++) {
+      if (stage <= dayLimitsGlobal[i].stage) {
+        currentDayLimit = dayLimitsGlobal[i];
+        break;
+      }
+    }
+
+    // Anchor: Player CP must EXACTLY MATCH the ACTUAL Enemy CP at the end of THIS day
+    const targetStage = currentDayLimit.stage;
+    let targetEnemyCP = enemyBaseCurve[targetStage];
+    if (bossSet.has(targetStage)) {
+      targetEnemyCP *= ((S.bossScale || 200) / 100);
+    } else if (targetStage % 5 === 0) {
+      targetEnemyCP *= ((S.eliteScale || 150) / 100);
+    }
+
+    // Dynamic Back-tracing for Ideal Path (stage-based breakpoints)
+    let playerTeamCP = targetEnemyCP;
+    for (let s = targetStage; s > stage; s--) {
+       playerTeamCP /= (1 + getExpForStage(S.playerStageExponent, s));
+    }
+
+
+    let chapter = 1;
+    for (let i = 0; i < chLimits.length; i++) {
+      if (stage <= chLimits[i]) {
+        chapter = i + 1;
+        break;
+      }
+    }
+
+
+
+    const currentDay = currentDayLimit.day;
+    let slots = slotUnlockStagesList.filter(u => stage >= u).length;
+    slots = Math.min(15, Math.max(1, slots));
+
+    let summons = 0;
+    let sUnlock = S.summonUnlockStage || 30;
+    if (stage >= sUnlock) {
+      let unlockDay = currentDay;
+      // Simplified day unlock: if we passed the stage, count daily pulls from now
+      let daysSinceUnlock = Math.max(0, currentDay - 1); // rough approximation
+      let cumulativeDailyPulls = daysSinceUnlock * (S.dailyPulls || 36);
+      summons = (S.day1ExtraPulls || 10) + cumulativeDailyPulls;
+
+      // Add stages pushed extra today
+      let prevDayStage = currentDay === 1 ? 0 : dayLimitsGlobal[currentDay - 2].stage;
+      let stagesInToday = currentDayLimit.stage - prevDayStage;
+      let stagesDoneToday = stage - prevDayStage;
+      if (stagesDoneToday < 0) stagesDoneToday = 0;
+      
+      let fraction = stagesDoneToday / stagesInToday;
+      if (fraction > 1) fraction = 1;
+
+      let pullsToday = Math.floor(fraction * (S.dailyPulls || 100) / 10) * 10;
+      summons += pullsToday;
+    }
+
+    if (summons !== cachedSummons || currentDay !== cachedDay || slots !== cachedSlots) {
+      cachedDay = currentDay;
+      cachedSummons = summons;
+      cachedSlots = slots;
+      cachedHeroesEV = [];
+
+      let q0 = S.qualities && S.qualities[0] ? S.qualities[0] : { atk: 10, hp: 50, mastery: 100 };
+      initialStarterCP = (S.heroBaseHp !== undefined ? S.heroBaseHp : 50) + (S.heroBaseAtk !== undefined ? S.heroBaseAtk : 10) * 5;
+      
+      let starterHeroes = [];
+      for (let i = 0; i < slots; i++) {
+        starterHeroes.push({ atk: (S.heroBaseAtk !== undefined ? S.heroBaseAtk : 10), hp: (S.heroBaseHp !== undefined ? S.heroBaseHp : 50), cp: initialStarterCP, hasCopy: 1, quality: 1, stars: 0, 
+                             mastery: (q0.mastery||100)/100, collectionAtkPct: 0 });
+      }
+
+      if (summons > 0 && S.qualities) {
+        let nMatrix = []; let wMatrix = [];
+        try { nMatrix = JSON.parse(S.normalRatesMatrix || '[]'); } catch(e){}
+        try { wMatrix = JSON.parse(S.wishRatesMatrix || '[]'); } catch(e){}
+        wMatrix.forEach(row => { if (row.length === 10) row.splice(7, 0, 0); });
+        
+        // Find current Gacha Level based on cumulative summons
+        if (summons > p_lastSummons) {
+          let delta = summons - p_lastSummons;
+          for (let p = 1; p <= delta; p++) {
+              let curPulls = p_lastSummons + p;
+              let gachaLv = 0;
+              for (let lv=0; lv<wMatrix.length; lv++) {
+                  if (wMatrix[lv][0] > 0 && curPulls >= wMatrix[lv][0]) gachaLv = lv + 1;
+                  else break;
+              }
+              if (wMatrix[wMatrix.length-1][0] > 0 && curPulls >= wMatrix[wMatrix.length-1][0]) gachaLv = wMatrix.length - 1;
+
+              for (let i = 0; i < S.qualities.length; i++) {
+                  p_persistentExpected[i] += ((nMatrix[gachaLv][i] || 0) / 100) / (S.heroesPerQuality || 4);
+              }
+              
+              if (summons >= (S.wishUnlockStage || 0)) { // Assume wish is unlocked natively or via config
+                  p_wishCounter++;
+                  if (p_wishCounter >= (S.wishPullRatio || 10)) {
+                      p_wishCounter = 0;
+                      for (let i = 1; i < S.qualities.length; i++) {
+                          p_persistentExpected[i] += ((wMatrix[gachaLv][i] || 0) / 100) / (S.heroesPerQuality || 4);
+                      }
+                  }
+              }
+
+              let hQ = 0;
+              for (let i = S.qualities.length - 1; i >= 0; i--) {
+                  if (p_persistentExpected[i] >= 0.5) { hQ = i; break; }
+              }
+
+              let coinVal = (S.exchangeCoinsPerPull !== undefined ? S.exchangeCoinsPerPull : 1) + (p_wishCounter === 0 ? 10 : 0);
+              let hqPrice = S.qualities[hQ] ? (S.qualities[hQ].shardCost || 10) : 10;
+              p_persistentExpected[hQ] += (coinVal / hqPrice) / (S.heroesPerQuality || 4);
+          }
+          p_lastSummons = summons;
+        }
+
+        for (let i = 0; i < S.qualities.length; i++) {
+          const q = S.qualities[i];
+          const expectedCopies = p_persistentExpected[i];
+          const chanceToOwn = expectedCopies >= 0.5 ? 1 : 0;
+
+          
+          if (chanceToOwn <= 0) continue;
+
+          let shards = Math.max(0, expectedCopies - 1);
+          let stars = Math.floor(shards);
+
+          const totalMastery = ((q.mastery || 100) + (q.starMastery || 1) * stars) / 100;
+          const heroATK = (S.heroBaseAtk !== undefined ? S.heroBaseAtk : 10) * totalMastery;
+          const heroHP = (S.heroBaseHp !== undefined ? S.heroBaseHp : 50) * totalMastery;
+          const cp = chanceToOwn > 0 ? (heroATK * 5 + heroHP) : 0;
+
+          for (let j = 0; j < (S.heroesPerQuality || 4); j++) {
+            cachedHeroesEV.push({ 
+              atk: heroATK, hp: heroHP, hasCopy: chanceToOwn, quality: i + 1, stars: stars,
+              mastery: totalMastery, cp: cp,
+              collectionAtkPct: q.collectionAtk || 0 
+            });
+          }
+        }
+
+        // Add to our available pool, sort by highest CP
+        let pool = [...starterHeroes, ...cachedHeroesEV].sort((a,b) => b.cp - a.cp);
+        
+        let p_xpBudget = p_globalJobXP;
+        pool.forEach(h => {
+             let max_stars = h.stars;
+             let current_stars = 0;
+             if (max_stars >= 1) current_stars = 1;
+             
+             let baseMultiplier = 24 * Math.pow(1.5, h.quality - 1);
+             while (current_stars < max_stars) {
+                 let next_cost = baseMultiplier * current_stars;
+                 if (p_xpBudget >= next_cost) {
+                     p_xpBudget -= next_cost;
+                     current_stars++;
+                 } else {
+                     break;
+                 }
+             }
+             
+             h.stars = current_stars;
+             const q = (S.qualities && S.qualities[Math.max(0, h.quality - 1)]) ? S.qualities[Math.max(0, h.quality - 1)] : {mastery: 100, starMastery: 1};
+             h.mastery = ((q.mastery || 100) + (q.starMastery || 1) * h.stars) / 100;
+             h.atk = (S.heroBaseAtk !== undefined ? S.heroBaseAtk : 10) * h.mastery;
+             h.hp  = (S.heroBaseHp !== undefined ? S.heroBaseHp : 50) * h.mastery;
+             h.cp = h.hasCopy > 0 ? (h.atk * 5 + h.hp) : 0;
+        });
+        
+        pool.sort((a,b) => b.cp - a.cp);
+        
+        // Only keep top N heroes where N=slots
+        cachedHeroesEV = pool.slice(0, slots);
+
+        // Apply Collection Bonus ONLY on the active slots? Or all unlocked heroes?
+        // Game rules say: unlocking heroes gives team-wide buff.
+        let totalCollectionAtk = 0;
+        // MUST count all uniquely pulled heroes for collection
+        let allUnlocks = pool; 
+        allUnlocks.forEach(h => { if (h.hasCopy >= 0.5 && h.collectionAtkPct) totalCollectionAtk += h.collectionAtkPct * (1 + (h.stars || 0)); });
+        
+        let collectionBonus = 1 + (totalCollectionAtk / 100);
+        cachedHeroesEV.forEach(h => {
+          h.atk *= collectionBonus;
+          h.hp *= collectionBonus;
+          h.cp = h.atk * 5 + h.hp;
+        });
+        cachedHeroesEV._totalCollectionPct = totalCollectionAtk;
+      } else {
+        cachedHeroesEV = starterHeroes;
+      }
+    }
+
+    const unlockW = window.SimState.weaponUnlockStage || 2;
+    const unlockA = window.SimState.armorUnlockStage || 30;
+    const unlockS = window.SimState.sanctuaryUnlockStage || 90;
+    cFoundry = stage >= unlockW ? Math.floor((stage - unlockW + 5) / 5) : 0;
+    cTannery = stage >= unlockA ? Math.floor((stage - unlockA + 5) / 5) : 0;
+    cMine = stage >= unlockS ? Math.floor((stage - unlockS + 5) / 5) : 0;
+
+    let totalBaseHeroATK = 0, totalBaseHeroHP = 0;
+    let topRawHeroHP = 0;
+    if (cachedHeroesEV.length > 0) {
+      topRawHeroHP = cachedHeroesEV[0].rawHp !== undefined ? cachedHeroesEV[0].rawHp : cachedHeroesEV[0].hp;
+    }
+
+    for (let i = 0; i < slots && i < cachedHeroesEV.length; i++) {
+      totalBaseHeroATK += cachedHeroesEV[i].atk;
+      totalBaseHeroHP += cachedHeroesEV[i].hp;
+    }
+
+    let cClinic = 0;
+    /* stripped */
+    if (stage >= (S.clinicUnlockStage || 5)) {
+      cClinic = Math.max(0, Math.floor((cFoundry + cTannery + cMine) / 3));
+      clinicHps = (S.clinicBaseHps || 1) + ((S.clinicUpgradeHps || 5) / 100) * cClinic;
+    }
+
+    let actualHeroTotalCP = totalBaseHeroHP + totalBaseHeroATK * 5;
+    if (actualHeroTotalCP === 0) actualHeroTotalCP = initialStarterCP;
+
+    // Pure hero CP (self only, no buildings): (ATK*5 + HP) * (mastery/100)
+    const pureHeroCP = actualHeroTotalCP;
+
+    // --- 3. ZEROED OUT FOR REDO ---
+    /* stripped */
+    
+    let buildingTotalCP = 0;
+    let actualPlayerCP = buildingTotalCP + pureHeroCP;
+
+    let curGachaLv = 0, reqNext = 0;
+    try {
+        let wM = JSON.parse(S.wishRatesMatrix || '[]');
+        for (let lv = 0; lv < wM.length; lv++) {
+            let reqToNext = wM[lv][0] || 0;
+            if (lv === wM.length - 1 || reqToNext <= 0 || summons < reqToNext) { reqNext = reqToNext; break; }
+            curGachaLv = lv + 1;
+        }
+        // Removed bad max level overwrite
+    } catch(e) {}
+
+    result.push({
+      stage,
+      day: currentDayLimit.day,
+      chapter,
+      stepIndex: Math.floor((stage - 1) / 5),
+      isBoss: isBossStage,
+      isElite: isEliteStage,
+      stageType,
+      enemyCount: isBossStage || isEliteStage ? 1 : 3,
+      individualHp: Math.round((isBossStage || isEliteStage) ? (enemyTeamCP / 14 * 9) : (enemyTeamCP / 3 * 0.5)),
+      individualAtk: Math.round((isBossStage || isEliteStage) ? (enemyTeamCP / 14) : (enemyTeamCP / 3 * 0.1)),
+
+      enemyCP: enemyTeamCP,
+      playerCP: playerTeamCP,
+
+      heroCP: pureHeroCP,
+      actualPlayerCP: actualPlayerCP,
+      weaponShopCP: prevW,
+      armorShopCP: prevA,
+      sanctuaryCP: prevS,
+      heroAtk: totalBaseHeroATK, heroHp: totalBaseHeroHP,
+      weaponClicks: weaponClicks, armorClicks: armorClicks, sanctuaryClicks: sanctuaryClicks,
+      gachaLv: curGachaLv, reqNext: reqNext,
+      heroSlots: cachedHeroesEV.slice(0, slots).map(h => ({ q: h.quality || 1, s: h.stars || 0, cp: Math.round(h.cp || (h.atk * 5 + h.hp)), own: h.hasCopy || 0 })).sort((a,b) => b.q - a.q || b.s - a.s || b.cp - a.cp),
+      collectionAtkPct: cachedHeroesEV._totalCollectionPct || 0,
+      cClinic: cClinic, clinicHps: Number(clinicHps.toFixed(2)),
+      cFoundry: cFoundry, cTannery: cTannery, cMine: cMine,
+      activeGold: Math.floor(activeGold),
+      curSteel: Math.floor(curSteel),
+      curLeather: Math.floor(curLeather),
+      curCrystal: Math.floor(curCrystal),
+      slots: slots, summons: summons
+    });
+  }
+
+  return result;
 }
+
 
 // ── Parameter Panel UI ──
 function renderQualitiesGrid() {
-    const Q = window.SimState.qualities;
-    const labels = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7'];
-    const inputCls = 'bg-black/50 border border-white/10 text-white rounded text-center text-[11px] font-mono font-bold focus:outline-none focus:border-cyan-500/60 transition-colors';
-    const inputStyle = 'width:4rem;padding:3px 4px;';
-    let html = `<div style="margin:6px 0 4px 0">
+  const Q = window.SimState.qualities;
+  const labels = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7'];
+  const inputCls = 'bg-black/50 border border-white/10 text-white rounded text-center text-[11px] font-mono font-bold focus:outline-none focus:border-cyan-500/60 transition-colors';
+  const inputStyle = 'width:3rem;padding:3px 1px;';
+  const cols = [
+
+    { key: 'mastery', label: '精通%', step: 1 },
+    { key: 'starMastery', label: '星精通', step: 0.1 },
+    { key: 'shardCost', label: '兑换币', step: 1 },
+    { key: 'collectionAtk', label: '图鉴%', step: 0.1 }
+  ];
+  let html = `<div style="margin:6px 0 4px 0">
     <table style="width:100%;border-collapse:separate;border-spacing:0 2px;font-size:11px">
       <thead><tr style="color:rgba(255,255,255,0.45)">
-        <th style="padding:2px 6px;text-align:left;width:28px"></th>
-        <th style="padding:2px 4px;text-align:center;font-weight:600">Rate</th>
-        <th style="padding:2px 4px;text-align:center;font-weight:600">ATK</th>
-        <th style="padding:2px 4px;text-align:center;font-weight:600">HP</th>
-      </tr></thead><tbody>`;
-    for (let i = 0; i < Q.length; i++) {
-        html += `<tr class="bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
-      <td style="padding:4px 6px;color:#a78bfa;font-weight:700;font-size:11px;border-radius:8px 0 0 8px">${labels[i]}</td>
-      <td style="padding:2px 3px"><input type="number" value="${Q[i].rate}" step="0.01" oninput="window.SimState.qualities[${i}].rate=parseFloat(this.value);window.renderSimulationChart();" class="${inputCls}" style="${inputStyle}"></td>
-      <td style="padding:2px 3px"><input type="number" value="${Q[i].atk}" step="10" oninput="window.SimState.qualities[${i}].atk=parseFloat(this.value);window.renderSimulationChart();" class="${inputCls}" style="${inputStyle}"></td>
-      <td style="padding:2px 3px;border-radius:0 8px 8px 0"><input type="number" value="${Q[i].hp}" step="50" oninput="window.SimState.qualities[${i}].hp=parseFloat(this.value);window.renderSimulationChart();" class="${inputCls}" style="${inputStyle}"></td>
-    </tr>`;
+        <th style="padding:2px 4px;text-align:left;width:20px"></th>`;
+  for (const c of cols) {
+    html += `<th style="padding:2px 1px;text-align:center;font-weight:600;font-size:10px">${c.label}</th>`;
+  }
+  html += `</tr></thead><tbody>`;
+  for (let i = 0; i < Q.length; i++) {
+    html += `<tr class="bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
+      <td style="padding:4px 4px;color:#a78bfa;font-weight:700;font-size:11px;border-radius:8px 0 0 8px">${labels[i]}</td>`;
+    for (let c = 0; c < cols.length; c++) {
+      const col = cols[c];
+      const rd = c === cols.length - 1 ? 'border-radius:0 8px 8px 0' : '';
+      html += `<td style="padding:2px 1px;${rd}"><input type="number" value="${Q[i][col.key] || 0}" step="${col.step}" oninput="window.SimState.qualities[${i}].${col.key}=parseFloat(this.value);window.renderSimulationChart();" class="${inputCls}" style="${inputStyle}"></td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+
+function renderGachaMatrixGrid() {
+  const S = window.SimState;
+  const inputCls = 'bg-black/50 border border-white/10 text-white rounded text-center text-[11px] font-mono font-bold focus:outline-none focus:border-cyan-500/60 transition-colors';
+  const inputStyle = 'width:2.8rem;padding:2px 1px;';
+  const qLabels = ['Q1','Q2','Q3','Q4','Q5','Q6','Q7','XP1','XP2','XP3'];
+  const qColors = ['#e2e8f0','#22c55e','#3b82f6','#a855f7','#f97316','#ef4444','#ec4899'];
+
+  function renderMatrix(title, key, color, isWish) {
+    let matrix;
+    try { matrix = JSON.parse(S[key] || '[]'); } catch(e) { matrix = []; }
+    if (!Array.isArray(matrix) || matrix.length === 0) return '<div style="color:#666;font-size:10px">Invalid matrix</div>';
+
+    const col0Label = isWish ? '卡尺升级' : 'Q1';
+    const col0Color = isWish ? '#fbbf24' : qColors[0];
+    const col0Title = isWish ? '累计抽数达到该值可升级' : '';
+
+    let html = `<div style="margin:8px 0 4px 0">
+      <div style="font-size:10px;font-weight:700;color:${color};margin-bottom:3px;letter-spacing:0.5px">${title} (${matrix.length}级)</div>
+      <table style="width:100%;border-collapse:separate;border-spacing:0 2px;font-size:10px">
+        <thead><tr style="color:rgba(255,255,255,0.4)">
+          <th style="padding:1px 2px;text-align:left;width:24px;font-size:9px">Lv</th>
+          <th style="padding:1px 1px;text-align:center;font-weight:600;font-size:9px;color:${col0Color}" title="${col0Title}">${col0Label}</th>`;
+    let maxColsHT = isWish ? 11 : 10;
+    const extraColors = ['#fbbf24', '#f59e0b', '#d97706'];
+    for (let q = 1; q < maxColsHT; q++) {
+      let qLabelIdx = isWish ? (q - 1) : q;
+      let isXP = qLabelIdx >= 7;
+      let tLab = qLabels[qLabelIdx];
+      let tCol = isXP ? extraColors[qLabelIdx - 7] : qColors[qLabelIdx];
+      html += `<th style="padding:1px 1px;text-align:center;font-weight:600;font-size:9px;color:${tCol}">${tLab}</th>`;
+    }
+    html += `</tr></thead><tbody>`;
+    
+    for (let lv = 0; lv < matrix.length; lv++) {
+      html += `<tr class="bg-white/5 rounded hover:bg-white/10 transition-colors">
+        <td style="padding:2px 2px;color:#10b981;font-weight:700;font-size:10px;border-radius:6px 0 0 6px">${lv+1}</td>`;
+      
+            // Q1 column
+      let val0 = matrix[lv][0] || 0;
+      if (isWish) {
+        if (lv === matrix.length - 1) {
+          html += `<td style="padding:1px 1px;text-align:center;color:#666;font-weight:bold;font-size:12px">-</td>`;
+        } else {
+          // If stored value is 0 or messed up in cache, apply defaults visually to help them
+          const defs = [50, 100, 200, 400, 600, 800, 1000];
+          if (val0 === 0 && defs[lv]) { val0 = defs[lv]; matrix[lv][0] = val0; window.SimState[''+key] = JSON.stringify(matrix); }
+          html += `<td style="padding:1px 1px"><input type="number" value="${val0}" step="50" style="width:3.2rem;padding:2px;color:#fbbf24" class="${inputCls}" oninput="try{let m=JSON.parse(window.SimState['${key}']);m[${lv}][0]=parseFloat(this.value)||0;window.SimState['${key}']=JSON.stringify(m);window.renderSimulationChart();}catch(e){}"></td>`;
+        }
+      } else {
+        html += `<td style="padding:1px 1px"><input type="number" value="${val0}" step="0.5" style="${inputStyle}${val0===0?'opacity:0.25;':''}" class="${inputCls}" oninput="try{let m=JSON.parse(window.SimState['${key}']);m[${lv}][0]=parseFloat(this.value)||0;window.SimState['${key}']=JSON.stringify(m);this.style.opacity=this.value==0?'0.25':'1';window.renderSimulationChart();}catch(e){}"></td>`;
+      }
+
+      // Q2-Q7 and XP columns
+      let maxCols = isWish ? 11 : 10;
+      for (let q = 1; q < maxCols; q++) {
+        const val = matrix[lv][q] || 0;
+        const rd = q === (maxCols - 1) ? 'border-radius:0 6px 6px 0' : '';
+        const dim = val === 0 ? 'opacity:0.25;' : '';
+        let step = (isWish && q >= 8) ? '5' : ((!isWish && q >= 7) ? '5' : '0.5'); // Larger steps for XP
+        let isXP = (isWish && q >= 8) || (!isWish && q >= 7);
+        let colorOverride = isXP ? 'color:#fbbf24;' : ''; // Yellow text for XP
+        html += `<td style="padding:1px 1px;${rd}"><input type="number" value="${val}" step="${step}" style="${inputStyle}${dim}${colorOverride}" class="${inputCls}" oninput="try{let m=JSON.parse(window.SimState['${key}']);m[${lv}][${q}]=parseFloat(this.value)||0;window.SimState['${key}']=JSON.stringify(m);this.style.opacity=this.value==0?'0.25':'1';window.renderSimulationChart();}catch(e){}"></td>`;
+      }
+      html += `</tr>`;
     }
     html += `</tbody></table></div>`;
     return html;
+  }
+
+  return renderMatrix('普通池概率%', 'normalRatesMatrix', '#10b981', false) 
+       + renderMatrix('许愿池概率% (第1列为升级阈值)', 'wishRatesMatrix', '#a78bfa', true);
 }
 
 const SIM_MODULES = [
-    {
-        title: '全局与章节', color: '#fbbf24', icon: '⚙️', fields: [
-            { key: 'displayDays', label: '展示天数', step: 1 },
-            { key: 'dailyExpectedStages', label: '每日推关数', step: 1 },
-            { key: 'bossStagesConfig', label: 'Boss自定义关卡', type: 'text' },
-            { key: 'subsequentBossInterval', label: '后续Boss间隔', step: 10 },
-        ]
-    },
-    {
-        title: '关卡与怪物', color: '#ef4444', icon: '👹', fields: [
-            { key: 'minionCount', label: '小怪波数量(x3)', step: 1 },
-            { key: 'enemyBaseHp', label: '怪物基础HP', step: 10 },
-            { key: 'enemyBaseAtk', label: '怪物基础ATK', step: 5 },
-            { key: 'enemyHpScale', label: 'HP缩放/5关', step: 0.01 },
-            { key: 'enemyAtkScale', label: 'ATK缩放/5关', step: 0.01 },
-            { key: 'eliteMultiplier', label: '精英倍率(波)', step: 0.05 },
-            { key: 'bossMultiplier', label: 'Boss倍率(波)', step: 0.1 },
-        ]
-    },
-    {
-        title: '英雄与召唤系统', color: '#8b5cf6', icon: '🦸', hasQualities: true, fields: [
-            { key: 'summonUnlockStage', label: '抽卡解锁关卡', step: 1 },
-            { key: 'slotUnlockStages', label: '槽位解锁关卡', type: 'text', wide: true },
-            { key: 'day1ExtraPulls', label: '首日额外抽数', step: 1 },
-            { key: 'dailyPulls', label: '每日抽卡数', step: 1 },
-            { key: 'heroesPerQuality', label: '每品质英雄个数', step: 1 },
-            { key: 'ascensionCostsConfig', label: '升星碎片消耗组', type: 'text', wide: true },
-            { key: 'ascensionLinearBonus', label: '升星线性加成/星', step: 0.01 },
-            { key: 'ascensionExpBonus', label: '升星指数乘区/星', step: 0.01 },
-        ]
-    },
-    {
-        title: '力量建筑', color: '#22d3ee', icon: '🏗️', fields: [
-            { key: 'weaponShopBaseAtk', label: '武器店基础ATK', step: 10 },
-            { key: 'weaponShopAtkScale', label: '武器ATK缩放/5关', step: 0.01 },
-            { key: 'armorShopBaseHp', label: '护甲基础HP', step: 50 },
-            { key: 'armorShopHpScale', label: '护甲HP缩放/5关', step: 0.01 },
-        ]
-    },
+  {
+    title: '全局推关引擎与目标', color: '#fbbf24', icon: '⚙️',
+    rules: [
+      { title: '关卡时间规则', desc: '每关默认 <code>10秒</code>，精英关和Boss关 <code>20秒</code>。' },
+      { title: '章节划分规则', desc: '章节由 <code>Boss关卡配置</code> 决定。默认 <code>50, 150, 300</code> 表示：<br/>• 第1章：第1~50关（共50关）<br/>• 第2章：第51~150关（共100关）<br/>• 第3章：第151~300关（共150关）<br/>超出配置后按 <code>后续Boss间隔</code>（默认150关）循环：450, 600, 750...' },
+      { title: '每日推关衰减', desc: '玩家首日推到 <code>开服首日上限</code>（默认300关）。之后每天上限减少 <code>单日极限衰减阈值</code>（默认10关）：<br/>• Day1=300 → Day2=290 → Day3=280 → ...<br/>触底 <code>日常挂机低保</code>（默认90关）后恒定。' },
+      { title: 'Boss 出现规则', desc: '每章最后一关出现Boss。由 <code>Boss关卡配置</code> 定义具体关卡（默认50, 150, 300）。超出后按 <code>后续Boss间隔</code> 循环出现。' }
+    ],
+    fields: [
+      { key: 'displayDays', label: '展示天数', step: 1, default: 7 },
+      { key: 'day1PushStages', label: '开服首日上限', step: 10, default: 300 },
+      { key: 'dailyPushDecay', label: '单日极限衰减阈值', step: 1, default: 10 },
+      { key: 'minDailyPush', label: '日常挂机低保关卡', step: 10, default: 150 },
+      { key: 'bossStagesConfig', label: 'Boss关卡配置', type: 'text', wide: true },
+      { key: 'subsequentBossInterval', label: '后续Boss间隔', step: 10, default: 150 },
+    ]
+  },
+  {
+    title: '关卡与怪物 (纯正放置指数)', color: '#ef4444', icon: '👹',
+    rules: [
+      { title: '怪物基础战力', desc: '每波基础战力 = <code>(怪物HP + 怪物ATK × 5) × 小怪数量</code><br/>默认：<code>(15 + 3×5) × 3 = 90 CP</code>' },
+      { title: '关卡时间', desc: '普通关 <code>10秒</code>，精英关和Boss关 <code>20秒</code>。' },
+      { title: '分段指数膨胀', desc: '敌方战力按关卡分段动态膨胀：<code>战力 = 上一关战力 × (1 + 当前段指数‰/1000)</code>。<br/>格式：<code>[[起始关,指数‰], ...]</code>，默认 <code>[[1,12],[51,10]]</code>：<br/>• 第1~50关每关增长 <code>12‰(1.2%)</code><br/>• 第51关起每关增长 <code>10‰(1%)</code>' },
+      { title: '分段理想战力', desc: '绿线在每日结束时追平敌方，回推时按关卡匹配 <code>玩家预期序列‰</code>。<br/>默认 <code>[[1,10],[51,8]]</code>：第1~50关 <code>10‰</code>，第51关起 <code>8‰</code>。始终保持与敌方 <code>2‰</code> 的动态差距，形成挂机循环。' },
+      { title: '精英 / Boss 波', desc: '每5关出现一次精英，战力 = 普通波 × <code>精英倍率%</code> (默认150)。<br/>每章最后一关出现Boss，战力 = 普通波 × <code>Boss倍率%</code> (默认200)。' }
+    ],
+    fields: [
+      { key: 'minionCount', label: '小怪波数量(x3)', step: 1 },
+      { key: 'enemyBaseHp', label: '怪物基础HP', step: 10 },
+      { key: 'enemyBaseAtk', label: '怪物基础ATK', step: 5 },
+      { key: 'eliteScale', label: '精英倍率(%)', step: 1, default: 150 },
+      { key: 'bossScale', label: 'Boss倍率(%)', step: 1, default: 200 },
+      { key: 'enemyStageExponent', label: '敌方指数序列(‰)', type: 'text', wide: true, default: '[[1,12],[51,10]]' },
+  { key: 'playerStageExponent', label: '玩家预期序列(‰)', type: 'text', wide: true, default: '[[1,10],[51,8]]' }
+    ]
+  },
+  {
+    title: '抽卡与英雄系统', color: '#8b5cf6', icon: '🦸', hasQualities: true, hasGachaMatrix: true,
+    rules: [
+      { title: '双池系统', desc: '抽卡分为<b>普通抽卡</b>和<b>许愿抽卡</b>两个池子。许愿机制依赖设定的界限点激活。<br/>注意：矩阵界面的前七列为不同档次英雄（基底按总比重65%换算），后三列为三大经验掉落区（占比35%）。' },
+      { title: '固定武装与潜力拔高', desc: '所有英雄的基础武装全部被暴力锁死统一定调，基础ATK和HP严格按照界面下方的配置锚定执行（默认10与50）。高品质卡牌战力的拉开完完全全依赖他们恐怖的 <b>精通% (Mastery)</b> 以及其附带的星级放大杠杆作用。' },
+      { title: '通用经验与升星双轨制', desc: '<b>①卡池掉落：</b> 卡池右侧特设三大经验掉落区（基础掉率 20%/10%/5%），普通池单格触发对应 10/20/40 经验，许愿池单格触发 25/50/100 经验。<br/><b>②单次消耗等差阶乘突破：</b> 每次进阶星级必须持有对应的碎片天花板与充裕的经验池！单次升阶消耗遵循等差公式：<code>基础底数 24 × (目标星级 - 1) × 1.5 ^ (英雄级别 - 1)</code>。<br/>引擎模拟时将使用贪心算法优先把公共经验灌注给最高 CP 潜力的头部英雄序列！' },
+      { title: '通用经验与升星双轨制', desc: '<b>①卡池掉落压缩：</b> 卡池右侧特设三大经验掉落区（基础掉率 20%/10%/5%），普通池单格触发 10/20/40 经验，许愿池单格触发 25/50/100 经验。纯英雄掉率已被压缩至 65%以让渡给经验池。<br/><b>②单次消耗等差阶乘突破：</b> 每次进阶星级必须持有对应的碎片天花板与足够扫荡的充裕经验池！单次升星消耗遵循等差公式：<code>基础消耗 24 × (目标星级 - 1) × 1.5 ^ (英雄品质级别 - 1)</code>。<br/>系统将贪婪地把积累的公共经验灌注给您持有碎片中 CP 潜力最高的顶级英雄！' },
+      { title: '8级卡尺', desc: '普通池和许愿池共享卡尺等级，共 <code>8</code> 级。随抽数累积自动升级。<br/>• Lv1普通池：Q1~Q3<br/>• Lv5普通池：首次可出Q7 (0.5%)<br/>• Lv8普通池：Q7概率 = <code>2%</code><br/>• Lv8许愿池：Q7概率 = <code>5%</code>' },
+      { title: '多级动态卡尺 (阶梯保底)', desc: '许愿池采用了直观的动态卡尺系统。通过累计抽数达到对应区间的阈值（可在第一列自由配置），卡尺会自动升阶，永久性提高高阶品质的出货概率上限！' },
+      { title: '兑换币系统', desc: '每次抽卡获得 <code>10</code> 个兑换币。兑换币可在商店兑换<b>已拥有英雄</b>的碎片。<br/>兑换价格按品质递增（1.5倍递增）：Q1=10币, Q2=15币, ... Q7=114币。' },
+      { title: '抽卡解锁', desc: '通关第 <code>50</code> 关后解锁抽卡系统。解锁后立即赠送 <code>10连抽</code>。<br/>每日通过挂机获得 <code>100</code> 抽。只有10连抽，无单抽。' },
+      { title: '槽位解锁', desc: '初始1个英雄槽位，最多15个。按关卡进度解锁，间隔逐次+10：<br/><code>0, 20, 50, 90, 140, 200, 270, 350, 440, 540, 650, 770, 900, 1040, 1190</code><br/>间隔规律：20→30→40→50→60→...→150' },
+      { title: 'Q1~Q7品质体系', desc: '英雄共7个品质阶级，所有属性列按 <code>1.5倍</code> 递增：<br/>• ATK: 10→15→23→34→51→76→114<br/>• HP: 50→75→113→169→253→380→570<br/>• 精通(%): 100→150→225→338→506→759→1139' },
+      { title: '精通系统', desc: '精通是英雄自身的战力乘数：<code>英雄CP = (ATK×5 + HP) × (精通/100)</code>。<br/>Q1精通=100%(1倍)，Q7精通=1139%(11.4倍)。升星额外叠加 <code>升星精通%</code>。' },
+      { title: '图鉴收集', desc: '每解锁一个新英雄，全队获得该品质对应的ATK加成%：<br/>Q1=0.2% → Q2=0.3% → ... → Q7=2.3%' }
+    ],
+    fields: [
+      { key: 'summonUnlockStage', label: '抽卡解锁关卡', step: 10, default: 50 },
+      { key: 'day1ExtraPulls', label: '解锁送抽数', step: 10, default: 10 },
+      { key: 'dailyPulls', label: '每日抽卡数', step: 10, default: 100 },
+      { key: 'wishPullRatio', label: '每N抽得1许愿', step: 1, default: 100 },
+      { key: 'exchangeCoinsPerPull', label: '每抽获兑换币', step: 1, default: 1 },
+      { key: 'heroesPerQuality', label: '每品质英雄个数', step: 1, default: 4 },
+      { key: 'heroBaseAtk', label: '基础武器攻击(固定)', step: 1, default: 10 },
+      { key: 'heroBaseHp', label: '基础护甲血量(固定)', step: 10, default: 50 },
+      { key: 'slotUnlockStages', label: '槽位解锁关卡', type: 'text', wide: true, default: '0, 20, 50, 90, 140, 200, 270, 350, 440, 540, 650, 770, 900, 1040, 1190' },
+    ]
+  }
 ];
 
 window.renderSimulationConfigUI = function () {
-    const panel = document.getElementById('sim-params-panel');
-    if (!panel) return;
-    let allHtml = '';
-    for (const mod of SIM_MODULES) {
-        allHtml += `<div class="mb-3">
+  const panel = document.getElementById('sim-params-panel');
+  if (!panel) return;
+  let allHtml = '';
+  for (let modIdx = 0; modIdx < SIM_MODULES.length; modIdx++) {
+    const mod = SIM_MODULES[modIdx];
+    const hasRules = mod.rules && mod.rules.length > 0;
+    allHtml += `<div class="mb-3">
       <div class="flex items-center gap-2 px-1 py-1.5 mb-1">
         <span style="font-size:1rem">${mod.icon}</span>
         <span class="text-xs font-bold uppercase tracking-widest" style="color:${mod.color}">${mod.title}</span>
+        ${hasRules ? `<button onclick="window._showSimRuleModal(${modIdx})" style="margin-left:auto;padding:1px 8px;font-size:10px;border:1px solid ${mod.color}40;color:${mod.color};border-radius:4px;background:${mod.color}10;cursor:pointer;font-weight:600;transition:all 0.2s" onmouseenter="this.style.background='${mod.color}30'" onmouseleave="this.style.background='${mod.color}10'">[\u89c4\u5219\u8be6\u60c5]</button>` : ''}
       </div>
       <div class="flex flex-col gap-1">
         ${mod.fields.map(f => {
-            const isText = f.type === 'text';
-            const w = f.wide ? '100%' : (isText ? '7rem' : '5rem');
-            return `<div class="flex justify-between items-center bg-white/5 rounded-lg px-3 py-1.5 hover:bg-white/10 transition-colors">
+      const isText = f.type === 'text';
+      const w = f.wide ? '100%' : (isText ? '7rem' : '5rem');
+
+      if (window.SimState[f.key] === undefined && f.default !== undefined) {
+        window.SimState[f.key] = f.default;
+      }
+
+      return `<div class="flex justify-between items-center bg-white/5 rounded-lg px-3 py-1.5 hover:bg-white/10 transition-colors">
             <span class="text-[11px] text-white/70 leading-tight" style="max-width:${f.wide ? '30%' : '55%'}">${f.label}</span>
-            <input type="${isText ? 'text' : 'number'}" value="${window.SimState[f.key]}" ${!isText ? `step="${f.step}"` : ''}
+            <input type="${isText ? 'text' : 'number'}" value="${window.SimState[f.key] !== undefined ? window.SimState[f.key] : ''}" ${!isText ? `step="${f.step}"` : ''}
               oninput="window.SimState['${f.key}'] = ${isText ? 'this.value' : 'parseFloat(this.value)'}; window.renderSimulationChart();"
               class="bg-black/50 border border-white/10 text-white rounded text-center text-[11px] font-mono font-bold focus:outline-none focus:border-cyan-500/60 transition-colors"
               style="width:${w};padding:3px 4px;">
           </div>`;
-        }).join('')}
+    }).join('')}
       </div>
-      ${mod.hasQualities ? renderQualitiesGrid() : ''}
+      ${mod.hasQualities ? renderQualitiesGrid() : ''}${mod.hasGachaMatrix ? renderGachaMatrixGrid() : ''}
     </div>`;
+  }
+  panel.innerHTML = allHtml;
+};
+
+// ── Rule Details Modal (v0.4.6 Ultra-Wide UI) ──
+window._showSimRuleModal = function (modIdx) {
+  const mod = SIM_MODULES[modIdx];
+  if (!mod || !mod.rules) return;
+  let existing = document.getElementById('sim-rule-modal-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'sim-rule-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);animation:simModalFadeIn 0.25s ease';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+  // Build cards from rules (support both string and {title,desc} formats)
+  const rulesHtml = mod.rules.map(r => {
+    if (typeof r === 'object' && r.title) {
+      return `<div style="border:1px solid rgba(255,255,255,0.08);background:rgba(15,23,42,0.6);padding:16px 20px;border-radius:10px;margin-bottom:12px">
+                <div style="font-size:15px;font-weight:700;color:${mod.color};margin-bottom:6px">${r.title}</div>
+                <div style="font-size:14px;line-height:1.8;color:rgba(255,255,255,0.85)">${r.desc}</div>
+            </div>`;
     }
-    panel.innerHTML = allHtml;
+    return `<div style="border:1px solid rgba(255,255,255,0.08);background:rgba(15,23,42,0.6);padding:14px 18px;border-radius:10px;margin-bottom:10px;font-size:14px;line-height:1.8;color:rgba(255,255,255,0.85)">${r}</div>`;
+  }).join('');
+
+  overlay.innerHTML = `
+        <style>
+            @keyframes simModalFadeIn{from{opacity:0;transform:scale(0.97)}to{opacity:1;transform:scale(1)}}
+            #sim-rule-modal-overlay code{background:rgba(139,92,246,0.15);color:#e879f9;padding:2px 8px;border-radius:4px;font-family:'Cascadia Code','Fira Code',monospace;font-size:13px;font-weight:600;white-space:nowrap}
+        </style>
+        <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:36px 40px;width:95vw;max-width:900px;max-height:90vh;overflow-y:auto;box-shadow:0 30px 60px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.05) inset;animation:simModalFadeIn 0.25s ease">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08)">
+                <span style="font-size:1.8rem">${mod.icon}</span>
+                <div>
+                    <div style="font-size:20px;font-weight:800;color:${mod.color};letter-spacing:0.5px">${mod.title}</div>
+                    <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px">规则详情 · Rule Details</div>
+                </div>
+                <button onclick="document.getElementById('sim-rule-modal-overlay').remove()" style="margin-left:auto;color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);font-size:16px;cursor:pointer;padding:4px 12px;border-radius:8px;line-height:1;transition:all 0.2s" onmouseenter="this.style.background='rgba(255,255,255,0.15)';this.style.color='#fff'" onmouseleave="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.4)'">✕ 关闭</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0">${rulesHtml}</div>
+        </div>
+    `;
+  document.body.appendChild(overlay);
 };
 
 // ── Chart Rendering ──
 let simChartInstance = null;
+let simBuildingChartInstance = null;
 window.renderSimulationChart = function () {
-    const el = document.getElementById('sim-chart');
-    if (!el) return;
-    if (!simChartInstance) {
-        simChartInstance = echarts.init(el, 'dark');
-        const ro = new ResizeObserver(() => simChartInstance.resize());
-        ro.observe(el);
-    }
+  const el = document.getElementById('sim-chart');
+  const bel = document.getElementById('sim-building-chart');
+  if (!el || !bel) return;
 
-    const data = generateChartData();
-    const comma = v => typeof v === 'number' && isFinite(v) ? v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '∞';
-    const daily = window.SimState.dailyExpectedStages;
+  if (!simChartInstance) {
+    simChartInstance = echarts.init(el, 'dark');
+    const ro = new ResizeObserver(() => simChartInstance.resize());
+    ro.observe(el);
+  }
+  if (!simBuildingChartInstance) {
+    simBuildingChartInstance = echarts.init(bel, 'dark');
+    const ro2 = new ResizeObserver(() => simBuildingChartInstance.resize());
+    ro2.observe(bel);
+  }
 
-    const option = {
-        backgroundColor: 'transparent',
-        tooltip: {
-            trigger: 'axis',
-            backgroundColor: 'rgba(15,23,42,0.96)',
-            borderColor: 'rgba(255,255,255,0.08)',
-            textStyle: { color: '#fff', fontSize: 12 },
-            extraCssText: 'max-width:440px;white-space:normal;line-height:1.6;',
-            formatter: params => {
-                const d = data[params[0].dataIndex];
-                if (!d) return '';
-                const typeColor = d.isBoss ? '#ef4444' : (d.isElite ? '#f59e0b' : '#94a3b8');
-                let s = `<b style="font-size:13px">关卡 ${d.stage}</b> &nbsp; <span style="color:#94a3b8">Day ${d.day}</span> &nbsp; <span style="background:${typeColor}20;color:${typeColor};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700">${d.stageType}</span><br/>`;
-                s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.08)"></div>`;
-                s += `<span style="color:#ef4444">⚔ 敌方CP:</span> <b>${comma(d.enemyCP)}</b><br/>`;
-                s += `<span style="color:#22c55e">💪 玩家总CP:</span> <b>${comma(d.playerCP)}</b><br/>`;
-                s += `<span style="color:#60a5fa">🦸 英雄CP:</span> <b>${comma(d.heroCP)}</b> &nbsp; <span style="color:#fb923c">🏗️ 建筑CP:</span> <b>${comma(d.buildingCP)}</b><br/>`;
-                s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.05)"></div>`;
-                s += `<span style="color:#94a3b8;font-size:11px">单体怪HP: ${comma(d.individualHp)} | 单体怪ATK: ${comma(d.individualAtk)}<br/>`;
-                s += `英雄ATK: ${comma(d.heroAtk)} | 英雄HP: ${comma(d.heroHp)}<br/>`;
-                s += `建筑ATK: ${comma(d.buildingATK)} | 建筑HP: ${comma(d.buildingHP)}<br/>`;
-                s += `槽位: ${d.slots} | 抽卡: ${d.summons}</span>`;
-                return s;
-            }
-        },
-        legend: {
-            data: ['敌方CP (Wall)', '玩家总战力 (Total)', '英雄纯战力 (Heroes)', '建筑纯战力 (Buildings)'],
-            textStyle: { color: '#ccc', fontSize: 11 },
-            bottom: 0
-        },
-        grid: { left: '2%', right: '3%', bottom: '10%', top: '6%', containLabel: true },
-        xAxis: {
-            type: 'category',
-            boundaryGap: false,
-            data: data.map(d => d.stage),
-            axisLabel: {
-                color: '#888', fontSize: 10,
-                formatter: function (value, index) {
-                    const p = data[index];
-                    if (p && p.stage % daily === 0) {
-                        return '关卡 ' + p.stage + '\nDay ' + p.day + ' (' + p.stage + 'stg)';
-                    }
-                    return '';
-                }
-            },
-            axisTick: { alignWithLabel: true },
-            splitLine: { show: false }
-        },
-        yAxis: {
-            type: 'log',
-            logBase: 10,
-            name: '战力 CP (Log₁₀)',
-            nameTextStyle: { color: '#888', fontSize: 11 },
-            axisLine: { show: true, lineStyle: { color: '#334155' } },
-            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
-            axisLabel: { color: '#888', fontSize: 10 },
-            min: 1
-        },
-        dataZoom: [
-            { type: 'inside', xAxisIndex: 0, filterMode: 'none' }
-        ],
-        series: [
-            {
-                name: '敌方CP (Wall)',
-                type: 'line',
-                data: data.map(d => d.enemyCP),
-                lineStyle: { color: '#ef4444', width: 1.5 },
-                itemStyle: { color: '#ef4444' },
-                symbol: 'none',
-                sampling: 'lttb',
-                markPoint: {
-                    data: data.filter(d => d.isBoss).map(d => ({
-                        coord: [d.stage - 1, d.enemyCP],
-                        symbol: 'diamond',
-                        symbolSize: 10,
-                        itemStyle: { color: '#ef4444' }
-                    })),
-                    label: { show: false }
-                }
-            },
-            {
-                name: '玩家总战力 (Total)',
-                type: 'line',
-                data: data.map(d => d.playerCP),
-                lineStyle: { color: '#22c55e', width: 2.5 },
-                itemStyle: { color: '#22c55e' },
-                symbol: 'none',
-                sampling: 'lttb',
-                areaStyle: {
-                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                        { offset: 0, color: 'rgba(34,197,94,0.10)' },
-                        { offset: 1, color: 'rgba(34,197,94,0.01)' }
-                    ])
-                }
-            },
-            {
-                name: '英雄纯战力 (Heroes)',
-                type: 'line',
-                data: data.map(d => d.heroCP),
-                lineStyle: { color: '#60a5fa', width: 1.5, type: 'dashed' },
-                itemStyle: { color: '#60a5fa' },
-                symbol: 'none',
-                sampling: 'lttb'
-            },
-            {
-                name: '建筑纯战力 (Buildings)',
-                type: 'line',
-                data: data.map(d => d.buildingCP),
-                lineStyle: { color: '#fb923c', width: 1.5, type: 'dashed' },
-                itemStyle: { color: '#fb923c' },
-                symbol: 'none',
-                sampling: 'lttb'
-            }
-        ]
-    };
+  const data = generateChartData();
+  const comma = v => typeof v === 'number' && isFinite(v) ? Math.round(v).toLocaleString('en-US') : '∞';
+  const daily = window.SimState.dailyExpectedStages;
 
-    simChartInstance.setOption(option, true);
+  const mainOption = {
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(15,23,42,0.96)',
+      borderColor: 'rgba(255,255,255,0.08)',
+      textStyle: { color: '#fff', fontSize: 12 },
+      extraCssText: 'max-width:440px;white-space:normal;line-height:1.6;',
+      formatter: params => {
+        const d = data[params[0].dataIndex];
+        if (!d) return '';
+        const typeColor = d.isBoss ? '#ef4444' : (d.isElite ? '#f59e0b' : '#94a3b8');
+        const qColors = ['#e2e8f0','#22c55e','#3b82f6','#a855f7','#f97316','#ef4444','#ec4899'];
+        let s = `<b style="font-size:13px">关卡 ${d.stage}</b> &nbsp; <span style="color:#10b981;font-weight:bold">第 ${d.chapter} 章</span> &nbsp; <span style="color:#94a3b8">历时 ${d.day} 天</span> &nbsp; <span style="background:${typeColor}20;color:${typeColor};padding:1px 6px;border-radius:4px;font-size:11px;font-weight:700">${d.stageType}</span><br/>`;
+        s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.08)"></div>`;
+        s += `<span style="color:#ef4444">⚔ 敌方CP:</span> <b>${comma(d.enemyCP)}</b> &nbsp;<span style="color:#94a3b8;font-size:10px">(${d.enemyCount}怪: HP:${comma(d.individualHp)} ATK:${comma(d.individualAtk)})</span><br/>`;
+        s += `<span style="color:#22c55e">🎇 理想战力:</span> <b>${comma(d.playerCP)}</b> &nbsp; <span style="color:#eab308">⚡ 实际战力:</span> <b>${comma(d.actualPlayerCP)}</b><br/>`;
+        s += `<span style="color:#60a5fa">🦸 英雄CP:</span> <b>${comma(d.heroCP)}</b><br/>`;
+        s += `<div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.05)"></div>`;
+        s += `<span style="color:#a78bfa;font-size:11px">🔥 英雄 (${d.slots}槽/${comma(d.summons)}抽)  卡尺Lv:${d.gachaLv+1} ${d.reqNext>0?`(${comma(d.summons)}/${comma(d.reqNext)})`:'(Max)'} &nbsp; 图鉴:<b>+${(d.collectionAtkPct || 0).toFixed(1)}%</b></span><br/>`;
+        if (d.heroSlots && d.heroSlots.length > 0) {
+          s += `<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px">`;
+          for (const h of d.heroSlots) {
+            const qc = qColors[Math.min(h.q - 1, 6)] || '#94a3b8';
+            const opa = '1';
+            s += `<span style="background:${qc}20;color:${qc};padding:1px 4px;border-radius:3px;font-size:10px;font-weight:600;opacity:${opa}">Q${h.q}`;
+            if (h.s > 0) s += `<span style="color:#fbbf24">★${h.s}</span>`;
+            s += ` <span style="color:#ccc;font-weight:400">${comma(h.cp)}</span></span>`;
+          }
+          s += `</div>`;
+        }
+        return s;
+      }
+    },
+    legend: {
+      data: ['敌方CP (Wall)', '理想战力 (Ideal)', '实际战力 (Actual)', '英雄战力 (Hero)'],
+      textStyle: { color: '#ccc', fontSize: 11 },
+      bottom: 0
+    },
+    grid: { left: '2%', right: '3%', bottom: '10%', top: '6%', containLabel: true },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: data.map(d => d.stage),
+      axisLabel: {
+        color: '#888', fontSize: 10,
+        interval: function (index, value) {
+          const intVal = parseInt(value);
+          const isChapter = window.chapterLimitsGlobal.includes(intVal);
+          const isDayBoundary = window.dayLimitsGlobal.some(d => d.stage === intVal);
+          return isChapter || isDayBoundary;
+        },
+        formatter: function (value, index) {
+          const intVal = parseInt(value);
+          let chapterStr = '';
+          if (window.chapterLimitsGlobal.includes(intVal)) {
+            const chapter = window.chapterLimitsGlobal.indexOf(intVal) + 1;
+            chapterStr = '{ch|' + chapter + '}';
+          }
+          let dayStr = '';
+          const dayMatch = window.dayLimitsGlobal.find(d => d.stage === intVal);
+          if (dayMatch) {
+            dayStr = '{day|' + dayMatch.day + '}';
+          }
+
+          if (chapterStr && dayStr) return chapterStr + '\n' + dayStr;
+          if (chapterStr) return chapterStr;
+          if (dayStr) return '\n' + dayStr;
+          return '';
+        },
+        rich: {
+          ch: { color: '#888', fontSize: 10, lineHeight: 16, align: 'center' },
+          day: { color: '#fbbf24', fontSize: 10, lineHeight: 16, align: 'center', backgroundColor: 'rgba(251,191,36,0.15)', padding: [2, 4], borderRadius: 3 }
+        }
+      },
+      axisTick: {
+        alignWithLabel: true, interval: function (index, value) {
+          const intVal = parseInt(value);
+          return window.chapterLimitsGlobal.includes(intVal) || window.dayLimitsGlobal.some(d => d.stage === intVal);
+        }
+      },
+      splitLine: {
+        show: true,
+        interval: function (index, value) {
+          const intVal = parseInt(value);
+          return window.chapterLimitsGlobal.includes(intVal) || window.dayLimitsGlobal.some(d => d.stage === intVal);
+        },
+        lineStyle: { color: 'rgba(255,255,255,0.06)', type: 'dashed' }
+      }
+    },
+    yAxis: [
+      {
+        type: 'log',
+        logBase: 10,
+        name: '战力 CP (Log₁₀)',
+        nameTextStyle: { color: '#888', fontSize: 11 },
+        axisLine: { show: true, lineStyle: { color: '#334155' } },
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)' } },
+        axisLabel: { color: '#888', fontSize: 10 },
+        min: 1
+      }
+    ],
+    dataZoom: [
+      { type: 'inside', xAxisIndex: 0, filterMode: 'none' }
+    ],
+    series: [
+      {
+        name: '敌方CP (Wall)',
+        type: 'line',
+        data: data.map(d => d.enemyCP),
+        lineStyle: { color: '#ef4444', width: 1.5 },
+        itemStyle: { color: '#ef4444' },
+        symbol: 'none',
+        sampling: 'lttb',
+        markPoint: {
+          data: data.filter(d => d.isBoss).map(d => ({
+            coord: [d.stage - 1, d.enemyCP],
+            symbol: 'diamond',
+            symbolSize: 10,
+            itemStyle: { color: '#ef4444' }
+          })),
+          label: { show: false }
+        }
+      },
+      {
+        name: '理想战力 (Ideal)',
+        type: 'line',
+        data: data.map(d => d.playerCP),
+        lineStyle: { color: '#22c55e', width: 2.5 },
+        itemStyle: { color: '#22c55e' },
+        symbol: 'none',
+        sampling: 'lttb',
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(34,197,94,0.10)' },
+            { offset: 1, color: 'rgba(34,197,94,0.01)' }
+          ])
+        }
+      },
+      {
+        name: '实际战力 (Actual)',
+        type: 'line',
+        data: data.map(d => d.actualPlayerCP),
+        lineStyle: { color: '#eab308', width: 2.5, type: 'dashed' },
+        itemStyle: { color: '#eab308' },
+        symbol: 'none',
+        sampling: 'lttb'
+      },
+      {
+        name: '英雄战力 (Hero)',
+        type: 'line',
+        data: data.map(d => d.heroCP),
+        lineStyle: { color: '#60a5fa', width: 1.5, type: 'dashed' },
+        itemStyle: { color: '#60a5fa' },
+        symbol: 'none',
+        sampling: 'lttb'
+      }
+    ]
+  };
+
+  simChartInstance.setOption(mainOption, true);
+
+  simBuildingChartInstance.clear();
+
 };
 
 window.addEventListener('DOMContentLoaded', () => { setTimeout(() => { window.renderSimulationConfigUI(); }, 200); });
+
